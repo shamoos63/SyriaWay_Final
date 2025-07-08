@@ -42,8 +42,8 @@ export default function SignIn() {
 
   const handleGoogleSignIn = async () => {
     try {
-      // Redirect to Google OAuth
-      window.location.href = "/api/auth/signin/google"
+      // Redirect to Google OAuth using NextAuth
+      window.location.href = "/api/auth/signin/google?callbackUrl=" + encodeURIComponent(window.location.origin)
     } catch (error) {
       console.error("Google sign in error:", error)
       toast.error("Failed to sign in with Google.")
