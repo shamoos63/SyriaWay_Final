@@ -1,17 +1,14 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../lib/generated/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = "postgresql://postgres.bblexeqziqgxpzqqluce:vd654fTX7SVqnVrU@aws-0-eu-north-1.pooler.supabase.com:6543/postgres"
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 enum UserRole {
@@ -90,9 +87,13 @@ model User {
   reviews      Review[]
   contactForms ContactForm[]
   umrahRequests UmrahRequest[]
+  specialTourRequests SpecialTourRequest[]
   notifications Notification[]
 
   @@map("users")
+  @@index([role])
+  @@index([status])
+  @@index([createdAt])
 }
 
 // NextAuth.js required tables
@@ -156,8 +157,8 @@ model Hotel {
   checkOutTime String? @default("12:00")
 
   // Amenities as JSON array
-  amenities Json? // ["WiFi", "Pool", "Gym", "Restaurant", etc.]
-  images    Json? // Array of image URLs
+  amenities String? // JSON string for SQLite
+  images    String? // JSON string for SQLite
 
   // Location
   latitude  Float?
@@ -180,6 +181,12 @@ model Hotel {
   translations HotelTranslation[]
 
   @@map("hotels")
+  @@index([ownerId])
+  @@index([city])
+  @@index([isActive])
+  @@index([isVerified])
+  @@index([isSpecialOffer])
+  @@index([createdAt])
 }
 
 // Hotel Settings for owners
@@ -240,8 +247,8 @@ model Room {
   bathroomCount Int     @default(1)
 
   // Amenities
-  amenities Json? // ["TV", "AC", "Minibar", etc.]
-  images    Json? // Array of image URLs
+  amenities String? // JSON string for SQLite
+  images    String? // JSON string for SQLite
 
   // Availability
   isAvailable  Boolean @default(true)
@@ -257,6 +264,10 @@ model Room {
 
   @@unique([hotelId, roomNumber]) // Ensure unique room numbers within each hotel
   @@map("rooms")
+  @@index([hotelId])
+  @@index([isAvailable])
+  @@index([pricePerNight])
+  @@index([roomType])
 }
 
 model RoomTranslation {
@@ -297,8 +308,8 @@ model Car {
   currency    String @default("USD")
 
   // Features
-  features Json? // ["GPS", "AC", "Bluetooth", etc.]
-  images   Json? // Array of image URLs
+  features String? // JSON string for SQLite
+  images   String? // JSON string for SQLite
 
   // Location and availability
   currentLocation String?
@@ -321,6 +332,13 @@ model Car {
   translations CarTranslation[]
 
   @@map("cars")
+  @@index([ownerId])
+  @@index([isAvailable])
+  @@index([isVerified])
+  @@index([isSpecialOffer])
+  @@index([category])
+  @@index([brand, model])
+  @@index([pricePerDay])
 }
 
 model CarTranslation {
@@ -337,50 +355,56 @@ model CarTranslation {
 
 // Tour Guides
 model TourGuide {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String @id @default(cuid())
+  userId      String @unique
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Guide information
   bio         String?
-  experience  Int? // Years of experience
-  languages   Json? // Languages spoken ["English", "Arabic", etc.]
-  specialties Json? // ["Historical", "Adventure", "Cultural", etc.]
+  specialties String? // JSON string for SQLite
+  experience  Int     @default(0) // Years of experience
+  languages   String? // JSON string for SQLite
+  certifications String? // JSON string for SQLite
 
-  // Location and availability
-  baseLocation String?
-  serviceAreas Json? // Cities/regions they serve
-  isAvailable  Boolean @default(true)
-  isVerified   Boolean @default(false)
+  // Contact information
+  phone       String?
+  email       String?
+  website     String?
+
+  // Availability
+  isAvailable Boolean @default(true)
+  isVerified  Boolean @default(false)
 
   // Pricing
-  hourlyRate Float?
-  dailyRate  Float?
-  currency   String @default("USD")
+  hourlyRate  Float?
+  dailyRate   Float?
+  currency    String @default("USD")
 
-  // Profile
-  profileImage   String?
-  certifications Json? // Array of certification URLs/names
+  // Media
+  profileImage String?
+  images       String? // JSON string for SQLite
 
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  bookings     Booking[]
-  reviews      Review[]
-  tours        Tour[]
-  specialTourRequests SpecialTourRequest[]
+  tours       Tour[]
+  bookings    Booking[]
+  reviews     Review[]
   translations TourGuideTranslation[]
 
   @@map("tour_guides")
+  @@index([userId])
+  @@index([isAvailable])
+  @@index([isVerified])
 }
 
 model TourGuideTranslation {
-  id       String   @id @default(cuid())
-  guideId  String
-  language Language
-  bio      String?
+  id          String   @id @default(cuid())
+  guideId     String
+  language    Language
+  bio         String?
+  specialties String? // JSON string for SQLite
 
   guide TourGuide @relation(fields: [guideId], references: [id], onDelete: Cascade)
 
@@ -388,7 +412,7 @@ model TourGuideTranslation {
   @@map("tour_guide_translations")
 }
 
-// Bundles (packages combining multiple services)
+// Bundles (Package deals)
 model Bundle {
   id          String  @id @default(cuid())
   name        String
@@ -409,15 +433,15 @@ model Bundle {
   includesGuide Boolean @default(false)
 
   // Bundle services (JSON to store specific service IDs)
-  hotelIds Json? // Array of hotel IDs
-  carIds   Json? // Array of car IDs
-  guideIds Json? // Array of guide IDs
+  hotelIds String? // JSON string for SQLite
+  carIds   String? // JSON string for SQLite
+  guideIds String? // JSON string for SQLite
 
   // Additional details
   itinerary  String?
-  inclusions Json? // What's included
-  exclusions Json? // What's not included
-  images     Json? // Array of image URLs
+  inclusions String? // JSON string for SQLite
+  exclusions String? // JSON string for SQLite
+  images     String? // JSON string for SQLite
 
   // Status
   isActive   Boolean @default(true)
@@ -432,6 +456,8 @@ model Bundle {
   translations BundleTranslation[]
 
   @@map("bundles")
+  @@index([isActive])
+  @@index([isFeatured])
 }
 
 model BundleTranslation {
@@ -441,8 +467,8 @@ model BundleTranslation {
   name        String
   description String?
   itinerary   String?
-  inclusions  Json?
-  exclusions  Json?
+  inclusions  String? // JSON string for SQLite
+  exclusions  String? // JSON string for SQLite
 
   bundle Bundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
 
@@ -510,6 +536,17 @@ model Booking {
   reviews Review[]
 
   @@map("bookings")
+  @@index([userId])
+  @@index([serviceType])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([createdAt])
+  @@index([hotelId])
+  @@index([carId])
+  @@index([guideId])
+  @@index([tourId])
 }
 
 enum ServiceType {
@@ -526,89 +563,80 @@ enum ServiceType {
 model Review {
   id String @id @default(cuid())
 
-  // Who wrote the review
+  // Review details
+  rating      Int // 1-5 stars
+  title       String?
+  comment     String?
+  isApproved  Boolean @default(false)
+  isAnonymous Boolean @default(false)
+
+  // Relations
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // What's being reviewed
+  // Service being reviewed
   hotelId String?
-  hotel   Hotel?  @relation(fields: [hotelId], references: [id])
+  hotel   Hotel? @relation(fields: [hotelId], references: [id])
 
   carId String?
-  car   Car?    @relation(fields: [carId], references: [id])
+  car   Car?   @relation(fields: [carId], references: [id])
 
   guideId String?
-  guide   TourGuide? @relation(fields: [guideId], references: [id])
+  guide  TourGuide? @relation(fields: [guideId], references: [id])
 
   tourId String?
-  tour   Tour?   @relation(fields: [tourId], references: [id])
+  tour   Tour? @relation(fields: [tourId], references: [id])
 
-  tourismSiteId String?
-  tourismSite   TourismSite? @relation(fields: [tourismSiteId], references: [id])
+  siteId String?
+  site   TourismSite? @relation(fields: [siteId], references: [id])
 
+  // Booking reference
   bookingId String?
   booking   Booking? @relation(fields: [bookingId], references: [id])
-
-  // Review content
-  rating  Int // 1-5 stars
-  title   String?
-  comment String?
-
-  // Status
-  isApproved Boolean @default(false)
-  isVerified Boolean @default(false) // If from verified booking
 
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("reviews")
+  @@index([userId])
+  @@index([hotelId])
+  @@index([carId])
+  @@index([guideId])
+  @@index([tourId])
+  @@index([siteId])
+  @@index([rating])
+  @@index([isApproved])
 }
 
 // Blog system
 model Blog {
-  id String @id @default(cuid())
+  id      String  @id @default(cuid())
+  title   String
+  excerpt String?
+  content String
+  slug    String  @unique
 
   // Author
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  // Content
-  title   String
-  slug    String  @unique
-  excerpt String?
-  content String
+  // Media
+  featuredImage String?
+  images        String? // JSON string for SQLite
 
   // SEO and metadata
   metaTitle       String?
   metaDescription String?
-  keywords        Json? // Array of keywords
+  keywords        String?
 
-  // Media
-  featuredImage String?
-  images        Json? // Array of image URLs
-
-  // Categorization
-  category String?
-  tags     Json? // Array of tags
-
-  // Status and Approval
-  status      String @default("DRAFT") // "DRAFT", "PENDING", "APPROVED", "REJECTED", "PUBLISHED"
+  // Status
   isPublished Boolean @default(false)
   isFeatured  Boolean @default(false)
-  
-  // Engagement metrics
+
+  // Engagement
   likes    Int @default(0)
   dislikes Int @default(0)
-  views    Int @default(0)
-  
-  // Approval workflow
-  submittedAt DateTime?
-  approvedAt  DateTime?
-  approvedBy  String? // Admin user ID who approved
-  rejectedAt  DateTime?
-  rejectedBy  String? // Admin user ID who rejected
-  rejectionReason String? // Reason for rejection
 
   // Timestamps
   publishedAt DateTime?
@@ -620,27 +648,29 @@ model Blog {
   reactions    BlogReaction[]
 
   @@map("blogs")
+  @@index([authorId])
+  @@index([isPublished])
+  @@index([isFeatured])
+  @@index([publishedAt])
+  @@index([slug])
 }
 
 model BlogTranslation {
-  id              String   @id @default(cuid())
-  blogId          String
-  language        Language
-  title           String
-  slug            String
-  excerpt         String?
-  content         String
-  metaTitle       String?
+  id          String   @id @default(cuid())
+  blogId      String
+  language    Language
+  title       String
+  excerpt     String?
+  content     String
+  metaTitle   String?
   metaDescription String?
 
   blog Blog @relation(fields: [blogId], references: [id], onDelete: Cascade)
 
   @@unique([blogId, language])
-  @@unique([slug, language])
   @@map("blog_translations")
 }
 
-// Blog reactions (likes/dislikes)
 model BlogReaction {
   id     String @id @default(cuid())
   blogId String
@@ -690,6 +720,10 @@ model ContactForm {
   updatedAt DateTime @updatedAt
 
   @@map("contact_forms")
+  @@index([status])
+  @@index([priority])
+  @@index([category])
+  @@index([createdAt])
 }
 
 // System settings for multi-language and configuration
@@ -704,6 +738,8 @@ model SystemSettings {
   updatedAt DateTime @updatedAt
 
   @@map("system_settings")
+  @@index([key])
+  @@index([category])
 }
 
 // Tourism Sites (Historical, Natural, Religious)
@@ -730,12 +766,12 @@ model TourismSite {
   openingHours String?
 
   // Media
-  images        Json? // Array of image URLs
+  images        String? // JSON string for SQLite
   featuredImage String?
 
   // Tips and information
-  tips       Json? // Array of visitor tips
-  facilities Json? // Available facilities
+  tips       String? // JSON string for SQLite
+  facilities String? // JSON string for SQLite
 
   // Status
   isActive   Boolean @default(true)
@@ -750,6 +786,10 @@ model TourismSite {
   reviews      Review[]
 
   @@map("tourism_sites")
+  @@index([category])
+  @@index([city])
+  @@index([isActive])
+  @@index([isFeatured])
 }
 
 enum SiteCategory {
@@ -764,7 +804,7 @@ model TourismSiteTranslation {
   language    Language
   name        String
   description String?
-  tips        Json?
+  tips        String? // JSON string for SQLite
 
   site TourismSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
 
@@ -774,60 +814,54 @@ model TourismSiteTranslation {
 
 // Tours (Structured tour packages)
 model Tour {
-  id          String  @id @default(cuid())
+  id          String @id @default(cuid())
   name        String
   description String?
 
-  // Guide information
-  guideId String
-  guide   TourGuide @relation(fields: [guideId], references: [id], onDelete: Cascade)
-
   // Tour details
-  category     TourCategory // HISTORICAL, CULTURAL, NATURE, ADVENTURE, CULINARY
-  duration     Int // Duration in hours/days
-  capacity     Int          @default(12) // Maximum number of people for this tour
-  startDate    DateTime
-  endDate      DateTime
-  maxGroupSize Int          @default(12)
-  minGroupSize Int          @default(2)
+  category     TourCategory
+  duration     Int // Duration in hours
+  maxCapacity  Int @default(20)
+  minCapacity  Int @default(1)
+
+  // Location
+  startLocation String
+  endLocation   String
+  stops         String? // JSON string for SQLite
 
   // Pricing
   price    Float
   currency String @default("USD")
 
   // Schedule
-  availableDays Json? // ["Monday", "Wednesday", "Friday"]
-  startTime     String? // "09:00"
-  endTime       String? // "17:00"
-
-  // Location and itinerary
-  startLocation String
-  endLocation   String
-  itinerary     String?
-  includedSites Json? // Array of tourism site IDs (references to static data)
-
-  // What's included
-  includes Json? // ["Transport", "Guide", "Lunch", "Entrance fees"]
-  excludes Json? // ["Personal expenses", "Tips"]
+  startTimes String? // JSON string for SQLite
+  daysOfWeek String? // JSON string for SQLite
 
   // Media
-  images Json? // Array of image URLs
+  images String? // JSON string for SQLite
 
   // Status
-  isActive   Boolean @default(true)
-  isFeatured Boolean @default(false)
-  isSpecialOffer Boolean @default(false)
+  isActive Boolean @default(true)
+
+  // Guide
+  guideId String?
+  guide   TourGuide? @relation(fields: [guideId], references: [id])
 
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
+  bookings    Booking[]
+  reviews     Review[]
   translations TourTranslation[]
-  bookings     Booking[]
-  reviews      Review[]
 
   @@map("tours")
+  @@index([guideId])
+  @@index([category])
+  @@index([isActive])
+  @@index([startLocation])
+  @@index([endLocation])
 }
 
 model TourTranslation {
@@ -836,9 +870,6 @@ model TourTranslation {
   language    Language
   name        String
   description String?
-  itinerary   String?
-  includes    Json?
-  excludes    Json?
 
   tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
 
@@ -846,57 +877,59 @@ model TourTranslation {
   @@map("tour_translations")
 }
 
-// Special Tour Requests
+// Special tour requests (custom tours)
 model SpecialTourRequest {
   id          String @id @default(cuid())
-  guideId     String?
-  guide       TourGuide? @relation(fields: [guideId], references: [id], onDelete: Cascade)
-
+  
   // Customer information
-  customerName  String
-  customerEmail String
-  customerPhone String?
-
+  customerId  String
+  customer    User   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
   // Request details
-  tourType           String // "Historical", "Cultural", "Adventure", "Custom", etc.
-  preferredDates     String? // "2024-07-15 to 2024-07-20" or specific dates
-  groupSize          Int? // Number of people
-  specialRequirements String? // Any special needs or requests
-  budget             Float? // Budget range
-  message            String? // Additional message
-
+  title           String
+  description     String
+  preferredDates  String? // JSON string for SQLite
+  groupSize       Int
+  budget          Float?
+  specialRequirements String?
+  
+  // Contact information
+  phoneNumber     String?
+  alternativeEmail String?
+  
   // Status
-  status String @default("PENDING") // "PENDING", "ACCEPTED", "DECLINED", "COMPLETED"
-
+  status String @default("PENDING") // "PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"
+  adminNotes String?
+  
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("special_tour_requests")
+  @@index([customerId])
+  @@index([status])
 }
 
-// Health Tourism Services
+// Health Services
 model HealthService {
-  id          String  @id @default(cuid())
+  id          String @id @default(cuid())
   name        String
   description String?
 
   // Service details
-  category String // "Dental", "Cosmetic", "Alternative Medicine", etc.
-  duration String? // "2 hours", "1 day", etc.
-
-  // Provider information
-  providerName    String
-  providerAddress String
-  providerPhone   String?
-  providerEmail   String?
-
-  // Pricing
+  category String // "Medical", "Dental", "Wellness", "Emergency"
+  duration String // "30 min", "1 hour", etc.
   price    Float
   currency String @default("USD")
 
+  // Provider information
+  providerName String
+  location     String
+  phone        String?
+  email        String?
+
   // Media
-  images Json? // Array of image URLs
+  images String? // JSON string for SQLite
 
   // Status
   isActive Boolean @default(true)
@@ -910,6 +943,8 @@ model HealthService {
   bookings     Booking[]
 
   @@map("health_services")
+  @@index([category])
+  @@index([isActive])
 }
 
 model HealthServiceTranslation {
@@ -927,7 +962,7 @@ model HealthServiceTranslation {
 
 // Educational Tourism Programs
 model EducationalProgram {
-  id          String  @id @default(cuid())
+  id          String @id @default(cuid())
   name        String
   description String?
 
@@ -945,11 +980,11 @@ model EducationalProgram {
   currency String @default("USD")
 
   // Schedule
-  startDates  Json? // Array of available start dates
+  startDates  String? // JSON string for SQLite
   maxStudents Int?  @default(20)
 
   // Media
-  images Json? // Array of image URLs
+  images String? // JSON string for SQLite
 
   // Status
   isActive Boolean @default(true)
@@ -963,6 +998,8 @@ model EducationalProgram {
   bookings     Booking[]
 
   @@map("educational_programs")
+  @@index([category])
+  @@index([isActive])
 }
 
 model EducationalProgramTranslation {
@@ -980,24 +1017,24 @@ model EducationalProgramTranslation {
 
 // Umrah Packages
 model UmrahPackage {
-  id          String  @id @default(cuid())
+  id          String @id @default(cuid())
   name        String
   description String?
 
   // Package details
   duration  Int // Duration in days
-  groupSize String // "Individual", "Family", "Group"
-  season    String? // "Ramadan", "Regular", "Hajj"
+  groupSize String // "Up to 20 people", "Families", etc.
+  season    String // "Regular", "Ramadan", "Hajj"
 
   // Pricing
   price    Float
   currency String @default("USD")
 
   // What's included
-  includes Json? // ["Visa", "Accommodation", "Transport", "Guide"]
+  includes String? // JSON string for SQLite
 
   // Media
-  images Json? // Array of image URLs
+  images String? // JSON string for SQLite
 
   // Status
   isActive Boolean @default(true)
@@ -1008,10 +1045,12 @@ model UmrahPackage {
 
   // Relations
   translations UmrahPackageTranslation[]
-  bookings     Booking[]
   requests     UmrahRequest[]
+  bookings     Booking[]
 
   @@map("umrah_packages")
+  @@index([isActive])
+  @@index([season])
 }
 
 model UmrahPackageTranslation {
@@ -1027,7 +1066,6 @@ model UmrahPackageTranslation {
   @@map("umrah_package_translations")
 }
 
-// Umrah Requests
 model UmrahRequest {
   id          String @id @default(cuid())
   
@@ -1058,6 +1096,9 @@ model UmrahRequest {
   updatedAt DateTime @updatedAt
 
   @@map("umrah_requests")
+  @@index([customerId])
+  @@index([packageId])
+  @@index([status])
 }
 
 // Tourism News
@@ -1069,11 +1110,11 @@ model TourismNews {
 
   // Media
   featuredImage String?
-  images        Json? // Array of image URLs
+  images        String? // JSON string for SQLite
 
   // Categorization
   category String? // "General", "Events", "Announcements"
-  tags     Json? // Array of tags
+  tags     String? // JSON string for SQLite
 
   // Status
   isPublished Boolean @default(false)
@@ -1088,6 +1129,9 @@ model TourismNews {
   translations TourismNewsTranslation[]
 
   @@map("tourism_news")
+  @@index([isPublished])
+  @@index([isFeatured])
+  @@index([publishedAt])
 }
 
 model TourismNewsTranslation {
@@ -1106,29 +1150,27 @@ model TourismNewsTranslation {
 
 // Special Offers
 model Offer {
-  id          String  @id @default(cuid())
+  id          String @id @default(cuid())
   title       String
   description String?
 
   // Offer details
-  originalPrice      Float
-  discountedPrice    Float
-  discountPercentage Int
+  discountPercentage Int // 10, 20, 30, etc.
+  validFrom          DateTime
+  validUntil         DateTime
+  maxUses            Int? // null for unlimited
 
-  // Validity
-  startDate DateTime
-  endDate   DateTime
-
-  // Service association
-  serviceType ServiceType
-  serviceId   String? // ID of the specific service
+  // Applicable services
+  appliesToHotels    Boolean @default(false)
+  appliesToCars      Boolean @default(false)
+  appliesToTours     Boolean @default(false)
+  appliesToBundles   Boolean @default(false)
 
   // Media
-  image String?
+  images String? // JSON string for SQLite
 
   // Status
-  isActive   Boolean @default(true)
-  isFeatured Boolean @default(false)
+  isActive Boolean @default(true)
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -1138,6 +1180,9 @@ model Offer {
   translations OfferTranslation[]
 
   @@map("offers")
+  @@index([isActive])
+  @@index([validFrom])
+  @@index([validUntil])
 }
 
 model OfferTranslation {
@@ -1155,32 +1200,24 @@ model OfferTranslation {
 
 // Notifications
 model Notification {
-  id          String   @id @default(cuid())
+  id          String @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  // Notification details
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   title       String
   message     String
-  type        String   // "BOOKING_CONFIRMED", "BOOKING_CANCELLED", "PAYMENT_RECEIVED", "NEW_MESSAGE", etc.
-  category    String   // "BOOKING", "PAYMENT", "MESSAGE", "SYSTEM", etc.
-  
-  // Related entity (optional)
-  relatedId   String?  // ID of related booking, message, etc.
-  relatedType String?  // Type of related entity
-  
-  // Status
-  isRead      Boolean  @default(false)
-  isArchived  Boolean  @default(false)
-  
-  // Priority
-  priority    String   @default("NORMAL") // "LOW", "NORMAL", "HIGH", "URGENT"
-  
+  type        String // "info", "success", "warning", "error"
+  isRead      Boolean @default(false)
+  actionUrl   String? // URL to navigate to when clicked
+
   // Timestamps
-  createdAt   DateTime @default(now())
-  readAt      DateTime?
-  
+  createdAt DateTime @default(now())
+  readAt    DateTime?
+
   @@map("notifications")
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
 }
 
 // Website Settings
