@@ -10,9 +10,12 @@ export function useOAuthSuccess() {
   const { language } = useLanguage()
 
   useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return
+
     // Check if user just signed up through OAuth
-    const isNewUser = searchParams.get('newUser')
-    const oauthProvider = searchParams.get('provider')
+    const isNewUser = searchParams?.get('newUser')
+    const oauthProvider = searchParams?.get('provider')
     
     if (isNewUser === 'true' && oauthProvider === 'google') {
       toast.success(

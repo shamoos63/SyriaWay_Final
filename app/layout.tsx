@@ -4,8 +4,8 @@ import type { Metadata } from "next"
 import { Inter, Cairo } from "next/font/google"
 import { ChatButton } from "@/components/chat-button"
 import { Toaster } from "sonner"
-import { OAuthSuccessHandler } from "@/components/oauth-success-handler"
 import { Providers } from "@/components/providers"
+import { ClientOAuthHandler } from "@/components/client-oauth-handler"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -92,7 +92,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <ChatButton />
-          <OAuthSuccessHandler />
+          <ClientOAuthHandler />
           <Toaster />
         </Providers>
       </body>
