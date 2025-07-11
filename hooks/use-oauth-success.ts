@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { useLanguage } from '@/lib/i18n/language-context'
@@ -8,10 +8,17 @@ import { useLanguage } from '@/lib/i18n/language-context'
 export function useOAuthSuccess() {
   const searchParams = useSearchParams()
   const { language } = useLanguage()
+  const [mounted, setMounted] = useState(false)
 
+  // Handle mounting
   useEffect(() => {
-    // Only run on client side
-    if (typeof window === 'undefined') return
+    setMounted(true)
+  }, [])
+
+  // Handle OAuth success logic
+  useEffect(() => {
+    // Only run on client side and when mounted
+    if (typeof window === 'undefined' || !mounted) return
 
     // Check if user just signed up through OAuth
     const isNewUser = searchParams?.get('newUser')
@@ -59,5 +66,5 @@ export function useOAuthSuccess() {
         }
       )
     }
-  }, [searchParams, language])
+  }, [searchParams, language, mounted])
 } 
