@@ -621,7 +621,7 @@ export default function Tours() {
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredTours.map((tour) => (
-                <Card key={tour.id} className="overflow-hidden bg-syria-cream border-syria-gold">
+                <Card key={tour.id} className="overflow-hidden bg-syria-cream dark:bg-[#4a4a4a] border-syria-gold">
                   <div className="relative h-48 bg-gradient-to-br from-syria-gold/20 to-syria-dark-gold/20">
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="text-4xl text-syria-gold opacity-30">🗺️</div>
@@ -720,12 +720,10 @@ export default function Tours() {
             <>
               <DialogHeader>
                 <DialogTitle className="text-2xl text-syria-gold">{selectedTour.name}</DialogTitle>
-                <DialogDescription>
-                  <div className="flex items-center gap-2 mt-2">
-                    <MapPin className="h-4 w-4 text-syria-gold" />
-                    {selectedTour.startLocation} → {selectedTour.endLocation}
-                  </div>
-                </DialogDescription>
+                <div className="flex items-center gap-2 mt-2">
+                  <MapPin className="h-4 w-4 text-syria-gold" />
+                  {selectedTour.startLocation} → {selectedTour.endLocation}
+                </div>
               </DialogHeader>
               
               <div className="space-y-6">
