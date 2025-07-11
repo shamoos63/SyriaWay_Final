@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { ChevronDown, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -18,8 +18,10 @@ export function Navbar() {
   const [isServicesOpen, setIsServicesOpen] = useState(false)
   const [isTourismSitesOpen, setIsTourismSitesOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { t, dir } = useLanguage()
   const { user } = useAuth()
+  const navbarRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -34,32 +36,61 @@ export function Navbar() {
       if (e.key === 'Escape') {
         setIsServicesOpen(false)
         setIsTourismSitesOpen(false)
+        setIsMobileMenuOpen(false)
       }
     }
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Element
-      if (!target.closest('.navbar-dropdown')) {
+      // Only handle click outside for desktop dropdowns
+      if (!target.closest('.navbar-dropdown') && !target.closest('.mobile-menu')) {
         setIsServicesOpen(false)
         setIsTourismSitesOpen(false)
       }
     }
 
-    window.addEventListener("scroll", handleScroll)
+    // Throttle scroll events for better performance
+    let ticking = false
+    const throttledScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          handleScroll()
+          ticking = false
+        })
+        ticking = true
+      }
+    }
+
+    window.addEventListener("scroll", throttledScroll, { passive: true })
     window.addEventListener("keydown", handleEscape)
     document.addEventListener("click", handleClickOutside)
     
     return () => {
-      window.removeEventListener("scroll", handleScroll)
+      window.removeEventListener("scroll", throttledScroll)
       window.removeEventListener("keydown", handleEscape)
       document.removeEventListener("click", handleClickOutside)
     }
   }, [])
 
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false)
+  }, [t])
+
   const navLinkClass = "text-white font-medium text-lg hover:text-syria-cream transition-colors relative"
+
+  const handleMobileMenuToggle = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen)
+    // Close desktop dropdowns when mobile menu opens
+    if (!isMobileMenuOpen) {
+      setIsServicesOpen(false)
+      setIsTourismSitesOpen(false)
+    }
+  }
 
   return (
     <nav
+      ref={navbarRef}
       className={`fixed top-0 left-0 right-0 z-50 mx-4 mt-4 rounded-xl transition-all duration-300 ${
         scrolled 
           ? "bg-syria-gold/80 backdrop-blur-md shadow-md dark:bg-[#4A4A4A]/95 dark:backdrop-blur-md dark:shadow-md" 
@@ -73,64 +104,80 @@ export function Navbar() {
           <Logo variant="navbar" size="md" withLink />
 
           {/* Mobile menu */}
-          <Sheet>
+          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="md:hidden mobile-menu"
+                onClick={handleMobileMenuToggle}
+                aria-label="Toggle mobile menu"
+              >
                 <Menu className="h-6 w-6 text-white" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side={dir === "rtl" ? "right" : "left"} className="bg-syria-sand dark:bg-gray-800">
+            <SheetContent 
+              side={dir === "rtl" ? "right" : "left"} 
+              className="bg-syria-sand dark:bg-gray-800 mobile-menu"
+              onInteractOutside={(e) => {
+                // Prevent closing when clicking inside dropdowns
+                const target = e.target as Element
+                if (target && target.closest('.mobile-dropdown')) {
+                  e.preventDefault()
+                }
+              }}
+            >
               <div className="flex flex-col gap-4 mt-8">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="w-full justify-start">
+                    <Button variant="ghost" className="w-full justify-start mobile-dropdown">
                       {t.nav.services} <ChevronDown className="ml-2 h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent className="mobile-dropdown">
                     <DropdownMenuItem>
-                      <Link href="/booking-hotels" className="w-full">
+                      <Link href="/booking-hotels" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
                         {t.services.bookingHotels}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
-                      <Link href="/health-tourism" className="w-full">
+                      <Link href="/health-tourism" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
                         {t.services.healthTourism}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
-                      <Link href="/educational-tourism" className="w-full">
+                      <Link href="/educational-tourism" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
                         {t.services.educationalTourism}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
-                      <Link href="/historical-tourism" className="w-full">
+                      <Link href="/historical-tourism" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
                         {t.services.historicalTourism}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
-                      <Link href="/national-tourism" className="w-full">
+                      <Link href="/national-tourism" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
                         {t.services.nationalTourism}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
-                      <Link href="/cars-rental" className="w-full">
+                      <Link href="/cars-rental" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
                         {t.services.carsRental}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
-                      <Link href="/tours" className="w-full">
+                      <Link href="/tours" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
                         {t.services.tours}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
-                      <Link href="/booking-flights" className="w-full">
+                      <Link href="/booking-flights" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
                         {t.services.bookingFlights}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
-                      <Link href="/umrah" className="w-full">
+                      <Link href="/umrah" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
                         {t.services.umrah}
                       </Link>
                     </DropdownMenuItem>
@@ -139,23 +186,23 @@ export function Navbar() {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="w-full justify-start">
+                    <Button variant="ghost" className="w-full justify-start mobile-dropdown">
                       {t.nav.tourismSites} <ChevronDown className="ml-2 h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent className="mobile-dropdown">
                     <DropdownMenuItem>
-                      <Link href="/historical-sites" className="w-full">
+                      <Link href="/historical-sites" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
                         {t.tourismSites.historicalSites}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
-                      <Link href="/natural-sites" className="w-full">
+                      <Link href="/natural-sites" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
                         {t.tourismSites.naturalSites}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem>
-                      <Link href="/religious-sites" className="w-full">
+                      <Link href="/religious-sites" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
                         {t.tourismSites.religiousSites}
                       </Link>
                     </DropdownMenuItem>
@@ -163,19 +210,19 @@ export function Navbar() {
                 </DropdownMenu>
 
                 <Button variant="ghost" className="justify-start">
-                  <Link href="/tourism-news" className="w-full">
+                  <Link href="/tourism-news" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
                     {t.nav.tourismNews}
                   </Link>
                 </Button>
 
                 <Button variant="ghost" className="justify-start">
-                  <Link href="/blog" className="w-full">
+                  <Link href="/blog" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
                     {t.nav.blog}
                   </Link>
                 </Button>
 
                 <Button variant="ghost" className="justify-start">
-                  <Link href="/offers" className="w-full">
+                  <Link href="/offers" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
                     {t.nav.offers}
                   </Link>
                 </Button>
