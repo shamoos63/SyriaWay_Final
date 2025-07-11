@@ -14,7 +14,16 @@ async function main() {
         phone: '+963-11-1234567',
         image: '/images/admin-avatar.jpg',
       },
-    
+      {
+        email: 'customer@syriaway.com',
+        name: 'Sarah Johnson',
+        password: 'password123',
+        role: 'CUSTOMER',
+        status: 'ACTIVE',
+        preferredLang: 'ENGLISH',
+        phone: '+1-555-1234567',
+        image: '/images/customer.jpg',
+      },
     ],
   });
   console.log('Seeded users!');

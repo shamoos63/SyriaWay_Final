@@ -27,6 +27,26 @@ export function ChatButton() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { t, language } = useLanguage()
 
+  // Load chat history from localStorage on mount
+  useEffect(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('reem-chat-history') : null
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed)
+        }
+      } catch {}
+    }
+  }, [])
+
+  // Save chat history to localStorage on every update
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('reem-chat-history', JSON.stringify(messages))
+    }
+  }, [messages])
+
   const toggleChat = () => {
     setIsOpen(!isOpen)
   }
@@ -60,13 +80,22 @@ export function ChatButton() {
         console.error("API returned error:", data.error)
       }
 
+      // Add assistant response to chat
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: data.text,
+          content: data.message,
         },
       ])
+
+      // Handle redirect if provided
+      if (data.redirectUrl) {
+        // Add a small delay to show the message before redirecting
+        setTimeout(() => {
+          window.location.href = data.redirectUrl
+        }, 2000)
+      }
     } catch (error) {
       console.error("Error sending message:", error)
       setMessages((prev) => [
