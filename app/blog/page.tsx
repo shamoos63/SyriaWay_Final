@@ -88,9 +88,12 @@ export default function Blog() {
         }
         
         const data = await response.json()
-        setBlogs(data.blogs)
+        setBlogs(data.blogs || [])
       } catch (err: any) {
+        console.error('Error fetching blogs:', err)
         setError(err.message || 'Failed to fetch blogs')
+        // Set empty array to prevent undefined errors
+        setBlogs([])
       } finally {
         setLoading(false)
       }
@@ -100,7 +103,7 @@ export default function Blog() {
 
   // Fetch user reactions for all blogs
   useEffect(() => {
-    if (!user?.id) return
+    if (!user?.id || blogs.length === 0) return
 
     const fetchUserReactions = async () => {
       try {
@@ -108,17 +111,22 @@ export default function Blog() {
         
         // Fetch reactions for each blog
         for (const blog of blogs) {
-          const response = await fetch(`/api/blogs/${blog.id}/reactions`, {
-            headers: {
-              Authorization: `Bearer ${user.id}`,
-            },
-          })
-          
-          if (response.ok) {
-            const data = await response.json()
-            if (data.reaction) {
-              reactions[blog.id] = data.reaction
+          try {
+            const response = await fetch(`/api/blogs/${blog.id}/reactions`, {
+              headers: {
+                Authorization: `Bearer ${user.id}`,
+              },
+            })
+            
+            if (response.ok) {
+              const data = await response.json()
+              if (data.reaction) {
+                reactions[blog.id] = data.reaction
+              }
             }
+          } catch (error) {
+            console.error(`Error fetching reactions for blog ${blog.id}:`, error)
+            // Continue with other blogs even if one fails
           }
         }
         
@@ -338,10 +346,12 @@ export default function Blog() {
           ) : error ? (
             <div className="text-center text-red-500 py-12">{error}</div>
           ) : blogs.length === 0 ? (
-            <div className="text-center text-gray-500 py-12">No blog posts found.</div>
+            <div className="text-center text-gray-500 py-12">
+              {error ? `Error: ${error}` : "No blog posts found."}
+            </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {blogs.map((post) => (
+              {blogs.filter(post => post && post.id).map((post) => (
                 <Card
                   key={post.id}
                   className="overflow-hidden blog-card bg-syria-cream border-syria-gold dark:bg-gray-800"

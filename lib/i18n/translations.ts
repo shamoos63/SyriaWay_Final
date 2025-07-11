@@ -13,6 +13,9 @@ export interface Translations {
     send: string
     goBack: string
     returnHome: string
+    cancel: string
+    save: string
+    create: string
   }
   nav: {
     services: string
@@ -20,6 +23,17 @@ export interface Translations {
     tourismNews: string
     blog: string
     offers: string
+  }
+  blog: {
+    readMore: string
+    createPost: string
+    editPost: string
+    postTitle: string
+    postExcerpt: string
+    postContent: string
+    postCategory: string
+    postImage: string
+    postTags: string
   }
   services: {
     bookingHotels: string
@@ -253,6 +267,9 @@ export const translations: Record<Language, Translations> = {
       send: "Send",
       goBack: "Go Back",
       returnHome: "Return Home",
+      cancel: "Cancel",
+      save: "Save",
+      create: "Create",
     },
     nav: {
       services: "Services",
@@ -260,6 +277,17 @@ export const translations: Record<Language, Translations> = {
       tourismNews: "Tourism News",
       blog: "Blog",
       offers: "Offers",
+    },
+    blog: {
+      readMore: "Read More",
+      createPost: "Create Post",
+      editPost: "Edit Post",
+      postTitle: "Post Title",
+      postExcerpt: "Post Excerpt",
+      postContent: "Post Content",
+      postCategory: "Post Category",
+      postImage: "Post Image",
+      postTags: "Post Tags",
     },
     services: {
       bookingHotels: "Booking Hotels",
@@ -497,6 +525,9 @@ export const translations: Record<Language, Translations> = {
       send: "إرسال",
       goBack: "العودة",
       returnHome: "العودة للرئيسية",
+      cancel: "إلغاء",
+      save: "حفظ",
+      create: "إنشاء",
     },
     nav: {
       services: "الخدمات",
@@ -504,6 +535,17 @@ export const translations: Record<Language, Translations> = {
       tourismNews: "أخبار السياحة",
       blog: "المدونة",
       offers: "العروض",
+    },
+    blog: {
+      readMore: "اقرأ المزيد",
+      createPost: "إنشاء منشور",
+      editPost: "تعديل المنشور",
+      postTitle: "عنوان المنشور",
+      postExcerpt: "مقتطف من المنشور",
+      postContent: "محتوى المنشور",
+      postCategory: "فئة المنشور",
+      postImage: "صورة المنشور",
+      postTags: "وسوم المنشور",
     },
     services: {
       bookingHotels: "حجز الفنادق",
@@ -615,7 +657,7 @@ export const translations: Record<Language, Translations> = {
       dashboard: "لوحة التحكم",
       offers: "العروض",
       plans: "الخطط",
-      settings: "الإعدا��ات",
+      settings: "الإعدادات",
       logout: "تسجيل الخروج",
       profile: "المستخدم",
       profilePic: "صورة",
@@ -740,6 +782,9 @@ export const translations: Record<Language, Translations> = {
       send: "Envoyer",
       goBack: "Retour",
       returnHome: "Retour à l'accueil",
+      cancel: "Annuler",
+      save: "Enregistrer",
+      create: "Créer",
     },
     nav: {
       services: "Services",
@@ -747,6 +792,17 @@ export const translations: Record<Language, Translations> = {
       tourismNews: "Actualités touristiques",
       blog: "Blog",
       offers: "Offres",
+    },
+    blog: {
+      readMore: "Lire plus",
+      createPost: "Créer un article",
+      editPost: "Modifier l'article",
+      postTitle: "Titre de l'article",
+      postExcerpt: "Extrait de l'article",
+      postContent: "Contenu de l'article",
+      postCategory: "Catégorie de l'article",
+      postImage: "Image de l'article",
+      postTags: "Tags de l'article",
     },
     services: {
       bookingHotels: "Réservation d'hôtels",

@@ -67,7 +67,7 @@ interface SpecialTourRequest {
 }
 
 export default function Tours() {
-  const { t, dir } = useLanguage()
+  const { t, dir, language } = useLanguage()
   const { toast } = useToast()
   const { user } = useAuth()
   const [tours, setTours] = useState<Tour[]>([])
@@ -96,6 +96,225 @@ export default function Tours() {
     message: ""
   })
 
+  // Translations
+  const translations = {
+    en: {
+      pageTitle: "Guided Tours",
+      pageDescription: "Discover the best of Syria with our expertly guided tours. From historical expeditions to cultural experiences and natural adventures, our tours offer authentic insights into Syria's rich heritage and beauty.",
+      requestSpecialTour: "Request Special Tour",
+      searchPlaceholder: "Search tours...",
+      allCategories: "All Categories",
+      allGuides: "All Guides",
+      allPrices: "All Prices",
+      under100: "Under $100",
+      price100to300: "$100 - $300",
+      over300: "Over $300",
+      clear: "Clear",
+      showingResults: "Showing {count} of {total} tours",
+      noToursFound: "No tours found matching your search criteria.",
+      viewDetails: "View Details",
+      bookNow: "Book Now",
+      tourGuide: "Tour Guide",
+      description: "Description",
+      duration: "Duration",
+      capacity: "Capacity",
+      people: "people",
+      hours: "hours",
+      close: "Close",
+      bookThisTour: "Book This Tour",
+      requestSpecialTourTitle: "Request Special Tour",
+      requestSpecialTourDescription: "Tell us about your dream tour and we'll connect you with the perfect guide.",
+      fullName: "Full Name",
+      email: "Email",
+      phoneNumber: "Phone Number",
+      tourType: "Tour Type",
+      selectTourType: "Select tour type",
+      selectGuide: "Select Guide",
+      chooseGuideOrLetUsPick: "Choose a guide or let us pick for you",
+      loadingGuides: "Loading guides...",
+      letUsChoose: "Let us choose the best guide for you",
+      preferredDates: "Preferred Dates",
+      groupSize: "Group Size",
+      budget: "Budget (USD)",
+      specialRequirements: "Special Requirements",
+      additionalMessage: "Additional Message",
+      cancel: "Cancel",
+      submitRequest: "Submit Request",
+      yourFullName: "Your full name",
+      yourEmail: "your.email@example.com",
+      yourPhone: "+1234567890",
+      datesExample: "e.g., July 15-20, 2024",
+      numberOfPeople: "Number of people",
+      budgetPerPerson: "Your budget per person",
+      specialNeedsPlaceholder: "Any special needs, accessibility requirements, or specific requests...",
+      dreamTourPlaceholder: "Tell us more about your dream tour...",
+      authenticationRequired: "Authentication Required",
+      pleaseSignIn: "Please sign in to submit a special tour request.",
+      requestNotAllowed: "Request Not Allowed",
+      serviceProvidersNotAllowed: "Service providers and administrators cannot submit special tour requests. Please use a customer account.",
+      missingInformation: "Missing Information",
+      fillRequiredFields: "Please fill in all required fields (Name, Email, and Tour Type).",
+      success: "Success",
+      requestSubmitted: "Your special tour request has been submitted successfully!",
+      error: "Error",
+      failedToLoadTours: "Failed to load tours. Please try again.",
+      failedToLoadGuides: "Failed to load guides. Please try again.",
+      failedToSubmitRequest: "Failed to submit special tour request. Please try again.",
+      new: "New",
+      reviews: "reviews",
+      bio: "Bio",
+      specialties: "Specialties",
+      languages: "Languages",
+      baseLocation: "Base Location",
+      yearsExp: "years exp.",
+      perDay: "/day"
+    },
+    ar: {
+      pageTitle: "جولات سياحية",
+      pageDescription: "اكتشف أفضل ما في سوريا مع جولاتنا المصحوبة بمرشدين خبراء. من الرحلات التاريخية إلى التجارب الثقافية والمغامرات الطبيعية، تقدم جولاتنا رؤى أصيلة لتراث سوريا الغني وجمالها.",
+      requestSpecialTour: "طلب جولة خاصة",
+      searchPlaceholder: "البحث في الجولات...",
+      allCategories: "جميع الفئات",
+      allGuides: "جميع المرشدين",
+      allPrices: "جميع الأسعار",
+      under100: "أقل من 100$",
+      price100to300: "100$ - 300$",
+      over300: "أكثر من 300$",
+      clear: "مسح",
+      showingResults: "عرض {count} من {total} جولة",
+      noToursFound: "لم يتم العثور على جولات تطابق معايير البحث.",
+      viewDetails: "عرض التفاصيل",
+      bookNow: "احجز الآن",
+      tourGuide: "مرشد الجولة",
+      description: "الوصف",
+      duration: "المدة",
+      capacity: "السعة",
+      people: "أشخاص",
+      hours: "ساعات",
+      close: "إغلاق",
+      bookThisTour: "احجز هذه الجولة",
+      requestSpecialTourTitle: "طلب جولة خاصة",
+      requestSpecialTourDescription: "أخبرنا عن جولتك المثالية وسنربطك بأفضل مرشد.",
+      fullName: "الاسم الكامل",
+      email: "البريد الإلكتروني",
+      phoneNumber: "رقم الهاتف",
+      tourType: "نوع الجولة",
+      selectTourType: "اختر نوع الجولة",
+      selectGuide: "اختر المرشد",
+      chooseGuideOrLetUsPick: "اختر مرشداً أو دعنا نختار لك",
+      loadingGuides: "جاري تحميل المرشدين...",
+      letUsChoose: "دعنا نختار أفضل مرشد لك",
+      preferredDates: "التواريخ المفضلة",
+      groupSize: "حجم المجموعة",
+      budget: "الميزانية (دولار أمريكي)",
+      specialRequirements: "المتطلبات الخاصة",
+      additionalMessage: "رسالة إضافية",
+      cancel: "إلغاء",
+      submitRequest: "إرسال الطلب",
+      yourFullName: "اسمك الكامل",
+      yourEmail: "بريدك.الإلكتروني@مثال.com",
+      yourPhone: "+1234567890",
+      datesExample: "مثال: 15-20 يوليو 2024",
+      numberOfPeople: "عدد الأشخاص",
+      budgetPerPerson: "ميزانيتك للشخص الواحد",
+      specialNeedsPlaceholder: "أي احتياجات خاصة أو متطلبات إمكانية الوصول أو طلبات محددة...",
+      dreamTourPlaceholder: "أخبرنا المزيد عن جولتك المثالية...",
+      authenticationRequired: "مطلوب تسجيل الدخول",
+      pleaseSignIn: "يرجى تسجيل الدخول لإرسال طلب جولة خاصة.",
+      requestNotAllowed: "الطلب غير مسموح",
+      serviceProvidersNotAllowed: "لا يمكن لمقدمي الخدمات والإداريين إرسال طلبات جولات خاصة. يرجى استخدام حساب عميل.",
+      missingInformation: "معلومات مفقودة",
+      fillRequiredFields: "يرجى ملء جميع الحقول المطلوبة (الاسم والبريد الإلكتروني ونوع الجولة).",
+      success: "نجح",
+      requestSubmitted: "تم إرسال طلب جولتك الخاصة بنجاح!",
+      error: "خطأ",
+      failedToLoadTours: "فشل في تحميل الجولات. يرجى المحاولة مرة أخرى.",
+      failedToLoadGuides: "فشل في تحميل المرشدين. يرجى المحاولة مرة أخرى.",
+      failedToSubmitRequest: "فشل في إرسال طلب الجولة الخاصة. يرجى المحاولة مرة أخرى.",
+      new: "جديد",
+      reviews: "تقييمات",
+      bio: "السيرة الذاتية",
+      specialties: "التخصصات",
+      languages: "اللغات",
+      baseLocation: "الموقع الأساسي",
+      yearsExp: "سنوات خبرة",
+      perDay: "/يوم"
+    },
+    fr: {
+      pageTitle: "Visites Guidées",
+      pageDescription: "Découvrez le meilleur de la Syrie avec nos visites guidées par des experts. Des expéditions historiques aux expériences culturelles et aventures naturelles, nos visites offrent des aperçus authentiques du riche patrimoine et de la beauté de la Syrie.",
+      requestSpecialTour: "Demander une Visite Spéciale",
+      searchPlaceholder: "Rechercher des visites...",
+      allCategories: "Toutes les Catégories",
+      allGuides: "Tous les Guides",
+      allPrices: "Tous les Prix",
+      under100: "Moins de 100$",
+      price100to300: "100$ - 300$",
+      over300: "Plus de 300$",
+      clear: "Effacer",
+      showingResults: "Affichage de {count} sur {total} visites",
+      noToursFound: "Aucune visite trouvée correspondant à vos critères de recherche.",
+      viewDetails: "Voir les Détails",
+      bookNow: "Réserver Maintenant",
+      tourGuide: "Guide de Visite",
+      description: "Description",
+      duration: "Durée",
+      capacity: "Capacité",
+      people: "personnes",
+      hours: "heures",
+      close: "Fermer",
+      bookThisTour: "Réserver cette Visite",
+      requestSpecialTourTitle: "Demander une Visite Spéciale",
+      requestSpecialTourDescription: "Parlez-nous de votre visite de rêve et nous vous connecterons avec le guide parfait.",
+      fullName: "Nom Complet",
+      email: "Email",
+      phoneNumber: "Numéro de Téléphone",
+      tourType: "Type de Visite",
+      selectTourType: "Sélectionner le type de visite",
+      selectGuide: "Sélectionner le Guide",
+      chooseGuideOrLetUsPick: "Choisissez un guide ou laissez-nous choisir pour vous",
+      loadingGuides: "Chargement des guides...",
+      letUsChoose: "Laissez-nous choisir le meilleur guide pour vous",
+      preferredDates: "Dates Préférées",
+      groupSize: "Taille du Groupe",
+      budget: "Budget (USD)",
+      specialRequirements: "Exigences Spéciales",
+      additionalMessage: "Message Supplémentaire",
+      cancel: "Annuler",
+      submitRequest: "Soumettre la Demande",
+      yourFullName: "Votre nom complet",
+      yourEmail: "votre.email@exemple.com",
+      yourPhone: "+1234567890",
+      datesExample: "ex: 15-20 juillet 2024",
+      numberOfPeople: "Nombre de personnes",
+      budgetPerPerson: "Votre budget par personne",
+      specialNeedsPlaceholder: "Tout besoin spécial, exigence d'accessibilité ou demande spécifique...",
+      dreamTourPlaceholder: "Parlez-nous plus de votre visite de rêve...",
+      authenticationRequired: "Authentification Requise",
+      pleaseSignIn: "Veuillez vous connecter pour soumettre une demande de visite spéciale.",
+      requestNotAllowed: "Demande Non Autorisée",
+      serviceProvidersNotAllowed: "Les fournisseurs de services et administrateurs ne peuvent pas soumettre de demandes de visites spéciales. Veuillez utiliser un compte client.",
+      missingInformation: "Informations Manquantes",
+      fillRequiredFields: "Veuillez remplir tous les champs requis (Nom, Email et Type de Visite).",
+      success: "Succès",
+      requestSubmitted: "Votre demande de visite spéciale a été soumise avec succès !",
+      error: "Erreur",
+      failedToLoadTours: "Échec du chargement des visites. Veuillez réessayer.",
+      failedToLoadGuides: "Échec du chargement des guides. Veuillez réessayer.",
+      failedToSubmitRequest: "Échec de la soumission de la demande de visite spéciale. Veuillez réessayer.",
+      new: "Nouveau",
+      reviews: "avis",
+      bio: "Biographie",
+      specialties: "Spécialités",
+      languages: "Langues",
+      baseLocation: "Emplacement de Base",
+      yearsExp: "ans d'exp.",
+      perDay: "/jour"
+    }
+  }
+
+  const tr = translations[language as keyof typeof translations]
+
   useEffect(() => {
     const fetchTours = async () => {
       try {
@@ -107,8 +326,8 @@ export default function Tours() {
       } catch (error) {
         console.error('Error fetching tours:', error)
         toast({
-          title: "Error",
-          description: "Failed to load tours. Please try again.",
+          title: tr.error,
+          description: tr.failedToLoadTours,
           variant: "destructive",
         })
       } finally {
@@ -128,8 +347,8 @@ export default function Tours() {
       } catch (error) {
         console.error('Error fetching guides:', error)
         toast({
-          title: "Error",
-          description: "Failed to load guides. Please try again.",
+          title: tr.error,
+          description: tr.failedToLoadGuides,
           variant: "destructive",
         })
       } finally {
@@ -187,8 +406,8 @@ export default function Tours() {
     // Check if user is signed in
     if (!user) {
       toast({
-        title: "Authentication Required",
-        description: "Please sign in to submit a special tour request.",
+        title: tr.authenticationRequired,
+        description: tr.pleaseSignIn,
         variant: "destructive",
       })
       return
@@ -197,8 +416,8 @@ export default function Tours() {
     // Check if user is a customer
     if (user.role !== 'CUSTOMER') {
       toast({
-        title: "Request Not Allowed",
-        description: "Service providers and administrators cannot submit special tour requests. Please use a customer account.",
+        title: tr.requestNotAllowed,
+        description: tr.serviceProvidersNotAllowed,
         variant: "destructive",
       })
       return
@@ -207,8 +426,8 @@ export default function Tours() {
     // Validate required fields
     if (!specialTourForm.customerName || !specialTourForm.customerEmail || !specialTourForm.tourType) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields (Name, Email, and Tour Type).",
+        title: tr.missingInformation,
+        description: tr.fillRequiredFields,
         variant: "destructive",
       })
       return
@@ -235,8 +454,8 @@ export default function Tours() {
       }
 
       toast({
-        title: "Success",
-        description: "Your special tour request has been submitted successfully!",
+        title: tr.success,
+        description: tr.requestSubmitted,
       })
       
       setShowSpecialTourModal(false)
@@ -255,8 +474,8 @@ export default function Tours() {
     } catch (error) {
       console.error('Error submitting special tour request:', error)
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to submit special tour request. Please try again.",
+        title: tr.error,
+        description: error instanceof Error ? error.message : tr.failedToSubmitRequest,
         variant: "destructive",
       })
     }
@@ -293,13 +512,13 @@ export default function Tours() {
                 {/* Badge */}
                 <div className="inline-flex items-center px-4 py-2 bg-syria-gold/10 dark:bg-syria-gold/20 border border-syria-gold/30 dark:border-syria-gold/50 rounded-full mb-6">
                   <span className="text-syria-gold dark:text-syria-gold font-semibold text-sm">
-                    {t.dir === "rtl" ? "جولات سياحية" : "Guided Tours"}
+                    {tr.pageTitle}
                   </span>
                 </div>
                 
                 {/* Main Title */}
                 <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-syria-gold mb-6 leading-tight">
-                  {t.dir === "rtl" ? "جولات سياحية" : "Guided Tours"}
+                  {tr.pageTitle}
                 </h1>
                 
                 {/* Decorative line */}
@@ -307,9 +526,7 @@ export default function Tours() {
                 
                 {/* Description */}
                 <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-200 mb-8 leading-relaxed max-w-3xl mx-auto">
-                  {t.dir === "rtl"
-                    ? "اكتشف أفضل ما في سوريا مع جولاتنا المصحوبة بمرشدين خبراء. من الرحلات التاريخية إلى التجارب الثقافية والمغامرات الطبيعية، تقدم جولاتنا رؤى أصيلة لتراث سوريا الغني وجمالها."
-                    : "Discover the best of Syria with our expertly guided tours. From historical expeditions to cultural experiences and natural adventures, our tours offer authentic insights into Syria's rich heritage and beauty."}
+                  {tr.pageDescription}
                 </p>
                 
                 {/* Action Button */}
@@ -317,7 +534,7 @@ export default function Tours() {
                   onClick={() => setShowSpecialTourModal(true)}
                   className="bg-syria-gold hover:bg-syria-dark-gold text-white font-bold text-lg px-8 py-4 rounded-xl shadow-lg transition-all duration-300 hover:scale-105"
                 >
-                  {t.dir === "rtl" ? "طلب جولة خاصة" : "Request Special Tour"}
+                  {tr.requestSpecialTour}
                 </Button>
               </div>
             </div>
@@ -330,7 +547,7 @@ export default function Tours() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Search tours..."
+                  placeholder={tr.searchPlaceholder}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -345,7 +562,7 @@ export default function Tours() {
                 <SelectContent>
                   {categories.map((category) => (
                     <SelectItem key={category} value={category}>
-                      {category === "all" ? "All Categories" : category.charAt(0).toUpperCase() + category.slice(1)}
+                      {category === "all" ? tr.allCategories : category.charAt(0).toUpperCase() + category.slice(1)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -359,7 +576,7 @@ export default function Tours() {
                 <SelectContent>
                   {guideNames.map((guide) => (
                     <SelectItem key={guide} value={guide}>
-                      {guide === "all" ? "All Guides" : guide}
+                      {guide === "all" ? tr.allGuides : guide}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -371,10 +588,10 @@ export default function Tours() {
                   <SelectValue placeholder="Price Range" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Prices</SelectItem>
-                  <SelectItem value="low">Under $100</SelectItem>
-                  <SelectItem value="medium">$100 - $300</SelectItem>
-                  <SelectItem value="high">Over $300</SelectItem>
+                  <SelectItem value="all">{tr.allPrices}</SelectItem>
+                  <SelectItem value="low">{tr.under100}</SelectItem>
+                  <SelectItem value="medium">{tr.price100to300}</SelectItem>
+                  <SelectItem value="high">{tr.over300}</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -385,7 +602,7 @@ export default function Tours() {
                 className="flex items-center gap-2"
               >
                 <X className="h-4 w-4" />
-                Clear
+                {tr.clear}
               </Button>
             </div>
           </div>
@@ -393,7 +610,7 @@ export default function Tours() {
           {/* Results Count */}
           <div className="mb-6">
             <p className="text-sm text-gray-600">
-              Showing {filteredTours.length} of {tours.length} tours
+              {tr.showingResults.replace('{count}', filteredTours.length.toString()).replace('{total}', tours.length.toString())}
             </p>
           </div>
 
@@ -420,7 +637,7 @@ export default function Tours() {
                       <div className="flex items-center">
                         {renderStars(tour.averageRating)}
                         <span className="ml-1 text-sm font-medium">
-                          {tour.averageRating > 0 ? tour.averageRating : "New"}
+                          {tour.averageRating > 0 ? tour.averageRating : tr.new}
                         </span>
                         {tour.reviewCount > 0 && (
                           <span className="ml-1 text-xs text-gray-500">({tour.reviewCount})</span>
@@ -450,7 +667,7 @@ export default function Tours() {
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="flex items-center gap-1">
                         <Clock className="h-4 w-4 text-syria-gold" />
-                        {tour.duration}h
+                        {tour.duration}{tr.hours}
                       </div>
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4 text-syria-gold" />
@@ -458,7 +675,7 @@ export default function Tours() {
                       </div>
                       <div className="flex items-center gap-1">
                         <Users className="h-4 w-4 text-syria-gold" />
-                        Capacity: {tour.capacity}
+                        {tr.capacity}: {tour.capacity}
                       </div>
                       <div>
                         <Badge className="bg-syria-gold">
@@ -474,13 +691,13 @@ export default function Tours() {
                       className="border-syria-gold text-syria-gold hover:bg-syria-gold hover:text-white"
                       onClick={() => handleViewDetails(tour)}
                     >
-                      View Details
+                      {tr.viewDetails}
                     </Button>
                     <Button 
                       className="bg-syria-gold hover:bg-syria-dark-gold"
                       onClick={() => handleBookTour(tour)}
                     >
-                      Book Now
+                      {tr.bookNow}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -490,7 +707,7 @@ export default function Tours() {
 
           {!loading && filteredTours.length === 0 && (
             <div className="content-card p-6 text-center text-gray-500">
-              No tours found matching your search criteria.
+              {tr.noToursFound}
             </div>
           )}
         </div>
@@ -513,7 +730,7 @@ export default function Tours() {
               
               <div className="space-y-6">
                 <div className="p-4 bg-syria-gold/10 rounded-lg">
-                  <h3 className="font-semibold text-syria-gold mb-2">Tour Guide</h3>
+                  <h3 className="font-semibold text-syria-gold mb-2">{tr.tourGuide}</h3>
                   <div className="flex items-center gap-2 mb-2">
                     <User className="h-4 w-4 text-syria-gold" />
                     <span className="font-medium">{selectedTour.guideName}</span>
@@ -524,23 +741,23 @@ export default function Tours() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Star className="h-4 w-4 text-yellow-400" />
-                    <span className="text-sm">{selectedTour.averageRating} ({selectedTour.reviewCount} reviews)</span>
+                    <span className="text-sm">{selectedTour.averageRating} ({selectedTour.reviewCount} {tr.reviews})</span>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="font-semibold text-syria-gold mb-2">Description</h3>
+                  <h3 className="font-semibold text-syria-gold mb-2">{tr.description}</h3>
                   <p className="text-sm">{selectedTour.description}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-syria-gold" />
-                    <span className="text-sm">Duration: {selectedTour.duration} hours</span>
+                    <span className="text-sm">{tr.duration}: {selectedTour.duration} {tr.hours}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-syria-gold" />
-                    <span className="text-sm">Capacity: {selectedTour.capacity} people</span>
+                    <span className="text-sm">{tr.capacity}: {selectedTour.capacity} {tr.people}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CalendarDays className="h-4 w-4 text-syria-gold" />
@@ -566,7 +783,7 @@ export default function Tours() {
                   variant="outline"
                   onClick={() => setShowDetailsModal(false)}
                 >
-                  Close
+                  {tr.close}
                 </Button>
                 <Button 
                   className="bg-syria-gold hover:bg-syria-dark-gold"
@@ -575,7 +792,7 @@ export default function Tours() {
                     handleBookTour(selectedTour)
                   }}
                 >
-                  Book This Tour
+                  {tr.bookThisTour}
                 </Button>
               </DialogFooter>
             </>
@@ -587,47 +804,47 @@ export default function Tours() {
       <Dialog open={showSpecialTourModal} onOpenChange={setShowSpecialTourModal}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl text-syria-gold">Request Special Tour</DialogTitle>
+            <DialogTitle className="text-2xl text-syria-gold">{tr.requestSpecialTourTitle}</DialogTitle>
             <DialogDescription>
-              Tell us about your dream tour and we'll connect you with the perfect guide.
+              {tr.requestSpecialTourDescription}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="customerName">Full Name *</Label>
+                <Label htmlFor="customerName">{tr.fullName} *</Label>
                 <Input
                   id="customerName"
                   value={specialTourForm.customerName}
                   onChange={(e) => setSpecialTourForm({...specialTourForm, customerName: e.target.value})}
-                  placeholder="Your full name"
+                  placeholder={tr.yourFullName}
                 />
               </div>
               <div>
-                <Label htmlFor="customerEmail">Email *</Label>
+                <Label htmlFor="customerEmail">{tr.email} *</Label>
                 <Input
                   id="customerEmail"
                   type="email"
                   value={specialTourForm.customerEmail}
                   onChange={(e) => setSpecialTourForm({...specialTourForm, customerEmail: e.target.value})}
-                  placeholder="your.email@example.com"
+                  placeholder={tr.yourEmail}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="customerPhone">Phone Number</Label>
+                <Label htmlFor="customerPhone">{tr.phoneNumber}</Label>
                 <Input
                   id="customerPhone"
                   value={specialTourForm.customerPhone}
                   onChange={(e) => setSpecialTourForm({...specialTourForm, customerPhone: e.target.value})}
-                  placeholder="+1234567890"
+                  placeholder={tr.yourPhone}
                 />
               </div>
               <div>
-                <Label htmlFor="tourType">Tour Type *</Label>
+                <Label htmlFor="tourType">{tr.tourType} *</Label>
                 <Select 
                   value={specialTourForm.tourType} 
                   onValueChange={(value) => {
@@ -636,7 +853,7 @@ export default function Tours() {
                   }}
                 >
                   <SelectTrigger className="focus:ring-2 focus:ring-syria-gold focus:border-syria-gold">
-                    <SelectValue placeholder="Select tour type" />
+                    <SelectValue placeholder={tr.selectTourType} />
                   </SelectTrigger>
                   <SelectContent className="z-[10000]">
                     <SelectItem value="Historical">Historical</SelectItem>
@@ -651,7 +868,7 @@ export default function Tours() {
             </div>
 
             <div>
-              <Label htmlFor="guideId">Select Guide</Label>
+              <Label htmlFor="guideId">{tr.selectGuide}</Label>
               <Select 
                 value={specialTourForm.guideId} 
                 onValueChange={(value) => {
@@ -661,15 +878,15 @@ export default function Tours() {
                 disabled={guidesLoading}
               >
                 <SelectTrigger className="focus:ring-2 focus:ring-syria-gold focus:border-syria-gold">
-                  <SelectValue placeholder={guidesLoading ? "Loading guides..." : "Choose a guide or let us pick for you"} />
+                  <SelectValue placeholder={guidesLoading ? tr.loadingGuides : tr.chooseGuideOrLetUsPick} />
                 </SelectTrigger>
                 <SelectContent className="z-[10000]">
                   <SelectItem value="admin-assign">
-                    🎯 Let us choose the best guide for you
+                    🎯 {tr.letUsChoose}
                   </SelectItem>
                   {guides.map((guide) => (
                     <SelectItem key={guide.id} value={guide.id}>
-                      👨‍🏫 {guide.name} - {guide.experience} years exp. - ${guide.dailyRate}/{guide.currency}/day
+                      👨‍🏫 {guide.name} - {guide.experience} {tr.yearsExp} - ${guide.dailyRate}/{guide.currency}{tr.perDay}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -680,10 +897,10 @@ export default function Tours() {
                     const selectedGuide = guides.find(g => g.id === specialTourForm.guideId)
                     return selectedGuide ? (
                       <div>
-                        <p><strong>Bio:</strong> {selectedGuide.bio}</p>
-                        <p><strong>Specialties:</strong> {Array.isArray(selectedGuide.specialties) ? selectedGuide.specialties.join(', ') : 'N/A'}</p>
-                        <p><strong>Languages:</strong> {Array.isArray(selectedGuide.languages) ? selectedGuide.languages.join(', ') : 'N/A'}</p>
-                        <p><strong>Base Location:</strong> {selectedGuide.baseLocation}</p>
+                        <p><strong>{tr.bio}:</strong> {selectedGuide.bio}</p>
+                        <p><strong>{tr.specialties}:</strong> {Array.isArray(selectedGuide.specialties) ? selectedGuide.specialties.join(', ') : 'N/A'}</p>
+                        <p><strong>{tr.languages}:</strong> {Array.isArray(selectedGuide.languages) ? selectedGuide.languages.join(', ') : 'N/A'}</p>
+                        <p><strong>{tr.baseLocation}:</strong> {selectedGuide.baseLocation}</p>
                       </div>
                     ) : null
                   })()}
@@ -693,57 +910,57 @@ export default function Tours() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="preferredDates">Preferred Dates</Label>
+                <Label htmlFor="preferredDates">{tr.preferredDates}</Label>
                 <Input
                   id="preferredDates"
                   value={specialTourForm.preferredDates}
                   onChange={(e) => setSpecialTourForm({...specialTourForm, preferredDates: e.target.value})}
-                  placeholder="e.g., July 15-20, 2024"
+                  placeholder={tr.datesExample}
                 />
               </div>
               <div>
-                <Label htmlFor="groupSize">Group Size</Label>
+                <Label htmlFor="groupSize">{tr.groupSize}</Label>
                 <Input
                   id="groupSize"
                   type="number"
                   min="1"
                   value={specialTourForm.groupSize}
                   onChange={(e) => setSpecialTourForm({...specialTourForm, groupSize: parseInt(e.target.value) || 1})}
-                  placeholder="Number of people"
+                  placeholder={tr.numberOfPeople}
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="budget">Budget (USD)</Label>
+              <Label htmlFor="budget">{tr.budget}</Label>
               <Input
                 id="budget"
                 type="number"
                 min="0"
                 value={specialTourForm.budget}
                 onChange={(e) => setSpecialTourForm({...specialTourForm, budget: parseFloat(e.target.value) || 0})}
-                placeholder="Your budget per person"
+                placeholder={tr.budgetPerPerson}
               />
             </div>
 
             <div>
-              <Label htmlFor="specialRequirements">Special Requirements</Label>
+              <Label htmlFor="specialRequirements">{tr.specialRequirements}</Label>
               <Textarea
                 id="specialRequirements"
                 value={specialTourForm.specialRequirements}
                 onChange={(e) => setSpecialTourForm({...specialTourForm, specialRequirements: e.target.value})}
-                placeholder="Any special needs, accessibility requirements, or specific requests..."
+                placeholder={tr.specialNeedsPlaceholder}
                 rows={3}
               />
             </div>
 
             <div>
-              <Label htmlFor="message">Additional Message</Label>
+              <Label htmlFor="message">{tr.additionalMessage}</Label>
               <Textarea
                 id="message"
                 value={specialTourForm.message}
                 onChange={(e) => setSpecialTourForm({...specialTourForm, message: e.target.value})}
-                placeholder="Tell us more about your dream tour..."
+                placeholder={tr.dreamTourPlaceholder}
                 rows={3}
               />
             </div>
@@ -754,14 +971,14 @@ export default function Tours() {
               variant="outline"
               onClick={() => setShowSpecialTourModal(false)}
             >
-              Cancel
+              {tr.cancel}
             </Button>
             <Button 
               className="bg-syria-gold hover:bg-syria-dark-gold"
               onClick={handleSpecialTourRequest}
               disabled={!specialTourForm.customerName || !specialTourForm.customerEmail || !specialTourForm.tourType || specialTourForm.groupSize < 1}
             >
-              Submit Request
+              {tr.submitRequest}
             </Button>
           </DialogFooter>
         </DialogContent>
