@@ -126,11 +126,11 @@ export function ChatButton() {
       </Button>
 
       {isOpen && (
-        <div className="fixed bottom-24 right-6 w-80 md:w-96 bg-white rounded-lg shadow-xl z-40 flex flex-col overflow-hidden border border-syria-gold">
+        <div className="fixed bottom-24 right-6 w-80 md:w-96 bg-white dark:bg-[#4a4a4a] rounded-lg shadow-xl z-40 flex flex-col overflow-hidden border border-syria-gold">
           <div className="bg-syria-gold p-3 text-white font-semibold flex justify-between items-center">
             <div className="flex items-center gap-2">
               <div className="relative w-8 h-8 rounded-full overflow-hidden">
-                <Image src="/images/reem-assistant.png" alt="Reem AI Assistant" fill className="object-cover" />
+                <Image src="/images/reem-assistant.webp" alt="Reem AI Assistant" fill className="object-cover" />
               </div>
               <span>Reem - Tourism Expert</span>
             </div>
@@ -143,7 +143,7 @@ export function ChatButton() {
               <X size={16} />
             </Button>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 max-h-96 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 max-h-96 space-y-4 bg-white dark:bg-[#4a4a4a]">
             {messages
               .filter((msg) => msg.role !== "system")
               .map((msg, index) => (
@@ -151,7 +151,7 @@ export function ChatButton() {
                   {msg.role === "assistant" && (
                     <div className="w-6 h-6 rounded-full overflow-hidden mr-2 flex-shrink-0">
                       <Image
-                        src="/images/reem-assistant.png"
+                        src="/images/reem-assistant.webp"
                         alt="Reem"
                         width={24}
                         height={24}
@@ -163,7 +163,7 @@ export function ChatButton() {
                     className={`max-w-[80%] rounded-lg p-3 ${
                       msg.role === "user"
                         ? "bg-syria-gold text-white rounded-tr-none"
-                        : "bg-gray-100 text-gray-800 rounded-tl-none"
+                        : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-none"
                     }`}
                   >
                     {msg.content}
@@ -173,17 +173,17 @@ export function ChatButton() {
             {isLoading && (
               <div className="flex justify-start">
                 <div className="w-6 h-6 rounded-full overflow-hidden mr-2 flex-shrink-0">
-                  <Image src="/images/reem-assistant.png" alt="Reem" width={24} height={24} className="object-cover" />
+                  <Image src="/images/reem-assistant.webp" alt="Reem" width={24} height={24} className="object-cover" />
                 </div>
-                <div className="max-w-[80%] rounded-lg p-3 bg-gray-100 text-gray-800 rounded-tl-none">
+                <div className="max-w-[80%] rounded-lg p-3 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-none">
                   <div className="flex space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "0s" }} />
+                    <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce" style={{ animationDelay: "0s" }} />
                     <div
-                      className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"
+                      className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"
                       style={{ animationDelay: "0.2s" }}
                     />
                     <div
-                      className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"
+                      className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce"
                       style={{ animationDelay: "0.4s" }}
                     />
                   </div>
@@ -192,7 +192,7 @@ export function ChatButton() {
             )}
             <div ref={messagesEndRef} />
           </div>
-          <form onSubmit={handleSendMessage} className="border-t border-gray-200 p-3 flex">
+          <form onSubmit={handleSendMessage} className="border-t border-gray-200 dark:border-gray-600 p-3 flex bg-white dark:bg-[#4a4a4a]">
             <input
               type="text"
               value={message}
@@ -204,7 +204,7 @@ export function ChatButton() {
                     ? "Tapez votre message ici..."
                     : "Ask Reem about Syria tourism..."
               }
-              className="flex-1 border border-gray-300 rounded-l-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-syria-gold"
+              className="flex-1 border border-gray-300 dark:border-gray-600 rounded-l-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-syria-gold bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
               disabled={isLoading}
             />
             <Button

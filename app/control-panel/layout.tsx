@@ -98,7 +98,7 @@ export default function ControlPanelLayout({
         <div className="flex items-center justify-between px-4 h-16">
           <div className="flex items-center">
             <Link href="/" className="flex items-center mr-6">
-              <Image src="/images/syria-logo.png" alt="Syria Ways" width={40} height={40} />
+              <Image src="/images/syria-logo.webp" alt="Syria Ways" width={40} height={40} />
               <span className="ml-2 font-bold text-lg hidden md:inline-block">
                 Control Panel
               </span>

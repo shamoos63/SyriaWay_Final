@@ -124,7 +124,7 @@ export function AuthModal({ isOpen, onClose, type, onSwitchMode }: AuthModalProp
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md bg-syria-cream border-syria-gold">
+      <DialogContent className="sm:max-w-md bg-syria-cream dark:bg-[#4a4a4a] border-syria-gold">
         <DialogHeader>
           <DialogTitle className="text-2xl text-syria-gold text-center">
             {type === "signin" ? (
@@ -166,7 +166,7 @@ export function AuthModal({ isOpen, onClose, type, onSwitchMode }: AuthModalProp
                 <Separator className="w-full" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-syria-cream px-2 text-muted-foreground">
+                <span className="bg-syria-cream dark:bg-[#4a4a4a] px-2 text-muted-foreground">
                   Or continue with
                 </span>
               </div>
@@ -251,7 +251,7 @@ export function AuthModal({ isOpen, onClose, type, onSwitchMode }: AuthModalProp
                 <Separator className="w-full" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-syria-cream px-2 text-muted-foreground">
+                <span className="bg-syria-cream dark:bg-[#4a4a4a] px-2 text-muted-foreground">
                   Or continue with
                 </span>
               </div>

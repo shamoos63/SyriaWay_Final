@@ -233,7 +233,7 @@ export default function Home() {
             <div className="absolute top-0 w-full h-full">
               <div className="relative w-full h-full">
                 <Image
-                  src={theme === "dark" ? "/images/new-arch - Dark.png" : "/images/new-arch.png"}
+                  src={theme === "dark" ? "/images/new-arch - dark.webp" : "/images/new-arch.webp"}
                   alt="Decorative Arch"
                   fill
                   className="object-contain scale-90" // scale-90 = 90% size (20% smaller)
@@ -249,7 +249,7 @@ export default function Home() {
             >
               <div className="relative w-28 h-28 mb-2">
                 <Image
-                  src="/images/syria-logo.png"
+                  src="/images/syria-logo.webp"
                   alt="Syria Ways Logo"
                   fill
                   className="object-contain dark:brightness-110"

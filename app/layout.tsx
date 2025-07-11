@@ -45,7 +45,7 @@ export default function RootLayout({
         <style>{`
           html, body {
             background-color: #e6d7b8;
-            background-image: url("/images/syria-bg-pattern.png");
+            background-image: url("/images/syria-bg-pattern.webp");
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;

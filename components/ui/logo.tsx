@@ -47,9 +47,9 @@ export function Logo({ variant = "default", size = "md", withLink = false, class
     
     // Fallback to default logos
     if (variant === "navbar") {
-      return "/images/navbar-logo.png"
+      return "/images/navbar-logo.webp"
     }
-    return "/images/syria-logo.png"
+    return "/images/syria-logo.webp"
   }
 
   const logoSrc = getLogoSrc()
@@ -74,9 +74,9 @@ export function Logo({ variant = "default", size = "md", withLink = false, class
         // Fallback to default logo if custom logo fails to load
         const target = e.target as HTMLImageElement
         if (variant === "navbar") {
-          target.src = "/images/navbar-logo.png"
+          target.src = "/images/navbar-logo.webp"
         } else {
-          target.src = "/images/syria-logo.png"
+          target.src = "/images/syria-logo.webp"
         }
       }}
     />

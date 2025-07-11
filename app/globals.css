@@ -77,7 +77,7 @@
 /* IMPORTANT: Direct body background styling */
 html, body {
   background-color: #e6d7b8;
-  background-image: url("/images/syria-bg-pattern.png");
+  background-image: url("/images/syria-bg-pattern.webp");
   background-size: 1000px 1000px;
   background-position: center;
   background-repeat: repeat;
@@ -86,7 +86,7 @@ html, body {
 
 .dark body {
   background-color: #121212 !important; /* Dark mode fallback */
-  background-image: url("/images/syria-bg-pattern.png") !important;
+  background-image: url("/images/syria-bg-pattern.webp") !important;
   background-size: 1000px 1000px !important;
   background-position: center !important;
   background-repeat: repeat !important;

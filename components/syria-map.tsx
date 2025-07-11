@@ -32,7 +32,7 @@ export function SyriaMap({ onPinClick }: SyriaMapProps) {
       <svg
         viewBox="0 0 800 600"
         className="w-full h-full"
-        style={{ background: "url('/images/syria-map-bg.png')", backgroundSize: "cover" }}
+        style={{ background: "url('/images/syria-map-bg.webp')", backgroundSize: "cover" }}
       >
         {/* Map outline would go here - using background image instead */}
 
