@@ -61,7 +61,9 @@ export function Navbar() {
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 mx-4 mt-4 rounded-xl transition-all duration-300 ${
-        scrolled ? "bg-syria-gold/80 backdrop-blur-md shadow-md" : "bg-transparent"
+        scrolled 
+          ? "bg-syria-gold/80 backdrop-blur-md shadow-md dark:bg-[#4A4A4A]/95 dark:backdrop-blur-md dark:shadow-md" 
+          : "bg-transparent dark:bg-[#4A4A4A]/90 dark:backdrop-blur-sm"
       }`}
       dir={dir}
     >

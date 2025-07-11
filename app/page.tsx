@@ -14,6 +14,7 @@ import { useLanguage } from "@/lib/i18n/language-context"
 import { ChatButton } from "@/components/chat-button"
 import { OfferSlider } from "@/components/offer-slider"
 import { useEffect, useState } from "react"
+import { useTheme } from "next-themes"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ArrowRight, Star } from "lucide-react"
@@ -50,6 +51,7 @@ interface WebsiteSettings {
 
 export default function Home() {
   const { t, dir, language } = useLanguage()
+  const { theme } = useTheme()
   const [isLoaded, setIsLoaded] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [bundles, setBundles] = useState<Bundle[]>([])
@@ -231,10 +233,10 @@ export default function Home() {
             <div className="absolute top-0 w-full h-full">
               <div className="relative w-full h-full">
                 <Image
-                  src="/images/new-arch.png"
+                  src={theme === "dark" ? "/images/new-arch - Dark.png" : "/images/new-arch.png"}
                   alt="Decorative Arch"
                   fill
-                  className="object-contain scale-90 dark:opacity-95 dark:brightness-95" // scale-90 = 90% size (20% smaller)
+                  className="object-contain scale-90" // scale-90 = 90% size (20% smaller)
                 />
               </div>
             </div>
@@ -510,7 +512,7 @@ export default function Home() {
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {featuresData.map((feature, index) => (
-              <Card key={index} className="bg-white/90 backdrop-blur-sm border-syria-gold/20 text-gray-800 shadow-lg">
+              <Card key={index} className="backdrop-blur-sm border-syria-gold/20 text-gray-800 dark:text-gray-200 shadow-lg">
                 <CardContent className="p-6">
                   <div className="flex items-center mb-4">
                     <div className="p-2 bg-syria-gold rounded-lg mr-4">
@@ -518,7 +520,7 @@ export default function Home() {
                     </div>
                     <h3 className="text-xl font-semibold text-syria-gold">{feature.title}</h3>
                   </div>
-                  <p className="text-gray-600">{feature.description}</p>
+                  <p className="text-gray-600 dark:text-gray-300">{feature.description}</p>
                 </CardContent>
               </Card>
             ))}
@@ -539,13 +541,13 @@ export default function Home() {
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {benefitsData.map((benefit, index) => (
-              <Card key={index} className="bg-white/90 backdrop-blur-sm border-syria-gold/20 text-gray-800 text-center shadow-lg">
+              <Card key={index} className="backdrop-blur-sm border-syria-gold/20 text-gray-800 dark:text-gray-200 text-center shadow-lg">
                 <CardContent className="p-6">
                   <div className="flex justify-center mb-4">
                     {benefit.icon}
                   </div>
                   <h3 className="text-xl font-semibold mb-2 text-syria-gold">{benefit.title}</h3>
-                  <p className="text-gray-600">{benefit.description}</p>
+                  <p className="text-gray-600 dark:text-gray-300">{benefit.description}</p>
                 </CardContent>
               </Card>
             ))}

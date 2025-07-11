@@ -7,14 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useLanguage } from "@/lib/i18n/language-context"
-import { useAuth } from "@/lib/auth-context"
+import { signIn } from "next-auth/react"
 import { toast } from "sonner"
 import { Separator } from "@/components/ui/separator"
 import { FcGoogle } from "react-icons/fc"
 
 export default function SignIn() {
   const { language, dir } = useLanguage()
-  const { signIn } = useAuth()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -27,14 +26,24 @@ export default function SignIn() {
     setIsLoading(true)
 
     try {
-      const success = await signIn(formData.email, formData.password)
-      if (success) {
-        toast.success("Signed in successfully!")
-        router.push("/dashboard")
-      }
+      // For NextAuth, we'll redirect to Google OAuth
+      await signIn('google', { callbackUrl: '/' })
     } catch (error) {
       console.error("Sign in error:", error)
-      toast.error("Failed to sign in. Please check your credentials.")
+      toast.error(
+        language === "ar"
+          ? "فشل في تسجيل الدخول. يرجى التحقق من بياناتك."
+          : language === "fr"
+          ? "Échec de la connexion. Veuillez vérifier vos informations."
+          : "Failed to sign in. Please check your credentials.",
+        {
+          description: language === "ar"
+            ? "تأكد من صحة البريد الإلكتروني وكلمة المرور."
+            : language === "fr"
+            ? "Assurez-vous que l'email et le mot de passe sont corrects."
+            : "Please ensure your email and password are correct."
+        }
+      )
     } finally {
       setIsLoading(false)
     }
@@ -42,11 +51,35 @@ export default function SignIn() {
 
   const handleGoogleSignIn = async () => {
     try {
+      // Show loading toast
+      toast.loading(
+        language === "ar"
+          ? "جاري التوجيه إلى جوجل..."
+          : language === "fr"
+          ? "Redirection vers Google..."
+          : "Redirecting to Google...",
+        {
+          duration: 2000
+        }
+      )
       // Redirect to Google OAuth using NextAuth
-      window.location.href = "/api/auth/signin/google?callbackUrl=" + encodeURIComponent(window.location.origin)
+      await signIn('google', { callbackUrl: '/' })
     } catch (error) {
       console.error("Google sign in error:", error)
-      toast.error("Failed to sign in with Google.")
+      toast.error(
+        language === "ar"
+          ? "فشل في تسجيل الدخول باستخدام جوجل."
+          : language === "fr"
+          ? "Échec de la connexion avec Google."
+          : "Failed to sign in with Google.",
+        {
+          description: language === "ar"
+            ? "يرجى المحاولة مرة أخرى أو استخدام تسجيل الدخول العادي."
+            : language === "fr"
+            ? "Veuillez réessayer ou utiliser la connexion normale."
+            : "Please try again or use regular sign in."
+        }
+      )
     }
   }
 
@@ -55,35 +88,26 @@ export default function SignIn() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-            {language === "ar" ? "تسجيل الدخول" : language === "fr" ? "Se connecter" : "Sign in to your account"}
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            {language === "ar" ? "أو" : language === "fr" ? "Ou" : "Or"}{" "}
-            <a
-              href="/auth/sign-up"
-              className="font-medium text-syria-gold hover:text-syria-dark-gold"
-            >
-              {language === "ar" ? "إنشاء حساب جديد" : language === "fr" ? "créer un nouveau compte" : "create a new account"}
-            </a>
-          </p>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {language === "ar" ? "تسجيل الدخول" : language === "fr" ? "Se connecter" : "Sign In"}
-            </CardTitle>
-            <CardDescription>
-              {language === "ar" ? "أدخل بياناتك للدخول إلى حسابك" : language === "fr" ? "Entrez vos informations pour vous connecter" : "Enter your information to sign in to your account"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <Card className="w-full max-w-md bg-syria-cream border-syria-gold">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl text-syria-gold">
+            {language === "ar" ? "تسجيل الدخول" : language === "fr" ? "Se connecter" : "Sign In"}
+          </CardTitle>
+          <CardDescription>
+            {language === "ar" 
+              ? "أدخل بياناتك للوصول إلى حسابك" 
+              : language === "fr" 
+              ? "Entrez vos informations pour accéder à votre compte"
+              : "Enter your details to access your account"
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Google Sign In Button */}
             <Button
+              type="button"
               onClick={handleGoogleSignIn}
               variant="outline"
               className="w-full"
@@ -98,70 +122,62 @@ export default function SignIn() {
                 <Separator className="w-full" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  {language === "ar" ? "أو" : language === "fr" ? "Ou" : "Or continue with"}
+                <span className="bg-syria-cream px-2 text-muted-foreground">
+                  {language === "ar" ? "أو" : language === "fr" ? "Ou" : "Or"}
                 </span>
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="email">
-                  {language === "ar" ? "البريد الإلكتروني" : language === "fr" ? "Email" : "Email"}
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  required
-                  placeholder={
-                    language === "ar"
-                      ? "أدخل بريدك الإلكتروني"
-                      : language === "fr"
-                      ? "Entrez votre email"
-                      : "Enter your email"
-                  }
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">
+                {language === "ar" ? "البريد الإلكتروني" : language === "fr" ? "Email" : "Email"}
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder={language === "ar" ? "أدخل بريدك الإلكتروني" : language === "fr" ? "Entrez votre email" : "Enter your email"}
+                value={formData.email}
+                onChange={(e) => handleInputChange("email", e.target.value)}
+                required
+              />
+            </div>
 
-              <div>
-                <Label htmlFor="password">
-                  {language === "ar" ? "كلمة المرور" : language === "fr" ? "Mot de passe" : "Password"}
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => handleInputChange("password", e.target.value)}
-                  required
-                  placeholder={
-                    language === "ar"
-                      ? "أدخل كلمة المرور"
-                      : language === "fr"
-                      ? "Entrez votre mot de passe"
-                      : "Enter your password"
-                  }
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">
+                {language === "ar" ? "كلمة المرور" : language === "fr" ? "Mot de passe" : "Password"}
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder={language === "ar" ? "أدخل كلمة المرور" : language === "fr" ? "Entrez votre mot de passe" : "Enter your password"}
+                value={formData.password}
+                onChange={(e) => handleInputChange("password", e.target.value)}
+                required
+              />
+            </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading
-                  ? language === "ar"
-                    ? "جاري تسجيل الدخول..."
-                    : language === "fr"
-                    ? "Connexion en cours..."
-                    : "Signing in..."
-                  : language === "ar"
-                  ? "تسجيل الدخول"
-                  : language === "fr"
-                  ? "Se connecter"
-                  : "Sign in"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading 
+                ? (language === "ar" ? "جاري تسجيل الدخول..." : language === "fr" ? "Connexion en cours..." : "Signing in...")
+                : (language === "ar" ? "تسجيل الدخول" : language === "fr" ? "Se connecter" : "Sign In")
+              }
+            </Button>
+          </form>
+
+          <div className="text-center text-sm">
+            <span className="text-muted-foreground">
+              {language === "ar" ? "ليس لديك حساب؟" : language === "fr" ? "Vous n'avez pas de compte ?" : "Don't have an account?"}
+            </span>{" "}
+            <Button
+              variant="link"
+              className="p-0 h-auto text-syria-gold hover:text-syria-gold/80"
+              onClick={() => router.push("/auth/sign-up")}
+            >
+              {language === "ar" ? "إنشاء حساب" : language === "fr" ? "Créer un compte" : "Create account"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

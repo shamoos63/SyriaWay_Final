@@ -140,8 +140,6 @@ export function BundleSlider({ bundles, getBundleFeatures }: BundleSliderProps) 
             className="bundle-card relative p-8 flex flex-col transition-all duration-700 ease-in-out transform"
             dir={dir}
             style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%)',
-              backdropFilter: 'blur(10px)',
               border: currentBundle?.isFeatured ? '2px solid #0d9488' : '1px solid rgba(212, 175, 55, 0.3)',
               boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
             }}
@@ -159,14 +157,14 @@ export function BundleSlider({ bundles, getBundleFeatures }: BundleSliderProps) 
             <div className="text-center mb-6">
               <h3 className="text-2xl font-bold text-syria-gold mb-2">{currentBundle?.name}</h3>
               {currentBundle?.description && (
-                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
                   {currentBundle.description}
                 </p>
               )}
             </div>
 
             {/* Bundle Details */}
-            <div className="flex justify-center gap-6 mb-6 text-sm text-gray-600">
+            <div className="flex justify-center gap-6 mb-6 text-sm text-gray-600 dark:text-gray-300">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-syria-gold" />
                 <span>{currentBundle?.duration} days</span>
@@ -195,7 +193,7 @@ export function BundleSlider({ bundles, getBundleFeatures }: BundleSliderProps) 
                 {getBundleFeatures(currentBundle!).slice(0, 4).map((feature, index) => (
                   <li key={index} className="flex items-start">
                     <Check className="h-5 w-5 mr-3 text-syria-teal shrink-0 mt-0.5" />
-                    <span className="text-gray-700 text-sm">{feature}</span>
+                    <span className="text-gray-700 dark:text-gray-200 text-sm">{feature}</span>
                   </li>
                 ))}
               </ul>

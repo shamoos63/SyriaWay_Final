@@ -47,7 +47,7 @@
     --background: 0 0% 7%; /* #121212 Deep charcoal */
     --foreground: 191 45% 80%; /* Light teal text */
 
-    --card: 0 0% 14%; /* #242424 Slightly lighter charcoal */
+    --card: 0 0% 29%; /* #4a4a4a */
     --card-foreground: 191 45% 80%; /* Light teal text */
 
     --popover: 0 0% 17%; /* #2A2A2A Medium charcoal */
@@ -150,7 +150,7 @@ html, body {
 }
 
 .dark .bundle-card {
-  background-color: rgba(36, 36, 36, 0.8); /* #242424 Slightly lighter charcoal */
+  background-color: rgba(74, 74, 74, 0.8); /* #4a4a4a */
   border: 1px solid #c39446; /* syria-gold */
 }
 

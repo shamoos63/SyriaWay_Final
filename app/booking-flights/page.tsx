@@ -151,13 +151,47 @@ export default function BookingFlights() {
 
       <section className="py-12 pt-32">
         <div className="max-w-6xl mx-auto px-4">
+          {/* Modern Hero Section */}
+          <div className="relative overflow-hidden rounded-3xl mb-12">
+            {/* Background with gradient and pattern */}
+            <div className="absolute inset-0 bg-gradient-to-br from-syria-gold/10 via-yellow-50 to-syria-dark-gold/5 dark:from-syria-gold/20 dark:via-gray-900/50 dark:to-syria-dark-gold/10"></div>
+            <div className="absolute inset-0 bg-pattern opacity-5 dark:opacity-10"></div>
+            
+            {/* Decorative elements */}
+            <div className="absolute top-8 right-8 w-24 h-24 border-2 border-syria-gold/20 rounded-full"></div>
+            <div className="absolute bottom-8 left-8 w-16 h-16 border-2 border-syria-gold/20 transform rotate-45"></div>
+            <div className="absolute top-1/2 left-1/4 w-8 h-8 bg-syria-gold/20 rounded-full"></div>
+            <div className="absolute top-1/3 right-1/3 w-6 h-6 border border-syria-gold/20 rounded-full"></div>
+            
+            {/* Content */}
+            <div className="relative z-10 p-12 md:p-16">
+              <div className="max-w-4xl mx-auto text-center">
+                {/* Badge */}
+                <div className="inline-flex items-center px-4 py-2 bg-syria-gold/10 border border-syria-gold/30 rounded-full mb-6">
+                  <span className="text-syria-gold font-semibold text-sm">
+                    {t.services.bookingFlights}
+                  </span>
+                </div>
+                
+                {/* Main Title */}
+                <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
+                  {t.services.bookingFlights}
+                </h1>
+                
+                {/* Decorative line */}
+                <div className="w-24 h-1 bg-gradient-to-r from-syria-gold to-yellow-500 mx-auto mb-8 rounded-full"></div>
+                
+                {/* Description */}
+                <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 leading-relaxed max-w-3xl mx-auto">
+                  {dir === "rtl"
+                    ? "احجز رحلات الطيران الخاصة بك بسهولة مع سيريا وايز. نقدم مجموعة واسعة من خيارات الرحلات الجوية من وإلى سوريا بأفضل الأسعار."
+                    : "Book your flights easily with Syria Ways. We offer a wide range of flight options to and from Syria at the best prices."}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="content-card p-8 mb-8">
-            <h1 className="text-4xl font-bold text-syria-gold text-center mb-6">{t.services.bookingFlights}</h1>
-            <p className="text-center max-w-3xl mx-auto mb-8">
-              {dir === "rtl"
-                ? "احجز رحلات الطيران الخاصة بك بسهولة مع سيريا وايز. نقدم مجموعة واسعة من خيارات الرحلات الجوية من وإلى سوريا بأفضل الأسعار."
-                : "Book your flights easily with Syria Ways. We offer a wide range of flight options to and from Syria at the best prices."}
-            </p>
 
             {/* Search and Filter Section */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">

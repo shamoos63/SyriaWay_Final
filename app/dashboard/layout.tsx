@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/dashboard/sidebar"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
+import { Toaster } from "sonner"
 
 export default function DashboardLayout({
   children,
@@ -69,6 +70,7 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen" dir={dir}>
+      <Toaster />
       <div className="flex pt-5 relative">
         {/* Sidebar */}
         <div

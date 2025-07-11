@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { getToken } from "next-auth/jwt"
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // Skip middleware for static files and API routes
@@ -48,9 +49,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Get user session from cookies
-  const token = request.cookies.get("auth-token")?.value
-  const userRole = request.cookies.get("user-role")?.value
+  // Get user session from NextAuth
+  const token = await getToken({ req: request })
 
   // Check if user is authenticated
   if (!token) {
@@ -58,34 +58,33 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/auth/sign-in", request.url))
   }
 
-  // Role-based access control
-  if (path.startsWith("/dashboard/cars")) {
-    // Car owner dashboard is for car owners only
-    if (userRole !== "CAR_OWNER") {
-      return NextResponse.redirect(new URL("/unauthorized", request.url))
-    }
-  } else if (path.startsWith("/dashboard/hotels")) {
-    // Hotel owner dashboard is for hotel owners only
-    if (userRole !== "HOTEL_OWNER") {
-      return NextResponse.redirect(new URL("/unauthorized", request.url))
-    }
-  } else if (path.startsWith("/dashboard")) {
-    // General dashboard is for other service providers
-    if (userRole !== "HOTEL_OWNER" && userRole !== "TOUR_GUIDE") {
-      return NextResponse.redirect(new URL("/unauthorized", request.url))
-    }
-  }
+  // Check user role for protected routes
+  const userRole = (token as any).role || 'CUSTOMER'
 
-  if (path.startsWith("/user-dashboard")) {
-    // User dashboard is for customers, admins, and super admins
-    if (userRole !== "CUSTOMER" && userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
-      return NextResponse.redirect(new URL("/unauthorized", request.url))
-    }
-  }
-
+  // Admin routes - only SUPER_ADMIN and ADMIN can access
   if (path.startsWith("/control-panel")) {
-    // Control panel is for admins and super admins only
-    if (userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
+    if (userRole !== 'SUPER_ADMIN' && userRole !== 'ADMIN') {
+      return NextResponse.redirect(new URL("/unauthorized", request.url))
+    }
+  }
+
+  // Hotel owner routes - only HOTEL_OWNER can access
+  if (path.startsWith("/dashboard/hotel")) {
+    if (userRole !== 'HOTEL_OWNER') {
+      return NextResponse.redirect(new URL("/unauthorized", request.url))
+    }
+  }
+
+  // Car owner routes - only CAR_OWNER can access
+  if (path.startsWith("/dashboard/car")) {
+    if (userRole !== 'CAR_OWNER') {
+      return NextResponse.redirect(new URL("/unauthorized", request.url))
+    }
+  }
+
+  // Tour guide routes - only TOUR_GUIDE can access
+  if (path.startsWith("/dashboard/tour")) {
+    if (userRole !== 'TOUR_GUIDE') {
       return NextResponse.redirect(new URL("/unauthorized", request.url))
     }
   }

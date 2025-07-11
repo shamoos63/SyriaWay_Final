@@ -7,11 +7,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
-import { useAuth } from "@/lib/auth-context"
-import { useLanguage } from "@/lib/i18n/language-context"
 import { LogIn, UserPlus, Eye, EyeOff } from "lucide-react"
-import { FcGoogle } from "react-icons/fc"
+import { useLanguage } from "@/lib/i18n/language-context"
+import { signIn } from "next-auth/react"
 import { toast } from "sonner"
+import { FcGoogle } from "react-icons/fc"
 
 interface AuthModalProps {
   isOpen: boolean
@@ -22,7 +22,6 @@ interface AuthModalProps {
 
 export function AuthModal({ isOpen, onClose, type, onSwitchMode }: AuthModalProps) {
   const { t } = useLanguage()
-  const { signIn, signUp } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -55,14 +54,11 @@ export function AuthModal({ isOpen, onClose, type, onSwitchMode }: AuthModalProp
       return
     }
 
-    const result = await signIn(signInData.email, signInData.password)
-    
-    if (result.success) {
-      onClose()
-      // Reset form
-      setSignInData({ email: "", password: "" })
-    } else {
-      setError(result.error || "Sign in failed")
+    try {
+      // For NextAuth, we'll redirect to Google OAuth
+      await signIn('google', { callbackUrl: '/' })
+    } catch (error) {
+      setError("Sign in failed")
     }
     
     setIsLoading(false)
@@ -92,28 +88,11 @@ export function AuthModal({ isOpen, onClose, type, onSwitchMode }: AuthModalProp
       return
     }
 
-    const userData = {
-      email: signUpData.email,
-      password: signUpData.password,
-      name: `${signUpData.firstName} ${signUpData.lastName}`,
-      phone: signUpData.phone || undefined
-    }
-
-    const result = await signUp(userData)
-    
-    if (result.success) {
-      onClose()
-      // Reset form
-      setSignUpData({
-        firstName: "",
-        lastName: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
-        phone: ""
-      })
-    } else {
-      setError(result.error || "Sign up failed")
+    try {
+      // For NextAuth, we'll redirect to Google OAuth
+      await signIn('google', { callbackUrl: '/' })
+    } catch (error) {
+      setError("Sign up failed")
     }
     
     setIsLoading(false)
@@ -136,7 +115,7 @@ export function AuthModal({ isOpen, onClose, type, onSwitchMode }: AuthModalProp
   const handleGoogleAuth = async () => {
     try {
       // Redirect to Google OAuth
-      window.location.href = "/api/auth/signin/google"
+      await signIn('google', { callbackUrl: '/' })
     } catch (error) {
       console.error("Google auth error:", error)
       toast.error("Failed to authenticate with Google.")
@@ -187,18 +166,18 @@ export function AuthModal({ isOpen, onClose, type, onSwitchMode }: AuthModalProp
                 <Separator className="w-full" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
+                <span className="bg-syria-cream px-2 text-muted-foreground">
                   Or continue with
                 </span>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="your@email.com"
+                placeholder="Enter your email"
                 value={signInData.email}
                 onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
                 required
@@ -211,6 +190,7 @@ export function AuthModal({ isOpen, onClose, type, onSwitchMode }: AuthModalProp
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
                   value={signInData.password}
                   onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
                   required
@@ -222,19 +202,27 @@ export function AuthModal({ isOpen, onClose, type, onSwitchMode }: AuthModalProp
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-syria-gold hover:bg-syria-dark-gold" disabled={isLoading}>
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
 
             <div className="text-center text-sm">
-              Don't have an account?{" "}
-              <Button variant="link" className="p-0 text-syria-gold hover:underline" onClick={onSwitchMode}>
-                Sign up
+              <span className="text-muted-foreground">Don't have an account?</span>{" "}
+              <Button
+                variant="link"
+                className="p-0 h-auto text-syria-gold hover:text-syria-gold/80"
+                onClick={onSwitchMode}
+              >
+                Create account
               </Button>
             </div>
           </form>
@@ -263,7 +251,7 @@ export function AuthModal({ isOpen, onClose, type, onSwitchMode }: AuthModalProp
                 <Separator className="w-full" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
+                <span className="bg-syria-cream px-2 text-muted-foreground">
                   Or continue with
                 </span>
               </div>
@@ -293,11 +281,11 @@ export function AuthModal({ isOpen, onClose, type, onSwitchMode }: AuthModalProp
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="signup-email">Email</Label>
               <Input
-                id="email"
+                id="signup-email"
                 type="email"
-                placeholder="your@email.com"
+                placeholder="john@example.com"
                 value={signUpData.email}
                 onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
                 required
@@ -309,18 +297,19 @@ export function AuthModal({ isOpen, onClose, type, onSwitchMode }: AuthModalProp
               <Input
                 id="phone"
                 type="tel"
-                placeholder="+963-11-1234567"
+                placeholder="+1234567890"
                 value={signUpData.phone}
                 onChange={(e) => setSignUpData({ ...signUpData, phone: e.target.value })}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="signup-password">Password</Label>
               <div className="relative">
                 <Input
-                  id="password"
+                  id="signup-password"
                   type={showPassword ? "text" : "password"}
+                  placeholder="Create a password"
                   value={signUpData.password}
                   onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
                   required
@@ -332,7 +321,11 @@ export function AuthModal({ isOpen, onClose, type, onSwitchMode }: AuthModalProp
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
@@ -343,6 +336,7 @@ export function AuthModal({ isOpen, onClose, type, onSwitchMode }: AuthModalProp
                 <Input
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirm your password"
                   value={signUpData.confirmPassword}
                   onChange={(e) => setSignUpData({ ...signUpData, confirmPassword: e.target.value })}
                   required
@@ -354,18 +348,26 @@ export function AuthModal({ isOpen, onClose, type, onSwitchMode }: AuthModalProp
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-syria-gold hover:bg-syria-dark-gold" disabled={isLoading}>
-              {isLoading ? "Creating Account..." : "Create Account"}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Creating account..." : "Create Account"}
             </Button>
 
             <div className="text-center text-sm">
-              Already have an account?{" "}
-              <Button variant="link" className="p-0 text-syria-gold hover:underline" onClick={onSwitchMode}>
+              <span className="text-muted-foreground">Already have an account?</span>{" "}
+              <Button
+                variant="link"
+                className="p-0 h-auto text-syria-gold hover:text-syria-gold/80"
+                onClick={onSwitchMode}
+              >
                 Sign in
               </Button>
             </div>

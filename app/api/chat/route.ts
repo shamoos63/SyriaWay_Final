@@ -243,7 +243,7 @@ async function searchDatabase(message: string, language: string): Promise<{ cont
           })
           context += "\n"
         }
-        break
+              break
       }
       case "tours": {
         redirectUrl = topCategory.redirect

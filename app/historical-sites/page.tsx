@@ -289,8 +289,8 @@ export default function HistoricalSites() {
           {/* Modern Hero Section */}
           <div className="relative overflow-hidden rounded-3xl mb-12">
             {/* Background with gradient and pattern */}
-            <div className="absolute inset-0 bg-gradient-to-br from-syria-gold/10 via-yellow-50 to-syria-dark-gold/5"></div>
-            <div className="absolute inset-0 bg-pattern opacity-5"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-syria-gold/10 via-yellow-50 to-syria-dark-gold/5 dark:from-syria-gold/20 dark:via-gray-900/50 dark:to-syria-dark-gold/10"></div>
+            <div className="absolute inset-0 bg-pattern opacity-5 dark:opacity-10"></div>
             
             {/* Decorative elements */}
             <div className="absolute top-8 right-8 w-24 h-24 border-2 border-syria-gold/20 rounded-full"></div>
