@@ -1,36 +1,41 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Heart, ThumbsDown, Calendar, User, Eye, Globe, ZoomIn } from 'lucide-react'
+import { X, Calendar, Eye, ZoomIn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { toast } from '@/hooks/use-toast'
-import { Blog, User as UserType } from '@prisma/client'
 import { useLanguage } from "@/lib/i18n/language-context"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
-interface BlogModalProps {
-  blog: Blog & {
-    author: UserType
-  } | null
+interface TourismNewsViewModalProps {
+  news: TourismNews | null
   isOpen: boolean
   onClose: () => void
-  userReactions: Record<string, string>
-  onReaction: (blogId: string, reaction: 'LIKE' | 'DISLIKE') => Promise<void>
-  reacting: string | null
 }
 
-export default function BlogModal({
-  blog,
+interface TourismNews {
+  id: string
+  title: string
+  excerpt?: string
+  content: string
+  category?: string
+  tags?: string[]
+  featuredImage?: string
+  images?: string[]
+  isPublished: boolean
+  isFeatured: boolean
+  publishedAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export default function TourismNewsViewModal({
+  news,
   isOpen,
-  onClose,
-  userReactions,
-  onReaction,
-  reacting
-}: BlogModalProps) {
+  onClose
+}: TourismNewsViewModalProps) {
   const { language } = useLanguage()
   const [isVisible, setIsVisible] = useState(false)
-  const [localUserReactions, setLocalUserReactions] = useState<Record<string, string>>({})
   const [selectedLanguage, setSelectedLanguage] = useState(language)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
 
@@ -38,15 +43,6 @@ export default function BlogModal({
     if (isOpen) {
       setIsVisible(true)
       document.body.style.overflow = 'hidden'
-      
-      // Initialize user reactions from blog data
-      if (blog?.reactions) {
-        const reactions: Record<string, string> = {}
-        blog.reactions.forEach(reaction => {
-          reactions[reaction.userId] = reaction.reaction
-        })
-        setLocalUserReactions(reactions)
-      }
     } else {
       setIsVisible(false)
       document.body.style.overflow = 'unset'
@@ -56,36 +52,13 @@ export default function BlogModal({
     return () => {
       document.body.style.overflow = 'unset'
     }
-  }, [isOpen, blog])
+  }, [isOpen])
 
-  if (!blog || !isOpen) return null
-
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  }
-
-  const userReaction = localUserReactions[blog.author.id] || userReactions[blog.id]
-
-  const handleReaction = async (reaction: 'LIKE' | 'DISLIKE') => {
-    await onReaction(blog.id, reaction)
-    
-    // Update local reactions
-    if (localUserReactions[blog.author.id] === reaction) {
-      const newReactions = { ...localUserReactions }
-      delete newReactions[blog.author.id]
-      setLocalUserReactions(newReactions)
-    } else {
-      setLocalUserReactions({ ...localUserReactions, [blog.author.id]: reaction })
-    }
-  }
+  if (!news || !isOpen) return null
 
   // Get the correct translation for the selected language
   const getTranslatedContent = (field: 'title' | 'excerpt' | 'content', lang: string) => {
-    if (!blog) return ''
+    if (!news) return ''
     
     // Map language codes to Prisma enum values
     const languageMap = {
@@ -96,26 +69,26 @@ export default function BlogModal({
     
     const languageEnum = languageMap[lang as keyof typeof languageMap]
     
-    // If blog has translations, use the one for selected language
-    if (blog.translations && blog.translations.length > 0) {
-      const translation = blog.translations.find(t => t.language === languageEnum)
+    // If news has translations, use the one for selected language
+    if (news.translations && news.translations.length > 0) {
+      const translation = news.translations.find(t => t.language === languageEnum)
       if (translation && translation[field]) {
         return translation[field]
       }
     }
     
-    // Fallback to main blog fields (English)
-    return blog[field] || ''
+    // Fallback to main news fields (English)
+    return news[field] || ''
   }
 
   // Get available translations
   const getAvailableTranslations = () => {
-    if (!blog?.translations) return []
+    if (!news?.translations) return []
     
-    const translations = blog.translations.map(t => t.language)
+    const translations = news.translations.map(t => t.language)
     const available = []
     
-    if (translations.includes('ENGLISH') || blog.title) available.push('en')
+    if (translations.includes('ENGLISH') || news.title) available.push('en')
     if (translations.includes('ARABIC')) available.push('ar')
     if (translations.includes('FRENCH')) available.push('fr')
     
@@ -123,9 +96,16 @@ export default function BlogModal({
   }
 
   const availableTranslations = getAvailableTranslations()
-  const currentTranslation = getTranslatedContent('title', selectedLanguage)
+  const currentTitle = getTranslatedContent('title', selectedLanguage)
   const currentExcerpt = getTranslatedContent('excerpt', selectedLanguage)
   const currentContent = getTranslatedContent('content', selectedLanguage)
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString(
+      language === "ar" ? "ar-SY" : language === "fr" ? "fr-FR" : "en-US",
+      { year: "numeric", month: "long", day: "numeric" }
+    )
+  }
 
   const handleImageClick = (imageUrl: string) => {
     setExpandedImage(imageUrl)
@@ -163,28 +143,29 @@ export default function BlogModal({
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3">
                 <Badge variant="secondary" className="bg-white/20 text-white border-white/30 text-xs">
                   <Calendar className="w-3 h-3 mr-1" />
-                  {formatDate(blog.createdAt)}
+                  {formatDate(news.publishedAt || news.createdAt)}
                 </Badge>
-                <Badge variant="secondary" className="bg-white/20 text-white border-white/30 text-xs">
-                  <User className="w-3 h-3 mr-1" />
-                  {blog.author.name || 'Anonymous'}
-                </Badge>
-                {blog.category && (
+                {news.category && (
                   <Badge variant="secondary" className="bg-white/20 text-white border-white/30 text-xs">
-                    {blog.category}
+                    {news.category}
+                  </Badge>
+                )}
+                {news.isFeatured && (
+                  <Badge variant="secondary" className="bg-white/20 text-white border-white/30 text-xs">
+                    {language === "ar" ? "مميز" : language === "fr" ? "En vedette" : "Featured"}
                   </Badge>
                 )}
               </div>
               
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight pr-12">{currentTranslation}</h1>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight pr-12">{currentTitle}</h1>
             </div>
 
             {/* Featured Image */}
-            {blog.featuredImage && (
-              <div className="relative h-32 sm:h-40 w-full cursor-pointer group" onClick={() => handleImageClick(blog.featuredImage!)}>
+            {news.featuredImage && (
+              <div className="relative h-32 sm:h-40 w-full cursor-pointer group" onClick={() => handleImageClick(news.featuredImage!)}>
                 <img
-                  src={blog.featuredImage}
-                  alt={currentTranslation}
+                  src={news.featuredImage}
+                  alt={currentTitle}
                   className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
@@ -230,13 +211,13 @@ export default function BlogModal({
               </div>
 
               {/* Additional Images */}
-              {blog.images && blog.images.length > 0 && (
+              {news.images && news.images.length > 0 && (
                 <div className="mt-8">
                   <h3 className="text-lg font-semibold mb-4">
                     {language === "ar" ? "صور إضافية" : language === "fr" ? "Images supplémentaires" : "Additional Images"}
                   </h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {blog.images.map((image, index) => (
+                    {news.images.map((image, index) => (
                       <div 
                         key={index} 
                         className="relative h-24 sm:h-32 w-full cursor-pointer group rounded-lg overflow-hidden"
@@ -244,7 +225,7 @@ export default function BlogModal({
                       >
                         <img
                           src={image}
-                          alt={`${blog.title} - Image ${index + 1}`}
+                          alt={`${news.title} - Image ${index + 1}`}
                           className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
@@ -257,13 +238,13 @@ export default function BlogModal({
               )}
 
               {/* Tags */}
-              {blog.tags && blog.tags.length > 0 && (
+              {news.tags && news.tags.length > 0 && (
                 <div className="mt-6">
                   <h3 className="text-lg font-semibold mb-3">
                     {language === "ar" ? "العلامات" : language === "fr" ? "Tags" : "Tags"}
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {blog.tags.map((tag, index) => (
+                    {news.tags.map((tag, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
                         {tag}
                       </Badge>
@@ -274,47 +255,13 @@ export default function BlogModal({
             </div>
 
             {/* Footer */}
-            <div className="border-t border-gray-200 dark:border-gray-700 p-4 sm:p-6 bg-gray-50 dark:bg-gray-800">
+            <div className="border-t border-gray-200 dark:border-gray-700 p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleReaction('LIKE')}
-                      disabled={reacting === blog.id}
-                      className={`flex items-center gap-2 ${
-                        userReaction === 'LIKE' 
-                          ? 'text-red-500 bg-red-50 hover:bg-red-100' 
-                          : 'hover:bg-gray-100'
-                      }`}
-                    >
-                      <Heart className={`w-4 h-4 ${userReaction === 'LIKE' ? 'fill-current' : ''}`} />
-                      <span className="text-sm">
-                        {blog.reactions?.filter(r => r.reaction === 'LIKE').length || 0}
-                      </span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleReaction('DISLIKE')}
-                      disabled={reacting === blog.id}
-                      className={`flex items-center gap-2 ${
-                        userReaction === 'DISLIKE' 
-                          ? 'text-blue-500 bg-blue-50 hover:bg-blue-100' 
-                          : 'hover:bg-gray-100'
-                      }`}
-                    >
-                      <ThumbsDown className={`w-4 h-4 ${userReaction === 'DISLIKE' ? 'fill-current' : ''}`} />
-                      <span className="text-sm">
-                        {blog.reactions?.filter(r => r.reaction === 'DISLIKE').length || 0}
-                      </span>
-                    </Button>
-                  </div>
                   <div className="flex items-center gap-1 text-gray-500">
                     <Eye className="w-4 h-4" />
                     <span className="text-sm">
-                      {language === "ar" ? "تم النشر في" : language === "fr" ? "Publié le" : "Published on"} {formatDate(blog.createdAt)}
+                      {language === "ar" ? "تم النشر في" : language === "fr" ? "Publié le" : "Published on"} {formatDate(news.publishedAt || news.createdAt)}
                     </span>
                   </div>
                 </div>

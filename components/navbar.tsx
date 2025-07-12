@@ -256,34 +256,7 @@ export function Navbar() {
                     >
                       {t.services.bookingHotels}
                     </Link>
-                    <Link
-                      href="/health-tourism"
-                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      onClick={() => setIsServicesOpen(false)}
-                    >
-                      {t.services.healthTourism}
-                    </Link>
-                    <Link
-                      href="/educational-tourism"
-                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      onClick={() => setIsServicesOpen(false)}
-                    >
-                      {t.services.educationalTourism}
-                    </Link>
-                    <Link
-                      href="/historical-tourism"
-                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      onClick={() => setIsServicesOpen(false)}
-                    >
-                      {t.services.historicalTourism}
-                    </Link>
-                    <Link
-                      href="/national-tourism"
-                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      onClick={() => setIsServicesOpen(false)}
-                    >
-                      {t.services.nationalTourism}
-                    </Link>
+               
                     <Link
                       href="/cars-rental"
                       className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -354,6 +327,34 @@ export function Navbar() {
                       onClick={() => setIsTourismSitesOpen(false)}
                     >
                       {t.tourismSites.religiousSites}
+                    </Link>
+                    <Link
+                      href="/health-tourism"
+                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      onClick={() => setIsServicesOpen(false)}
+                    >
+                      {t.services.healthTourism}
+                    </Link>
+                    <Link
+                      href="/educational-tourism"
+                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      onClick={() => setIsServicesOpen(false)}
+                    >
+                      {t.services.educationalTourism}
+                    </Link>
+                    <Link
+                      href="/historical-tourism"
+                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      onClick={() => setIsServicesOpen(false)}
+                    >
+                      {t.services.historicalTourism}
+                    </Link>
+                    <Link
+                      href="/national-tourism"
+                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      onClick={() => setIsServicesOpen(false)}
+                    >
+                      {t.services.nationalTourism}
                     </Link>
                   </div>
                 </div>

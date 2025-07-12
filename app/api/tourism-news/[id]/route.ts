@@ -4,13 +4,16 @@ import { prisma } from '@/lib/prisma'
 // GET - Fetch single tourism news by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
 
     const news = await prisma.tourismNews.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        translations: true
+      }
     })
 
     if (!news) {
@@ -33,7 +36,7 @@ export async function GET(
 // PUT - Update tourism news (admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -57,7 +60,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const {
       title,
@@ -73,7 +76,8 @@ export async function PUT(
 
     // Check if news exists
     const existingNews = await prisma.tourismNews.findUnique({
-      where: { id }
+      where: { id },
+      include: { translations: true }
     })
 
     if (!existingNews) {
@@ -83,13 +87,13 @@ export async function PUT(
       )
     }
 
-    // Update tourism news
+    // Update tourism news (store English as main fields)
     const updatedNews = await prisma.tourismNews.update({
       where: { id },
       data: {
-        title: title || existingNews.title,
-        excerpt: excerpt !== undefined ? excerpt : existingNews.excerpt,
-        content: content || existingNews.content,
+        title: title?.en || existingNews.title,
+        excerpt: excerpt?.en !== undefined ? excerpt.en : existingNews.excerpt,
+        content: content?.en || existingNews.content,
         category: category !== undefined ? category : existingNews.category,
         tags: tags !== undefined ? tags : existingNews.tags,
         featuredImage: featuredImage !== undefined ? featuredImage : existingNews.featuredImage,
@@ -97,7 +101,56 @@ export async function PUT(
         isPublished: isPublished !== undefined ? isPublished : existingNews.isPublished,
         isFeatured: isFeatured !== undefined ? isFeatured : existingNews.isFeatured,
         publishedAt: isPublished && !existingNews.isPublished ? new Date() : existingNews.publishedAt,
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        translations: {
+          upsert: [
+            {
+              where: { newsId_language: { newsId: id, language: 'ENGLISH' } },
+              update: {
+                title: title?.en || existingNews.title,
+                content: content?.en || existingNews.content,
+                excerpt: excerpt?.en || null
+              },
+              create: {
+                language: 'ENGLISH',
+                title: title?.en || existingNews.title,
+                content: content?.en || existingNews.content,
+                excerpt: excerpt?.en || null
+              }
+            },
+            {
+              where: { newsId_language: { newsId: id, language: 'ARABIC' } },
+              update: {
+                title: title?.ar || '',
+                content: content?.ar || '',
+                excerpt: excerpt?.ar || null
+              },
+              create: {
+                language: 'ARABIC',
+                title: title?.ar || '',
+                content: content?.ar || '',
+                excerpt: excerpt?.ar || null
+              }
+            },
+            {
+              where: { newsId_language: { newsId: id, language: 'FRENCH' } },
+              update: {
+                title: title?.fr || '',
+                content: content?.fr || '',
+                excerpt: excerpt?.fr || null
+              },
+              create: {
+                language: 'FRENCH',
+                title: title?.fr || '',
+                content: content?.fr || '',
+                excerpt: excerpt?.fr || null
+              }
+            }
+          ]
+        }
+      },
+      include: {
+        translations: true
       }
     })
 

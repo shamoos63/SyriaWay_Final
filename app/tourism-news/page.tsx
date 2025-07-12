@@ -12,6 +12,7 @@ import { ChatButton } from "@/components/chat-button"
 import { Loader2, Plus } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { TourismNewsModal } from "@/components/control-panel/tourism-news-modal"
+import TourismNewsViewModal from "@/components/tourism-news-view-modal"
 import { toast } from "@/hooks/use-toast"
 
 interface TourismNews {
@@ -39,15 +40,23 @@ export default function TourismNewsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showNewsModal, setShowNewsModal] = useState(false)
+  const [selectedNews, setSelectedNews] = useState<TourismNews | null>(null)
+  const [loadingNewsId, setLoadingNewsId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchNews()
-  }, [])
+  }, [language])
 
   const fetchNews = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/tourism-news?published=true&featured=false')
+      const params = new URLSearchParams({
+        published: 'true',
+        featured: 'false',
+        language: language
+      })
+      const response = await fetch(`/api/tourism-news?${params}`)
       if (!response.ok) {
         throw new Error('Failed to fetch tourism news')
       }
@@ -129,6 +138,39 @@ export default function TourismNewsPage() {
   const canCreateNews = user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')
   
   const addNewArticle = language === "ar" ? "إضافة مقال إخباري جديد" : language === "fr" ? "Ajouter un nouvel article" : "Add News Article"
+
+  const openNewsModal = async (newsItem: TourismNews) => {
+    setLoadingNewsId(newsItem.id)
+    try {
+      // Fetch full news details
+      const response = await fetch(`/api/tourism-news/${newsItem.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setSelectedNews(data.news)
+        setShowNewsModal(true)
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to load news details",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load news details",
+        variant: "destructive"
+      })
+    } finally {
+      setLoadingNewsId(null)
+    }
+  }
+
+  const closeNewsModal = () => {
+    setShowNewsModal(false)
+    setSelectedNews(null)
+    setLoadingNewsId(null)
+  }
 
   if (loading) {
     return (
@@ -317,8 +359,13 @@ export default function TourismNewsPage() {
                   <Button
                     variant="outline"
                     className="text-syria-gold border-syria-gold hover:bg-syria-gold hover:text-white"
+                    onClick={() => openNewsModal(newsItem)}
+                    disabled={loadingNewsId === newsItem.id}
                   >
-                    {language === "ar" ? "اقرأ المزيد" : language === "fr" ? "Lire plus" : "Read More"}
+                    {loadingNewsId === newsItem.id ? 
+                      (language === "ar" ? "جاري التحميل..." : language === "fr" ? "Chargement..." : "Loading...") : 
+                      (language === "ar" ? "اقرأ المزيد" : language === "fr" ? "Lire plus" : "Read More")
+                    }
                   </Button>
                 </CardFooter>
               </Card>
@@ -334,6 +381,15 @@ export default function TourismNewsPage() {
           onOpenChange={setModalOpen}
           onSave={handleCreateNews}
           loading={saving}
+        />
+      )}
+
+      {/* Tourism News View Modal */}
+      {showNewsModal && selectedNews && (
+        <TourismNewsViewModal
+          news={selectedNews}
+          isOpen={showNewsModal}
+          onClose={closeNewsModal}
         />
       )}
 

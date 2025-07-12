@@ -4,43 +4,58 @@ import { prisma } from '@/lib/prisma'
 // GET - Fetch single blog by ID or slug
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
     const { searchParams } = new URL(request.url)
-    const language = searchParams.get('language') || 'en'
+    let language = searchParams.get('language') || 'en'
+    if (!['en', 'ar', 'fr'].includes(language)) language = 'en'
+    
+    // Map language codes to Prisma enum values
+    const languageMap = {
+      'en': 'ENGLISH',
+      'ar': 'ARABIC', 
+      'fr': 'FRENCH'
+    } as const
+    const languageEnum = languageMap[language as keyof typeof languageMap]
 
-    // Try to find by ID first, then by slug
-    const blog = await prisma.blog.findFirst({
-      where: {
-        OR: [
-          { id },
-          { slug: id }
-        ],
-        status: 'PUBLISHED',
-        isPublished: true
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true
-          }
+    let blog
+    try {
+      blog = await prisma.blog.findFirst({
+        where: {
+          OR: [
+            { id },
+            { slug: id }
+          ],
+          status: 'PUBLISHED',
+          isPublished: true
         },
-        reactions: {
-          select: {
-            userId: true,
-            reaction: true
-          }
-        },
-        translations: {
-          where: { language: language as 'en' | 'ar' | 'fr' }
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true
+            }
+          },
+          reactions: {
+            select: {
+              userId: true,
+              reaction: true
+            }
+          },
+          translations: true
         }
-      }
-    })
+      })
+    } catch (prismaError) {
+      console.error('Prisma error fetching blog:', prismaError)
+      return NextResponse.json(
+        { error: 'Failed to fetch blog (prisma error)' },
+        { status: 500 }
+      )
+    }
 
     if (!blog) {
       return NextResponse.json(
@@ -55,7 +70,8 @@ export async function GET(
       data: { views: { increment: 1 } }
     })
 
-    const translation = blog.translations[0]
+    // Fallback if no translation is found
+    const translation = blog.translations && blog.translations.length > 0 ? blog.translations[0] : null
 
     return NextResponse.json({
       blog: {
@@ -81,7 +97,7 @@ export async function GET(
 // PUT - Update blog (requires authentication and ownership or admin role)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -96,7 +112,7 @@ export async function PUT(
       userId = 'demo-user-id'
     }
 
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const {
       title,
@@ -197,7 +213,7 @@ export async function PUT(
         translations: {
           upsert: [
             {
-              where: { blogId_language: { blogId: id, language: 'en' } },
+              where: { blogId_language: { blogId: id, language: 'ENGLISH' } },
               update: {
                 title: title?.en || existingBlog.title,
                 slug,
@@ -207,7 +223,7 @@ export async function PUT(
                 metaDescription: metaDescription || null
               },
               create: {
-                language: 'en',
+                language: 'ENGLISH',
                 title: title?.en || existingBlog.title,
                 slug,
                 excerpt: excerpt?.en || null,
@@ -217,7 +233,7 @@ export async function PUT(
               }
             },
             {
-              where: { blogId_language: { blogId: id, language: 'ar' } },
+              where: { blogId_language: { blogId: id, language: 'ARABIC' } },
               update: {
                 title: title?.ar || '',
                 slug: (title?.ar || title?.en || existingBlog.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').substring(0, 50),
@@ -227,7 +243,7 @@ export async function PUT(
                 metaDescription: metaDescription || null
               },
               create: {
-                language: 'ar',
+                language: 'ARABIC',
                 title: title?.ar || '',
                 slug: (title?.ar || title?.en || existingBlog.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').substring(0, 50),
                 excerpt: excerpt?.ar || null,
@@ -237,7 +253,7 @@ export async function PUT(
               }
             },
             {
-              where: { blogId_language: { blogId: id, language: 'fr' } },
+              where: { blogId_language: { blogId: id, language: 'FRENCH' } },
               update: {
                 title: title?.fr || '',
                 slug: (title?.fr || title?.en || existingBlog.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').substring(0, 50),
@@ -247,7 +263,7 @@ export async function PUT(
                 metaDescription: metaDescription || null
               },
               create: {
-                language: 'fr',
+                language: 'FRENCH',
                 title: title?.fr || '',
                 slug: (title?.fr || title?.en || existingBlog.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').substring(0, 50),
                 excerpt: excerpt?.fr || null,
@@ -288,7 +304,7 @@ export async function PUT(
 // DELETE - Delete blog (requires authentication and ownership or admin role)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -303,7 +319,7 @@ export async function DELETE(
       userId = 'demo-user-id'
     }
 
-    const { id } = params
+    const { id } = await params
 
     // Check if blog exists
     const existingBlog = await prisma.blog.findUnique({

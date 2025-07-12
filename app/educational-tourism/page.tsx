@@ -1,17 +1,30 @@
 "use client"
 
+import { useState } from "react"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { BookOpen, MapPin, GraduationCap } from "lucide-react"
 import { useLanguage } from "@/lib/i18n/language-context"
+import { EducationalApplicationModal } from "@/components/educational-application-modal"
+
+interface EducationalProgram {
+  id: number
+  title: string
+  description: string
+  location: string
+  duration: string
+  image: string
+}
 
 export default function EducationalTourism() {
   const { t, dir, language } = useLanguage()
+  const [selectedProgram, setSelectedProgram] = useState<EducationalProgram | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   // Sample educational tourism programs
-  const educationalPrograms = [
+  const educationalPrograms: EducationalProgram[] = [
     {
       id: 1,
       title:
@@ -128,6 +141,16 @@ export default function EducationalTourism() {
         ? "Découvrez des opportunités d'apprentissage uniques en Syrie, des programmes linguistiques aux ateliers d'artisanat traditionnel"
         : "Discover unique learning opportunities in Syria, from language programs to traditional craft workshops"
 
+  const handleApplyNow = (program: EducationalProgram) => {
+    setSelectedProgram(program)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setSelectedProgram(null)
+  }
+
   return (
     <main className="min-h-screen" dir={dir}>
       <Navbar />
@@ -199,13 +222,25 @@ export default function EducationalTourism() {
                   <p className="text-sm">{program.description}</p>
                 </CardContent>
                 <CardFooter>
-                  <Button className="w-full bg-syria-gold hover:bg-syria-dark-gold">{applyNow}</Button>
+                  <Button 
+                    className="w-full bg-syria-gold hover:bg-syria-dark-gold"
+                    onClick={() => handleApplyNow(program)}
+                  >
+                    {applyNow}
+                  </Button>
                 </CardFooter>
               </Card>
             ))}
           </div>
         </div>
       </section>
+
+      {/* Application Modal */}
+      <EducationalApplicationModal
+        open={isModalOpen}
+        onOpenChange={handleCloseModal}
+        selectedProgram={selectedProgram}
+      />
 
       <Footer />
     </main>

@@ -244,18 +244,18 @@ export default function ContactFormsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Contact Forms Management</h1>
-        <Button onClick={fetchContactForms} disabled={loading} className="flex items-center gap-2">
+    <div className="w-full max-w-7xl mx-auto py-8 px-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold">Contact Forms Management</h1>
+        <Button onClick={fetchContactForms} disabled={loading} className="flex items-center gap-2 w-full sm:w-auto">
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
           Refresh
         </Button>
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="md:col-span-2 flex gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="sm:col-span-2 flex gap-2">
           <Input
             placeholder="Search by name, email, or subject..."
             value={searchTerm}
@@ -309,39 +309,39 @@ export default function ContactFormsPage() {
         <div className="grid gap-4">
           {contactForms.map((form) => (
             <Card key={form.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-lg">{form.name}</h3>
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <h3 className="font-semibold text-lg break-words">{form.name}</h3>
                       <Badge className={getStatusColor(form.status)}>{form.status}</Badge>
                       <Badge className={getPriorityColor(form.priority)}>{form.priority}</Badge>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
-                      <div className="flex items-center gap-1">
-                        <Mail className="h-4 w-4" />
-                        {form.email}
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-2">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <Mail className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{form.email}</span>
                       </div>
                       {form.phone && (
-                        <div className="flex items-center gap-1">
-                          <Phone className="h-4 w-4" />
-                          {form.phone}
+                        <div className="flex items-center gap-1 min-w-0">
+                          <Phone className="h-4 w-4 flex-shrink-0" />
+                          <span className="truncate">{form.phone}</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {formatDate(form.createdAt)}
+                      <div className="flex items-center gap-1 min-w-0">
+                        <Clock className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{formatDate(form.createdAt)}</span>
                       </div>
                     </div>
-                    <p className="font-medium mb-1">{form.subject}</p>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{form.message}</p>
+                    <p className="font-medium mb-1 break-words">{form.subject}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2 break-words">{form.message}</p>
                     {form.response && (
-                      <div className="mt-2 p-2 bg-green-50 rounded text-sm">
+                      <div className="mt-2 p-2 bg-green-50 rounded text-sm break-words">
                         <strong>Response:</strong> {form.response}
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 ml-4">
+                  <div className="flex flex-wrap items-center gap-2 lg:flex-col lg:items-end lg:ml-4">
                     <Button
                       variant="outline"
                       size="sm"

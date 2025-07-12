@@ -77,9 +77,7 @@ export async function GET(request: NextRequest) {
               image: true
             }
           },
-          translations: {
-            where: { language }
-          }
+          translations: true
         },
         orderBy: [
           { isFeatured: 'desc' },
@@ -94,7 +92,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       blogs: blogs.map(blog => {
-        const translation = blog.translations[0]
+        // Find translation for the requested language
+        const translation = blog.translations.find(t => t.language === language)
         return {
           ...blog,
           title: translation?.title || blog.title,
@@ -192,8 +191,9 @@ export async function POST(request: NextRequest) {
         metaTitle: metaTitle || null,
         metaDescription: metaDescription || null,
         keywords: keywords || null,
-        status: 'DRAFT',
-        isPublished: false,
+        status: 'PUBLISHED',
+        isPublished: true,
+        publishedAt: new Date(),
         isFeatured: false,
         translations: {
           create: [

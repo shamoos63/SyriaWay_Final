@@ -108,7 +108,7 @@ export function BlogModal({ open, onOpenChange, blog, onSave, loading = false }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto z-[9999]">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>{blog ? t.blog.editPost : t.blog.createPost}</span>

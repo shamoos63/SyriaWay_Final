@@ -182,7 +182,7 @@ export default function HealthTourism() {
                   <p className="text-sm">{service.description}</p>
                 </CardContent>
                 <CardFooter>
-                  <Button className="w-full bg-syria-gold hover:bg-syria-dark-gold">{learnMore}</Button>
+                  
                 </CardFooter>
               </Card>
             ))}

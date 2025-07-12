@@ -11,6 +11,15 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
     const featured = searchParams.get('featured') === 'true'
     const published = searchParams.get('published') !== 'false' // Default to published only
+    const languageParam = searchParams.get('language') || 'en'
+    
+    // Convert language parameter to Prisma enum value
+    const languageMap: { [key: string]: 'ENGLISH' | 'ARABIC' | 'FRENCH' } = {
+      'en': 'ENGLISH',
+      'ar': 'ARABIC', 
+      'fr': 'FRENCH'
+    }
+    const language = languageMap[languageParam] || 'ENGLISH'
 
     const skip = (page - 1) * limit
 
@@ -30,7 +39,10 @@ export async function GET(request: NextRequest) {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
         { excerpt: { contains: search, mode: 'insensitive' } },
-        { content: { contains: search, mode: 'insensitive' } }
+        { content: { contains: search, mode: 'insensitive' } },
+        { translations: { some: { title: { contains: search, mode: 'insensitive' } } } },
+        { translations: { some: { excerpt: { contains: search, mode: 'insensitive' } } } },
+        { translations: { some: { content: { contains: search, mode: 'insensitive' } } } }
       ]
     }
 
@@ -41,6 +53,9 @@ export async function GET(request: NextRequest) {
     const [news, total] = await Promise.all([
       prisma.tourismNews.findMany({
         where,
+        include: {
+          translations: true
+        },
         orderBy: [
           { isFeatured: 'desc' },
           { publishedAt: 'desc' },
@@ -53,7 +68,17 @@ export async function GET(request: NextRequest) {
     ])
 
     return NextResponse.json({
-      news,
+      news: news.map(newsItem => {
+        // Find translation for the requested language
+        const translation = newsItem.translations.find(t => t.language === language)
+        return {
+          ...newsItem,
+          title: translation?.title || newsItem.title,
+          excerpt: translation?.excerpt || newsItem.excerpt,
+          content: translation?.content || newsItem.content,
+          translations: newsItem.translations
+        }
+      }),
       pagination: {
         page,
         limit,
@@ -107,27 +132,52 @@ export async function POST(request: NextRequest) {
       isFeatured
     } = body
 
-    // Validate required fields
-    if (!title || !content) {
+    // Validate required fields (English is required)
+    if (!title?.en || !content?.en) {
       return NextResponse.json(
-        { error: 'Title and content are required' },
+        { error: 'Title and content in English are required' },
         { status: 400 }
       )
     }
 
-    // Create tourism news
+    // Create tourism news (store English as main fields)
     const news = await prisma.tourismNews.create({
       data: {
-        title,
-        excerpt: excerpt || null,
-        content,
+        title: title.en,
+        excerpt: excerpt?.en || null,
+        content: content.en,
         category: category || null,
         tags: tags || null,
         featuredImage: featuredImage || null,
         images: images || null,
         isPublished: isPublished || false,
         isFeatured: isFeatured || false,
-        publishedAt: isPublished ? new Date() : null
+        publishedAt: isPublished ? new Date() : null,
+        translations: {
+          create: [
+            {
+              language: 'ENGLISH',
+              title: title.en,
+              content: content.en,
+              excerpt: excerpt?.en || null
+            },
+            {
+              language: 'ARABIC',
+              title: title.ar || '',
+              content: content.ar || '',
+              excerpt: excerpt?.ar || null
+            },
+            {
+              language: 'FRENCH',
+              title: title.fr || '',
+              content: content.fr || '',
+              excerpt: excerpt?.fr || null
+            }
+          ]
+        }
+      },
+      include: {
+        translations: true
       }
     })
 

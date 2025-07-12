@@ -569,7 +569,7 @@ export default function AdminBlogPage() {
 
       {/* Edit Blog Modal */}
       <Dialog open={showEditModal} onOpenChange={closeEditModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto z-[9999]">
           <DialogHeader>
             <DialogTitle>Edit Blog Post</DialogTitle>
           </DialogHeader>
@@ -675,7 +675,7 @@ export default function AdminBlogPage() {
 
       {/* View Blog Modal */}
       <Dialog open={showViewModal} onOpenChange={closeViewModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto z-[9999]">
           <DialogHeader>
             <DialogTitle>View Blog Post</DialogTitle>
           </DialogHeader>
@@ -745,7 +745,7 @@ export default function AdminBlogPage() {
 
       {/* Approve Modal */}
       <Dialog open={showApproveModal} onOpenChange={closeApproveModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md z-[9999]">
           <DialogHeader>
             <DialogTitle>Approve Blog Post</DialogTitle>
           </DialogHeader>
@@ -766,7 +766,7 @@ export default function AdminBlogPage() {
 
       {/* Reject Modal */}
       <Dialog open={showRejectModal} onOpenChange={closeRejectModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md z-[9999]">
           <DialogHeader>
             <DialogTitle>Reject Blog Post</DialogTitle>
           </DialogHeader>

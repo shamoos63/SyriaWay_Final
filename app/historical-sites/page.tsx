@@ -356,12 +356,7 @@ export default function HistoricalSites() {
                   </p>
                 </CardContent>
                 <CardFooter>
-                  <Button
-                    className="w-full bg-syria-gold hover:bg-syria-dark-gold"
-                    onClick={() => handleViewDetails(site)}
-                  >
-                    <Info className="mr-2 h-4 w-4" /> {viewDetails}
-                  </Button>
+                 
                 </CardFooter>
               </Card>
             ))}

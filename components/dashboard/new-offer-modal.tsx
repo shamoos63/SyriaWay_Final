@@ -56,7 +56,7 @@ export function NewOfferModal({ isOpen, onClose }: NewOfferModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
       <div
         ref={modalRef}
         className="relative w-full max-w-3xl bg-syria-gold dark:bg-gold-accent rounded-lg overflow-hidden"

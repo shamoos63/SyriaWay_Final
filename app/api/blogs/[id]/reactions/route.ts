@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 // POST - Add or update reaction
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       userId = 'demo-user-id'
     }
 
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const { reaction } = body // "LIKE" or "DISLIKE"
 
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 }
 
 // GET - Get user's reaction for a blog
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       userId = 'demo-user-id'
     }
 
-    const { id } = params
+    const { id } = await params
 
     // Get user's reaction
     const reaction = await prisma.blogReaction.findUnique({

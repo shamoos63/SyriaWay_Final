@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Loader2, X } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 interface TourismNewsModalProps {
   open: boolean
@@ -35,9 +37,9 @@ interface TourismNews {
 }
 
 interface TourismNewsFormData {
-  title: string
-  excerpt: string
-  content: string
+  title: { en: string; ar: string; fr: string }
+  excerpt: { en: string; ar: string; fr: string }
+  content: { en: string; ar: string; fr: string }
   category: string
   tags: string
   featuredImage: string
@@ -60,10 +62,12 @@ const CATEGORIES = [
 ]
 
 export function TourismNewsModal({ open, onOpenChange, news, onSave, loading = false }: TourismNewsModalProps) {
+  const { language } = useLanguage()
+  const [activeLang, setActiveLang] = useState<"en" | "ar" | "fr">(language)
   const [formData, setFormData] = useState<TourismNewsFormData>({
-    title: "",
-    excerpt: "",
-    content: "",
+    title: { en: "", ar: "", fr: "" },
+    excerpt: { en: "", ar: "", fr: "" },
+    content: { en: "", ar: "", fr: "" },
     category: "",
     tags: "",
     featuredImage: "",
@@ -74,10 +78,28 @@ export function TourismNewsModal({ open, onOpenChange, news, onSave, loading = f
 
   useEffect(() => {
     if (news) {
+      // Extract translations from news object
+      const translations = news.translations || []
+      const englishTranslation = translations.find(t => t.language === 'ENGLISH')
+      const arabicTranslation = translations.find(t => t.language === 'ARABIC')
+      const frenchTranslation = translations.find(t => t.language === 'FRENCH')
+      
       setFormData({
-        title: news.title || "",
-        excerpt: news.excerpt || "",
-        content: news.content || "",
+        title: { 
+          en: englishTranslation?.title || news.title || "", 
+          ar: arabicTranslation?.title || "", 
+          fr: frenchTranslation?.title || "" 
+        },
+        excerpt: { 
+          en: englishTranslation?.excerpt || news.excerpt || "", 
+          ar: arabicTranslation?.excerpt || "", 
+          fr: frenchTranslation?.excerpt || "" 
+        },
+        content: { 
+          en: englishTranslation?.content || news.content || "", 
+          ar: arabicTranslation?.content || "", 
+          fr: frenchTranslation?.content || "" 
+        },
         category: news.category || "",
         tags: news.tags?.join(", ") || "",
         featuredImage: news.featuredImage || "",
@@ -87,9 +109,9 @@ export function TourismNewsModal({ open, onOpenChange, news, onSave, loading = f
       })
     } else {
       setFormData({
-        title: "",
-        excerpt: "",
-        content: "",
+        title: { en: "", ar: "", fr: "" },
+        excerpt: { en: "", ar: "", fr: "" },
+        content: { en: "", ar: "", fr: "" },
         category: "",
         tags: "",
         featuredImage: "",
@@ -105,6 +127,13 @@ export function TourismNewsModal({ open, onOpenChange, news, onSave, loading = f
     onSave(formData)
   }
 
+  const handleLangInputChange = (field: "title" | "excerpt" | "content", lang: "en" | "ar" | "fr", value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: { ...prev[field], [lang]: value }
+    }))
+  }
+
   const handleInputChange = (field: keyof TourismNewsFormData, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
@@ -114,7 +143,7 @@ export function TourismNewsModal({ open, onOpenChange, news, onSave, loading = f
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto z-[9999]">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>{news ? "Edit Tourism News" : "Create New Tourism News"}</span>
@@ -130,18 +159,51 @@ export function TourismNewsModal({ open, onOpenChange, news, onSave, loading = f
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Title */}
-          <div className="space-y-2">
-            <Label htmlFor="title">Title *</Label>
-            <Input
-              id="title"
-              value={formData.title}
-              onChange={(e) => handleInputChange("title", e.target.value)}
-              placeholder="Enter news title..."
-              required
-              disabled={loading}
-            />
-          </div>
+          <Tabs value={activeLang} onValueChange={setActiveLang} className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="en">English</TabsTrigger>
+              <TabsTrigger value="ar">العربية</TabsTrigger>
+              <TabsTrigger value="fr">Français</TabsTrigger>
+            </TabsList>
+            {(["en", "ar", "fr"] as const).map(lang => (
+              <TabsContent value={lang} key={lang} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor={`title-${lang}`}>Title ({lang.toUpperCase()}) *</Label>
+                  <Input
+                    id={`title-${lang}`}
+                    value={formData.title[lang]}
+                    onChange={e => handleLangInputChange("title", lang, e.target.value)}
+                    placeholder="Enter news title..."
+                    required={lang === "en"}
+                    disabled={loading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`excerpt-${lang}`}>Excerpt ({lang.toUpperCase()})</Label>
+                  <Textarea
+                    id={`excerpt-${lang}`}
+                    value={formData.excerpt[lang]}
+                    onChange={e => handleLangInputChange("excerpt", lang, e.target.value)}
+                    placeholder="Brief summary of the news article..."
+                    rows={3}
+                    disabled={loading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`content-${lang}`}>Content ({lang.toUpperCase()}) *</Label>
+                  <Textarea
+                    id={`content-${lang}`}
+                    value={formData.content[lang]}
+                    onChange={e => handleLangInputChange("content", lang, e.target.value)}
+                    placeholder="News content..."
+                    rows={10}
+                    required={lang === "en"}
+                    disabled={loading}
+                  />
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
 
           {/* Category and Status */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -155,7 +217,7 @@ export function TourismNewsModal({ open, onOpenChange, news, onSave, loading = f
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[10000]">
                   {CATEGORIES.map((category) => (
                     <SelectItem key={category} value={category}>
                       {category}
@@ -175,19 +237,6 @@ export function TourismNewsModal({ open, onOpenChange, news, onSave, loading = f
                 disabled={loading}
               />
             </div>
-          </div>
-
-          {/* Excerpt */}
-          <div className="space-y-2">
-            <Label htmlFor="excerpt">Excerpt</Label>
-            <Textarea
-              id="excerpt"
-              value={formData.excerpt}
-              onChange={(e) => handleInputChange("excerpt", e.target.value)}
-              placeholder="Brief summary of the news article..."
-              rows={3}
-              disabled={loading}
-            />
           </div>
 
           {/* Tags and Images */}
@@ -213,20 +262,6 @@ export function TourismNewsModal({ open, onOpenChange, news, onSave, loading = f
                 disabled={loading}
               />
             </div>
-          </div>
-
-          {/* Content */}
-          <div className="space-y-2">
-            <Label htmlFor="content">Content *</Label>
-            <Textarea
-              id="content"
-              value={formData.content}
-              onChange={(e) => handleInputChange("content", e.target.value)}
-              placeholder="Write the full news content here..."
-              rows={12}
-              required
-              disabled={loading}
-            />
           </div>
 
           {/* Status Switches */}

@@ -12,6 +12,7 @@ const contactFormSchema = z.object({
   subject: z.string().optional(),
   message: z.string().min(10, "Message must be at least 10 characters"),
   category: z.string().optional(),
+  type: z.string().optional(), // For educational inquiries
   userId: z.string().optional(),
 })
 
@@ -23,15 +24,21 @@ export async function POST(request: NextRequest) {
     // Validate the request body
     const validatedData = contactFormSchema.parse(body)
 
+    // Determine category based on type or use provided category
+    let category = validatedData.category || "General"
+    if (validatedData.type === "EDUCATIONAL_INQUIRY") {
+      category = "Educational"
+    }
+
     // Create the contact form submission
     const contactForm = await prisma.contactForm.create({
       data: {
         name: validatedData.name,
         email: validatedData.email,
         phone: validatedData.phone,
-        subject: validatedData.subject,
+        subject: validatedData.subject || "Educational inquiry",
         message: validatedData.message,
-        category: validatedData.category || "General",
+        category: category,
         userId: validatedData.userId,
         status: "New",
         priority: "Normal",

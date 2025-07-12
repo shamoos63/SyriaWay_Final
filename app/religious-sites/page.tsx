@@ -210,13 +210,7 @@ export default function ReligiousSites() {
                   </p>
                 </CardContent>
                 <CardFooter>
-                  <Button
-                    variant="outline"
-                    className="mt-2 border-syria-gold text-syria-gold hover:bg-syria-gold hover:text-white"
-                    onClick={() => openSiteDetails(site)}
-                  >
-                    {language === "ar" ? "عرض التفاصيل" : language === "fr" ? "Voir les détails" : "See Details"}
-                  </Button>
+             
                 </CardFooter>
               </Card>
             ))}
