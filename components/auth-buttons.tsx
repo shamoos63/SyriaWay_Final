@@ -73,7 +73,7 @@ export function AuthButtons() {
         <DropdownMenuContent className="w-56" align="end">
           <DropdownMenuItem>
             <User className="mr-2 h-4 w-4" />
-            <span>{user.name || "Profile"}</span>
+            <span>{user.name || t.userDropdown?.profile || "Profile"}</span>
           </DropdownMenuItem>
           
           {/* Dashboard links based on role */}
@@ -84,7 +84,7 @@ export function AuthButtons() {
                 className="flex items-center w-full"
               >
                 <LayoutDashboard className="mr-2 h-4 w-4" />
-                <span>Service Dashboard</span>
+                <span>{t.userDropdown?.serviceDashboard || "Service Dashboard"}</span>
               </Link>
             </DropdownMenuItem>
           )}
@@ -93,7 +93,7 @@ export function AuthButtons() {
             <DropdownMenuItem>
               <Link href="/user-dashboard" className="flex items-center w-full">
                 <LayoutDashboard className="mr-2 h-4 w-4" />
-                <span>Dashboard</span>
+                <span>{t.userDropdown?.dashboard || "Dashboard"}</span>
               </Link>
             </DropdownMenuItem>
           )}
@@ -103,7 +103,7 @@ export function AuthButtons() {
             <DropdownMenuItem>
               <Link href="/control-panel" className="flex items-center w-full">
                 <Shield className="mr-2 h-4 w-4" />
-                <span>Control Panel</span>
+                <span>{t.userDropdown?.controlPanel || "Control Panel"}</span>
               </Link>
             </DropdownMenuItem>
           )}
@@ -111,13 +111,13 @@ export function AuthButtons() {
           <DropdownMenuItem>
             <Link href="/user-dashboard/settings" className="flex items-center w-full">
               <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
+              <span>{t.userDropdown?.settings || "Settings"}</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
-            <span>Sign out</span>
+            <span>{t.userDropdown?.signOut || "Sign out"}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

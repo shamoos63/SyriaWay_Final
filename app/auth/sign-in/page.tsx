@@ -26,22 +26,59 @@ export default function SignIn() {
     setIsLoading(true)
 
     try {
-      // For NextAuth, we'll redirect to Google OAuth
-      await signIn('google', { callbackUrl: '/' })
+      const result = await signIn('credentials', {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+      })
+
+      if (result?.error) {
+        toast.error(
+          language === "ar"
+            ? "فشل في تسجيل الدخول. يرجى التحقق من بياناتك."
+            : language === "fr"
+            ? "Échec de la connexion. Veuillez vérifier vos informations."
+            : "Failed to sign in. Please check your credentials.",
+          {
+            description: language === "ar"
+              ? "تأكد من صحة البريد الإلكتروني وكلمة المرور."
+              : language === "fr"
+              ? "Assurez-vous que l'email et le mot de passe sont corrects."
+              : "Please ensure your email and password are correct."
+          }
+        )
+      } else {
+        // Successful sign in
+        toast.success(
+          language === "ar"
+            ? "تم تسجيل الدخول بنجاح!"
+            : language === "fr"
+            ? "Connexion réussie !"
+            : "Successfully signed in!",
+          {
+            description: language === "ar"
+              ? "سيتم توجيهك إلى الصفحة الرئيسية."
+              : language === "fr"
+              ? "Vous serez redirigé vers la page d'accueil."
+              : "You will be redirected to the home page."
+          }
+        )
+        router.push('/')
+      }
     } catch (error) {
       console.error("Sign in error:", error)
       toast.error(
         language === "ar"
-          ? "فشل في تسجيل الدخول. يرجى التحقق من بياناتك."
+          ? "فشل في تسجيل الدخول. يرجى المحاولة مرة أخرى."
           : language === "fr"
-          ? "Échec de la connexion. Veuillez vérifier vos informations."
-          : "Failed to sign in. Please check your credentials.",
+          ? "Échec de la connexion. Veuillez réessayer."
+          : "Failed to sign in. Please try again.",
         {
           description: language === "ar"
-            ? "تأكد من صحة البريد الإلكتروني وكلمة المرور."
+            ? "حدث خطأ غير متوقع."
             : language === "fr"
-            ? "Assurez-vous que l'email et le mot de passe sont corrects."
-            : "Please ensure your email and password are correct."
+            ? "Une erreur inattendue s'est produite."
+            : "An unexpected error occurred."
         }
       )
     } finally {

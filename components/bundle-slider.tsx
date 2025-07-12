@@ -34,7 +34,7 @@ interface BundleSliderProps {
 }
 
 export function BundleSlider({ bundles, getBundleFeatures }: BundleSliderProps) {
-  const { dir } = useLanguage()
+  const { dir, t } = useLanguage()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedBundle, setSelectedBundle] = useState<Bundle | null>(null)
@@ -107,7 +107,7 @@ export function BundleSlider({ bundles, getBundleFeatures }: BundleSliderProps) 
   if (bundles.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-white/80 mb-4">No bundles available at the moment</p>
+        <p className="text-white/80 mb-4">{t.bundles.noBundlesAvailable}</p>
       </div>
     )
   }
@@ -148,7 +148,7 @@ export function BundleSlider({ bundles, getBundleFeatures }: BundleSliderProps) 
             {currentBundle?.isFeatured && (
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-20">
                 <div className="bg-syria-teal text-white px-6 py-2 rounded-full text-sm font-semibold shadow-lg">
-                  Recommended
+                  {t.bundles.recommended}
                 </div>
               </div>
             )}
@@ -167,11 +167,11 @@ export function BundleSlider({ bundles, getBundleFeatures }: BundleSliderProps) 
             <div className="flex justify-center gap-6 mb-6 text-sm text-gray-600 dark:text-gray-300">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-syria-gold" />
-                <span>{currentBundle?.duration} days</span>
+                <span>{currentBundle?.duration} {t.bundles.days}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-syria-gold" />
-                <span>Up to {currentBundle?.maxGuests}</span>
+                <span>{t.bundles.upTo} {currentBundle?.maxGuests}</span>
               </div>
             </div>
 
@@ -204,7 +204,7 @@ export function BundleSlider({ bundles, getBundleFeatures }: BundleSliderProps) 
               className="w-full bg-syria-gold hover:bg-syria-dark-gold text-white py-3 text-lg font-semibold transition-all duration-300 transform hover:scale-105"
               onClick={() => handleChooseBundle(currentBundle!)}
             >
-              Choose Bundle
+              {t.bundles.chooseBundle}
             </Button>
           </div>
         </div>
@@ -251,7 +251,7 @@ export function BundleSlider({ bundles, getBundleFeatures }: BundleSliderProps) 
       {bundles.length > 1 && (
         <div className="text-center mt-4">
           <span className="text-sm text-gray-600">
-            {currentIndex + 1} of {bundles.length}
+            {currentIndex + 1} {t.bundles.of} {bundles.length}
           </span>
         </div>
       )}

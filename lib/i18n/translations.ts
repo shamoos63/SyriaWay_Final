@@ -71,8 +71,8 @@ export interface Translations {
       specialOffersDescription: string
       travelBundles: string
       travelBundlesDescription: string
-      whyChooseSyriaWays: string
-      whyChooseSyriaWaysDescription: string
+      whyChooseSyriaway: string
+      whyChooseSyriawayDescription: string
       ourBenefits: string
       ourBenefitsDescription: string
   }
@@ -110,6 +110,45 @@ export interface Translations {
     golden: string
     premium: string
     recommended: string
+    basicPackage: string
+    goldenPackage: string
+    premiumPackage: string
+    noBundlesAvailable: string
+    chooseBundle: string
+    days: string
+    upTo: string
+    of: string
+    refreshBundles: string
+    requestBundle: string
+    bundleRequest: string
+    preferredStartDate: string
+    preferredEndDate: string
+    numberOfGuests: string
+    travelStyle: string
+    budgetRange: string
+    contactPhoneNumber: string
+    specialRequirements: string
+    additionalMessage: string
+    submitRequest: string
+    submitting: string
+    guest: string
+    guests: string
+    budget: string
+    standard: string
+    premiumStyle: string
+    luxury: string
+    authenticationRequired: string
+    pleaseSignIn: string
+    noBundleSelected: string
+    missingInformation: string
+    fillRequiredFields: string
+    requestSubmitted: string
+    requestSubmittedDescription: string
+          failedToSubmit: string
+      budgetPlaceholder: string
+      phonePlaceholder: string
+      requirementsPlaceholder: string
+      messagePlaceholder: string
     features: {
       hotelBookingAssistance: string
       carRentalService: string
@@ -247,6 +286,14 @@ export interface Translations {
     receiveOffers: string
     customizeExperience: string
   }
+  userDropdown?: {
+    profile: string
+    serviceDashboard: string
+    dashboard: string
+    controlPanel: string
+    settings: string
+    signOut: string
+  }
   errors?: {
     pageNotFound: string
     pageNotFoundMessage: string
@@ -332,10 +379,10 @@ export const translations: Record<Language, Translations> = {
       specialOffersDescription: "Discover our exclusive deals and limited-time offers for your perfect Syrian adventure.",
       travelBundles: "Travel Bundles",
       travelBundlesDescription: "Choose from our carefully curated travel bundles designed to meet your specific needs and preferences.",
-      whyChooseSyriaWays: "Why Choose Syria Ways?",
-      whyChooseSyriaWaysDescription: "Discover the unique advantages that make Syria Ways your trusted travel partner.",
+      whyChooseSyriaway: "Why Choose Syria way?",
+      whyChooseSyriawayDescription: "Discover the unique advantages that make Syria way your trusted travel partner.",
       ourBenefits: "Our Benefits",
-      ourBenefitsDescription: "Experience the benefits of choosing Syria Ways for your travel needs.",
+      ourBenefitsDescription: "Experience the benefits of choosing Syria way for your travel needs.",
     },
     features: {
       hotelBooking: "Hotel Booking",
@@ -363,7 +410,7 @@ export const translations: Record<Language, Translations> = {
     },
     footer: {
       findUs: "Find Us",
-      allRightsReserved: "© 2024 Syria Ways. All rights reserved.",
+      allRightsReserved: "© 2025 Syria way. All rights reserved.",
       codedBy: "Coded by",
     },
     search: {
@@ -375,6 +422,45 @@ export const translations: Record<Language, Translations> = {
       golden: "Golden",
       premium: "Premium",
       recommended: "Recommended",
+      basicPackage: "Basic Package",
+      goldenPackage: "Golden Package",
+      premiumPackage: "Premium Package",
+      noBundlesAvailable: "No bundles available at the moment",
+      chooseBundle: "Choose Bundle",
+      days: "days",
+      upTo: "Up to",
+      of: "of",
+      refreshBundles: "Refresh Bundles",
+      requestBundle: "Request Bundle",
+      bundleRequest: "Bundle Request",
+      preferredStartDate: "Preferred Start Date",
+      preferredEndDate: "Preferred End Date",
+      numberOfGuests: "Number of Guests",
+      travelStyle: "Travel Style",
+      budgetRange: "Budget Range (Optional)",
+      contactPhoneNumber: "Contact Phone Number",
+      specialRequirements: "Special Requirements",
+      additionalMessage: "Additional Message",
+      submitRequest: "Submit Request",
+      submitting: "Submitting...",
+      guest: "Guest",
+      guests: "Guests",
+      budget: "Budget",
+      standard: "Standard",
+      premiumStyle: "Premium",
+      luxury: "Luxury",
+      authenticationRequired: "Authentication Required",
+      pleaseSignIn: "Please sign in to request a bundle.",
+      noBundleSelected: "No bundle selected.",
+      missingInformation: "Missing Information",
+      fillRequiredFields: "Please fill in all required fields.",
+      requestSubmitted: "Request Submitted",
+      requestSubmittedDescription: "Your bundle request has been submitted successfully. We will contact you soon to discuss the details.",
+      failedToSubmit: "Failed to submit bundle request",
+      budgetPlaceholder: "e.g., $1000-2000 USD",
+      phonePlaceholder: "+963 11 123 4567",
+      requirementsPlaceholder: "Any special requirements, dietary restrictions, accessibility needs, etc.",
+      messagePlaceholder: "Any additional information or questions you'd like to share...",
       features: {
         hotelBookingAssistance: "Hotel booking assistance",
         carRentalService: "Car rental service",
@@ -507,6 +593,14 @@ export const translations: Record<Language, Translations> = {
       receiveOffers: "Receive alerts about new offers and deals.",
       customizeExperience: "Customize your experience.",
     },
+    userDropdown: {
+      profile: "Profile",
+      serviceDashboard: "Service Dashboard",
+      dashboard: "Dashboard",
+      controlPanel: "Control Panel",
+      settings: "Settings",
+      signOut: "Sign out",
+    },
     errors: {
       pageNotFound: "Page Not Found",
       pageNotFoundMessage: "The page you are looking for doesn't exist or has been moved.",
@@ -589,8 +683,8 @@ export const translations: Record<Language, Translations> = {
       specialOffersDescription: "اكتشف عروضنا الحصرية والعروض المحدودة الوقت لمغامرتك السورية المثالية.",
       travelBundles: "باقات السفر",
       travelBundlesDescription: "اختر من باقات السفر المختارة بعناية المصممة لتلبية احتياجاتك وتفضيلاتك المحددة.",
-      whyChooseSyriaWays: "لماذا تختار سوريا وايز؟",
-      whyChooseSyriaWaysDescription: "اكتشف المزايا الفريدة التي تجعل سوريا وايز شريك سفرك الموثوق.",
+      whyChooseSyriaway: "لماذا تختار سوريا وايز؟",
+      whyChooseSyriawayDescription: "اكتشف المزايا الفريدة التي تجعل سوريا وايز شريك سفرك الموثوق.",
       ourBenefits: "مزايانا",
       ourBenefitsDescription: "اختبر مزايا اختيار سوريا وايز لاحتياجات سفرك.",
     },
@@ -620,7 +714,7 @@ export const translations: Record<Language, Translations> = {
     },
     footer: {
       findUs: "اعثر علينا",
-      allRightsReserved: "© 2024 سوريا وايز. جميع الحقوق محفوظة.",
+      allRightsReserved: "© 2025 سوريا واي. جميع الحقوق محفوظة.",
       codedBy: "مبرمج بواسطة",
     },
     search: {
@@ -632,6 +726,45 @@ export const translations: Record<Language, Translations> = {
       golden: "ذهبي",
       premium: "متميز",
       recommended: "موصى به",
+      basicPackage: "الباقة الأساسية",
+      goldenPackage: "الباقة الذهبية",
+      premiumPackage: "الباقة المتميزة",
+      noBundlesAvailable: "لا توجد باقات متاحة حالياً",
+      chooseBundle: "اختر الباقة",
+      days: "أيام",
+      upTo: "حتى",
+      of: "من",
+      refreshBundles: "تحديث الباقات",
+      requestBundle: "طلب الباقة",
+      bundleRequest: "طلب الباقة",
+      preferredStartDate: "تاريخ البداية المفضل",
+      preferredEndDate: "تاريخ النهاية المفضل",
+      numberOfGuests: "عدد الضيوف",
+      travelStyle: "نمط السفر",
+      budgetRange: "نطاق الميزانية (اختياري)",
+      contactPhoneNumber: "رقم الهاتف للتواصل",
+      specialRequirements: "المتطلبات الخاصة",
+      additionalMessage: "رسالة إضافية",
+      submitRequest: "إرسال الطلب",
+      submitting: "جاري الإرسال...",
+      guest: "ضيف",
+      guests: "ضيوف",
+      budget: "ميزانية",
+      standard: "قياسي",
+      premiumStyle: "متميز",
+      luxury: "فاخر",
+      authenticationRequired: "مطلوب تسجيل الدخول",
+      pleaseSignIn: "يرجى تسجيل الدخول لطلب الباقة.",
+      noBundleSelected: "لم يتم اختيار باقة.",
+      missingInformation: "معلومات مفقودة",
+      fillRequiredFields: "يرجى ملء جميع الحقول المطلوبة.",
+      requestSubmitted: "تم إرسال الطلب",
+      requestSubmittedDescription: "تم إرسال طلب الباقة بنجاح. سنتواصل معك قريباً لمناقشة التفاصيل.",
+      failedToSubmit: "فشل في إرسال طلب الباقة",
+      budgetPlaceholder: "مثال: 1000-2000 دولار أمريكي",
+      phonePlaceholder: "+963 11 123 4567",
+      requirementsPlaceholder: "أي متطلبات خاصة، قيود غذائية، احتياجات ذوي الهمم، إلخ.",
+      messagePlaceholder: "أي معلومات إضافية أو أسئلة تود مشاركتها...",
       features: {
         hotelBookingAssistance: "مساعدة في حجز الفنادق",
         carRentalService: "خدمة تأجير السيارات",
@@ -764,6 +897,14 @@ export const translations: Record<Language, Translations> = {
       receiveOffers: "تلقي تنبيهات حول العروض والصفقات الجديدة.",
       customizeExperience: "تخصيص تجربتك.",
     },
+    userDropdown: {
+      profile: "الملف الشخصي",
+      serviceDashboard: "لوحة تحكم الخدمات",
+      dashboard: "لوحة التحكم",
+      controlPanel: "لوحة التحكم الرئيسية",
+      settings: "الإعدادات",
+      signOut: "تسجيل الخروج",
+    },
     errors: {
       pageNotFound: "الصفحة غير موجودة",
       pageNotFoundMessage: "الصفحة التي تبحث عنها غير موجودة أو تم نقلها.",
@@ -847,10 +988,10 @@ export const translations: Record<Language, Translations> = {
       specialOffersDescription: "Découvrez nos offres exclusives et offres à durée limitée pour votre aventure syrienne parfaite.",
       travelBundles: "Forfaits de voyage",
       travelBundlesDescription: "Choisissez parmi nos forfaits de voyage soigneusement sélectionnés conçus pour répondre à vos besoins et préférences spécifiques.",
-      whyChooseSyriaWays: "Pourquoi choisir Syria Ways?",
-      whyChooseSyriaWaysDescription: "Découvrez les avantages uniques qui font de Syria Ways votre partenaire de voyage de confiance.",
+      whyChooseSyriaway: "Pourquoi choisir Syria way?",
+      whyChooseSyriawayDescription: "Découvrez les avantages uniques qui font de Syria way votre partenaire de voyage de confiance.",
       ourBenefits: "Nos avantages",
-      ourBenefitsDescription: "Découvrez les avantages de choisir Syria Ways pour vos besoins de voyage.",
+      ourBenefitsDescription: "Découvrez les avantages de choisir Syria way pour vos besoins de voyage.",
     },
     features: {
       hotelBooking: "Réservation d'hôtels",
@@ -878,7 +1019,7 @@ export const translations: Record<Language, Translations> = {
     },
     footer: {
       findUs: "Trouvez-nous",
-      allRightsReserved: "© 2024 Syria Ways. Tous droits réservés.",
+      allRightsReserved: "© 2025 Syria way. Tous droits réservés.",
       codedBy: "Programmé par",
     },
     search: {
@@ -890,6 +1031,45 @@ export const translations: Record<Language, Translations> = {
       golden: "Or",
       premium: "Premium",
       recommended: "Recommandé",
+      basicPackage: "Forfait de base",
+      goldenPackage: "Forfait doré",
+      premiumPackage: "Forfait premium",
+      noBundlesAvailable: "Aucun forfait disponible pour le moment",
+      chooseBundle: "Choisir le forfait",
+      days: "jours",
+      upTo: "Jusqu'à",
+      of: "sur",
+      refreshBundles: "Actualiser les forfaits",
+      requestBundle: "Demander un forfait",
+      bundleRequest: "Demande de forfait",
+      preferredStartDate: "Date de début préférée",
+      preferredEndDate: "Date de fin préférée",
+      numberOfGuests: "Nombre d'invités",
+      travelStyle: "Style de voyage",
+      budgetRange: "Fourchette budgétaire (optionnel)",
+      contactPhoneNumber: "Numéro de téléphone de contact",
+      specialRequirements: "Exigences spéciales",
+      additionalMessage: "Message supplémentaire",
+      submitRequest: "Soumettre la demande",
+      submitting: "Soumission...",
+      guest: "Invité",
+      guests: "Invités",
+      budget: "Budget",
+      standard: "Standard",
+      premiumStyle: "Premium",
+      luxury: "Luxe",
+      authenticationRequired: "Authentification requise",
+      pleaseSignIn: "Veuillez vous connecter pour demander un forfait.",
+      noBundleSelected: "Aucun forfait sélectionné.",
+      missingInformation: "Informations manquantes",
+      fillRequiredFields: "Veuillez remplir tous les champs obligatoires.",
+      requestSubmitted: "Demande soumise",
+      requestSubmittedDescription: "Votre demande de forfait a été soumise avec succès. Nous vous contacterons bientôt pour discuter des détails.",
+      failedToSubmit: "Échec de la soumission de la demande de forfait",
+      budgetPlaceholder: "ex: 1000-2000 USD",
+      phonePlaceholder: "+963 11 123 4567",
+      requirementsPlaceholder: "Toute exigence spéciale, restriction alimentaire, besoin d'accessibilité, etc.",
+      messagePlaceholder: "Toute information supplémentaire ou question que vous aimeriez partager...",
       features: {
         hotelBookingAssistance: "Assistance à la réservation d'hôtel",
         carRentalService: "Service de location de voitures",
@@ -1021,6 +1201,14 @@ export const translations: Record<Language, Translations> = {
       receiveMarketing: "Recevoir des emails marketing et des promotions.",
       receiveOffers: "Recevoir des alertes sur les nouvelles offres et promotions.",
       customizeExperience: "Personnalisez votre expérience.",
+    },
+    userDropdown: {
+      profile: "Profil",
+      serviceDashboard: "Tableau de bord des services",
+      dashboard: "Tableau de bord",
+      controlPanel: "Panneau de contrôle",
+      settings: "Paramètres",
+      signOut: "Se déconnecter",
     },
     errors: {
       pageNotFound: "Page non trouvée",

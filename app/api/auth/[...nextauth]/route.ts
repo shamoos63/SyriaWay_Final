@@ -2,7 +2,9 @@ import { prisma } from '@/lib/prisma'
 import { NextAuthOptions } from 'next-auth'
 import NextAuth from 'next-auth/next'
 import GoogleProvider from 'next-auth/providers/google'
+import CredentialsProvider from 'next-auth/providers/credentials'
 import { PrismaAdapter } from '@auth/prisma-adapter'
+import bcrypt from 'bcryptjs'
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!
@@ -17,9 +19,48 @@ const authOption: NextAuthOptions = {
       clientId: GOOGLE_CLIENT_ID,
       clientSecret: GOOGLE_CLIENT_SECRET,
     }),
+    CredentialsProvider({
+      name: 'credentials',
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null
+        }
+
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email }
+        })
+
+        if (!user || !user.password) {
+          return null
+        }
+
+        const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
+
+        if (!isPasswordValid) {
+          return null
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        }
+      }
+    }),
   ],
   callbacks: {
     async signIn({ account, profile, user }) {
+      // Handle credentials authentication
+      if (account?.provider === 'credentials') {
+        return true // Allow credentials sign in
+      }
+
+      // Handle OAuth authentication
       if (!profile?.email) {
         throw new Error('No profile')
       }
@@ -69,19 +110,24 @@ const authOption: NextAuthOptions = {
       return session;
     },
     async jwt({ token, user, account, profile }) {
-      if (profile) {
-        const dbUser = await prisma.user.findUnique({
-          where: {
-            email: profile.email,
-          },
-        })
-        if (dbUser) {
-          token.id = dbUser.id
-          token.role = dbUser.role || 'CUSTOMER'
-          // Check if this is a new user (created within the last few seconds)
-          const isNewUser = dbUser.createdAt && 
-            (new Date().getTime() - dbUser.createdAt.getTime()) < 10000 // Within 10 seconds
-          token.isNewUser = isNewUser
+      if (user) {
+        // Handle both credentials and OAuth users
+        token.id = user.id
+        token.role = user.role || 'CUSTOMER'
+        
+        if (profile) {
+          // This is an OAuth user, check if they're new
+          const dbUser = await prisma.user.findUnique({
+            where: {
+              email: profile.email,
+            },
+          })
+          if (dbUser) {
+            // Check if this is a new user (created within the last few seconds)
+            const isNewUser = dbUser.createdAt && 
+              (new Date().getTime() - dbUser.createdAt.getTime()) < 10000 // Within 10 seconds
+            token.isNewUser = isNewUser
+          }
         }
       }
       return token

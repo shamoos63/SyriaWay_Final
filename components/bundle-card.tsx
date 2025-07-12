@@ -31,7 +31,7 @@ export function BundleCard({
   originalPrice,
   bundleId,
 }: BundleCardProps) {
-  const { dir } = useLanguage()
+  const { dir, t } = useLanguage()
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const handleChooseBundle = () => {
@@ -69,13 +69,13 @@ export function BundleCard({
             {duration && (
               <div className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
-                <span>{duration} days</span>
+                <span>{duration} {t.bundles.days}</span>
               </div>
             )}
             {maxGuests && (
               <div className="flex items-center gap-1">
                 <Users className="h-4 w-4" />
-                <span>Up to {maxGuests}</span>
+                <span>{t.bundles.upTo} {maxGuests}</span>
               </div>
             )}
           </div>
@@ -101,7 +101,7 @@ export function BundleCard({
           className={`w-full ${isRecommended ? "bg-syria-teal hover:bg-syria-dark-teal" : "bg-syria-gold hover:bg-syria-dark-gold"} text-white`}
           onClick={handleChooseBundle}
         >
-          Choose Bundle
+          {t.bundles.chooseBundle}
         </Button>
       </div>
 

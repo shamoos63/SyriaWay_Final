@@ -43,8 +43,8 @@ export function BundleRequestModal({ isOpen, onClose, bundle }: BundleRequestMod
   const handleSubmit = async () => {
     if (!user) {
       toast({
-        title: "Authentication Required",
-        description: "Please sign in to request a bundle.",
+        title: t.bundles.authenticationRequired,
+        description: t.bundles.pleaseSignIn,
         variant: "destructive"
       })
       return
@@ -53,7 +53,7 @@ export function BundleRequestModal({ isOpen, onClose, bundle }: BundleRequestMod
     if (!bundle) {
       toast({
         title: "Error",
-        description: "No bundle selected.",
+        description: t.bundles.noBundleSelected,
         variant: "destructive"
       })
       return
@@ -62,8 +62,8 @@ export function BundleRequestModal({ isOpen, onClose, bundle }: BundleRequestMod
     // Validate required fields
     if (!formData.preferredStartDate || !formData.preferredEndDate || !formData.numberOfGuests) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
+        title: t.bundles.missingInformation,
+        description: t.bundles.fillRequiredFields,
         variant: "destructive"
       })
       return
@@ -103,8 +103,8 @@ Contact Phone: ${formData.contactPhone}`,
       }
 
       toast({
-        title: "Request Submitted",
-        description: "Your bundle request has been submitted successfully. We will contact you soon to discuss the details.",
+        title: t.bundles.requestSubmitted,
+        description: t.bundles.requestSubmittedDescription,
         variant: "default"
       })
 
@@ -125,7 +125,7 @@ Contact Phone: ${formData.contactPhone}`,
       console.error('Error submitting bundle request:', error)
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to submit bundle request",
+        description: error instanceof Error ? error.message : t.bundles.failedToSubmit,
         variant: "destructive"
       })
     } finally {
@@ -142,7 +142,7 @@ Contact Phone: ${formData.contactPhone}`,
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir={dir}>
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-syria-gold">
-            {bundle ? `Request ${bundle.name} Bundle` : "Request Bundle"}
+            {bundle ? `${t.bundles.requestBundle} ${bundle.name}` : t.bundles.requestBundle}
           </DialogTitle>
         </DialogHeader>
 
@@ -154,11 +154,11 @@ Contact Phone: ${formData.contactPhone}`,
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-syria-gold" />
-                  <span>{bundle.duration} days</span>
+                  <span>{bundle.duration} {t.bundles.days}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-syria-gold" />
-                  <span>Up to {bundle.maxGuests} guests</span>
+                  <span>{t.bundles.upTo} {bundle.maxGuests} {t.bundles.guests}</span>
                 </div>
               </div>
               {bundle.description && (
@@ -174,7 +174,7 @@ Contact Phone: ${formData.contactPhone}`,
             <div className="space-y-2">
               <Label htmlFor="start-date" className="flex items-center gap-2">
                 <CalendarDays className="h-4 w-4" />
-                Preferred Start Date *
+                {t.bundles.preferredStartDate} *
               </Label>
               <Input
                 id="start-date"
@@ -187,7 +187,7 @@ Contact Phone: ${formData.contactPhone}`,
             <div className="space-y-2">
               <Label htmlFor="end-date" className="flex items-center gap-2">
                 <CalendarDays className="h-4 w-4" />
-                Preferred End Date *
+                {t.bundles.preferredEndDate} *
               </Label>
               <Input
                 id="end-date"
@@ -204,7 +204,7 @@ Contact Phone: ${formData.contactPhone}`,
             <div className="space-y-2">
               <Label htmlFor="guests" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Number of Guests *
+                {t.bundles.numberOfGuests} *
               </Label>
               <Select
                 value={formData.numberOfGuests}
@@ -216,14 +216,14 @@ Contact Phone: ${formData.contactPhone}`,
                 <SelectContent>
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
                     <SelectItem key={num} value={num.toString()}>
-                      {num} {num === 1 ? 'Guest' : 'Guests'}
+                      {num} {num === 1 ? t.bundles.guest : t.bundles.guests}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="travel-style">Travel Style</Label>
+              <Label htmlFor="travel-style">{t.bundles.travelStyle}</Label>
               <Select
                 value={formData.travelStyle}
                 onValueChange={(value) => handleInputChange("travelStyle", value)}
@@ -232,10 +232,10 @@ Contact Phone: ${formData.contactPhone}`,
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="budget">Budget</SelectItem>
-                  <SelectItem value="standard">Standard</SelectItem>
-                  <SelectItem value="premium">Premium</SelectItem>
-                  <SelectItem value="luxury">Luxury</SelectItem>
+                  <SelectItem value="budget">{t.bundles.budget}</SelectItem>
+                  <SelectItem value="standard">{t.bundles.standard}</SelectItem>
+                  <SelectItem value="premium">{t.bundles.premiumStyle}</SelectItem>
+                  <SelectItem value="luxury">{t.bundles.luxury}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -243,10 +243,10 @@ Contact Phone: ${formData.contactPhone}`,
 
           {/* Budget */}
           <div className="space-y-2">
-            <Label htmlFor="budget">Budget Range (Optional)</Label>
+            <Label htmlFor="budget">{t.bundles.budgetRange}</Label>
             <Input
               id="budget"
-              placeholder="e.g., $1000-2000 USD"
+              placeholder={t.bundles.budgetPlaceholder}
               value={formData.budget}
               onChange={(e) => handleInputChange("budget", e.target.value)}
             />
@@ -256,12 +256,12 @@ Contact Phone: ${formData.contactPhone}`,
           <div className="space-y-2">
             <Label htmlFor="phone" className="flex items-center gap-2">
               <Phone className="h-4 w-4" />
-              Contact Phone Number
+              {t.bundles.contactPhoneNumber}
             </Label>
             <Input
               id="phone"
               type="tel"
-              placeholder="+963 11 123 4567"
+              placeholder={t.bundles.phonePlaceholder}
               value={formData.contactPhone}
               onChange={(e) => handleInputChange("contactPhone", e.target.value)}
             />
@@ -269,10 +269,10 @@ Contact Phone: ${formData.contactPhone}`,
 
           {/* Special Requirements */}
           <div className="space-y-2">
-            <Label htmlFor="requirements">Special Requirements</Label>
+            <Label htmlFor="requirements">{t.bundles.specialRequirements}</Label>
             <Textarea
               id="requirements"
-              placeholder="Any special requirements, dietary restrictions, accessibility needs, etc."
+              placeholder={t.bundles.requirementsPlaceholder}
               rows={3}
               value={formData.specialRequirements}
               onChange={(e) => handleInputChange("specialRequirements", e.target.value)}
@@ -283,11 +283,11 @@ Contact Phone: ${formData.contactPhone}`,
           <div className="space-y-2">
             <Label htmlFor="message" className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
-              Additional Message
+              {t.bundles.additionalMessage}
             </Label>
             <Textarea
               id="message"
-              placeholder="Any additional information or questions you'd like to share..."
+              placeholder={t.bundles.messagePlaceholder}
               rows={3}
               value={formData.additionalMessage}
               onChange={(e) => handleInputChange("additionalMessage", e.target.value)}
@@ -297,14 +297,14 @@ Contact Phone: ${formData.contactPhone}`,
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
-            Cancel
+            {t.common.cancel}
           </Button>
           <Button 
             onClick={handleSubmit} 
             disabled={isSubmitting}
             className="bg-syria-gold hover:bg-syria-dark-gold"
           >
-            {isSubmitting ? "Submitting..." : "Submit Request"}
+            {isSubmitting ? t.bundles.submitting : t.bundles.submitRequest}
           </Button>
         </DialogFooter>
       </DialogContent>

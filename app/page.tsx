@@ -233,7 +233,7 @@ export default function Home() {
             <div className="absolute top-0 w-full h-full">
               <div className="relative w-full h-full">
                 <Image
-                  src={theme === "dark" ? "/images/new-arch - dark.webp" : "/images/new-arch.webp"}
+                  src={theme === "dark" ? "/images/new-arch-dark.webp" : "/images/new-arch.webp"}
                   alt="Decorative Arch"
                   fill
                   className="object-contain scale-90" // scale-90 = 90% size (20% smaller)
@@ -288,9 +288,9 @@ export default function Home() {
       {/* About Section */}
       <section className="py-16 relative overflow-hidden">
         {/* Background decoration */}
-        <div className="absolute inset-0 bg-gradient-to-br from-syria-cream/30 via-transparent to-syria-sand/20 dark:from-syria-dark-gold/10 dark:via-transparent dark:to-syria-dark-teal/10"></div>
-        <div className="absolute top-0 left-0 w-32 h-32 bg-syria-gold/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 right-0 w-40 h-40 bg-syria-teal/10 rounded-full blur-3xl"></div>
+        <div className="absolute inset-0 "></div>
+        <div className="absolute top-0 left-0 w-32 h-32 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 right-0 w-40 h-40  rounded-full blur-3xl"></div>
         
         <div className="relative z-1 max-w-6xl mx-auto px-4">
           {/* Header */}
@@ -466,34 +466,24 @@ export default function Home() {
           ) : error ? (
             <div className="text-center py-8">
               <p className="text-red-400 mb-4">{error}</p>
-              <div className="grid md:grid-cols-3 gap-8">
-                <BundleCard title="Basic Package" price="$99" features={["Hotel accommodation", "Local support", "Basic tour"]} />
-                <BundleCard
-                  title="Golden Package"
-                  price="$199"
-                  features={["Luxury hotel", "Professional guide", "All meals included"]}
-                  isRecommended={true}
-                  recommendedText="Recommended"
-                />
-                <BundleCard title="Premium Package" price="$299" features={["5-star hotel", "Private guide", "VIP treatment"]} />
-              </div>
+              <Button 
+                onClick={() => window.location.reload()} 
+                className="bg-syria-gold hover:bg-syria-dark-gold text-white mb-4"
+              >
+                {t.bundles.refreshBundles}
+              </Button>
             </div>
           ) : bundles.length > 0 ? (
             <BundleSlider bundles={bundles} getBundleFeatures={getBundleFeatures} />
           ) : (
             <div className="text-center py-8">
-              <p className="text-white/80 mb-4">No bundles available at the moment</p>
-              <div className="grid md:grid-cols-3 gap-8">
-                <BundleCard title="Basic Package" price="$99" features={["Hotel accommodation", "Local support", "Basic tour"]} />
-                <BundleCard
-                  title="Golden Package"
-                  price="$199"
-                  features={["Luxury hotel", "Professional guide", "All meals included"]}
-                  isRecommended={true}
-                  recommendedText="Recommended"
-                />
-                <BundleCard title="Premium Package" price="$299" features={["5-star hotel", "Private guide", "VIP treatment"]} />
-              </div>
+              <p className="text-white/80 mb-4">{t.bundles.noBundlesAvailable}</p>
+              <Button 
+                onClick={() => window.location.reload()} 
+                className="bg-syria-gold hover:bg-syria-dark-gold text-white"
+              >
+                {t.bundles.refreshBundles}
+              </Button>
             </div>
           )}
         </div>
@@ -504,10 +494,10 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-syria-gold mb-4">
-              {t.home.whyChooseSyriaWays}
+              {t.home.whyChooseSyriaway}
             </h2>
             <p className="text-xl max-w-2xl text-syria-teal mx-auto">
-              {t.home.whyChooseSyriaWaysDescription}
+              {t.home.whyChooseSyriawayDescription}
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">

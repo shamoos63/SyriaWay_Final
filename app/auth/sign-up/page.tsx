@@ -48,8 +48,56 @@ export default function SignUp() {
     }
 
     try {
-      // For NextAuth, we'll redirect to Google OAuth
-      await signIn('google', { callbackUrl: '/' })
+      const response = await fetch('/api/auth/sign-up', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create account')
+      }
+
+      // Account created successfully, now sign in
+      toast.success(
+        language === "ar"
+          ? "تم إنشاء الحساب بنجاح!"
+          : language === "fr"
+          ? "Compte créé avec succès !"
+          : "Account created successfully!",
+        {
+          description: language === "ar"
+            ? "سيتم تسجيل دخولك تلقائياً."
+            : language === "fr"
+            ? "Vous serez connecté automatiquement."
+            : "You will be signed in automatically."
+        }
+      )
+
+      // Sign in the user automatically
+      const signInResult = await signIn('credentials', {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+      })
+
+      if (signInResult?.error) {
+        // If auto sign-in fails, redirect to sign-in page
+        router.push('/auth/sign-in')
+      } else {
+        // Successful sign-in, redirect to home
+        router.push('/')
+      }
+
     } catch (error) {
       console.error("Sign up error:", error)
       toast.error(
