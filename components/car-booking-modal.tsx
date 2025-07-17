@@ -13,6 +13,7 @@ import { CalendarIcon, Car, User, Phone, Mail, Calendar as CalendarIcon2 } from 
 import { format } from "date-fns"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 interface CarBookingModalProps {
   isOpen: boolean
@@ -35,6 +36,7 @@ interface CarBookingModalProps {
 
 export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [isLoading, setIsLoading] = useState(false)
   const [startDate, setStartDate] = useState<Date>()
   const [endDate, setEndDate] = useState<Date>()
@@ -74,34 +76,34 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
     e.preventDefault()
     
     if (!user) {
-      toast.error("Please sign in to book a car")
+      toast.error(t.booking?.pleaseSignInToBookCar)
       return
     }
 
     // Check if user is a customer
     if (user.role !== 'CUSTOMER') {
-      toast.error("Service providers and administrators cannot make bookings. Please use a customer account.")
+      toast.error(t.booking?.serviceProvidersCannotBook)
       return
     }
 
     // Prevent car owner from booking their own car
     if (user.id === car.ownerId) {
-      toast.error("You cannot book your own car.")
+      toast.error(t.booking?.cannotBookOwnCar)
       return
     }
     
     if (!startDate || !endDate) {
-      toast.error("Please select start and end dates")
+      toast.error(t.booking?.pleaseSelectDates)
       return
     }
 
     if (startDate >= endDate) {
-      toast.error("End date must be after start date")
+      toast.error(t.booking?.endDateMustBeAfterStart)
       return
     }
 
     if (startDate < new Date()) {
-      toast.error("Start date cannot be in the past")
+      toast.error(t.booking?.startDateCannotBePast)
       return
     }
 
@@ -135,11 +137,11 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
         throw new Error(data.error || "Failed to book car")
       }
 
-      toast.success("Booking request sent successfully! Waiting for car owner approval.")
+      toast.success(t.booking?.bookingRequestSent)
       onClose()
     } catch (error) {
       console.error("Error booking car:", error)
-      toast.error(error instanceof Error ? error.message : "Failed to book car")
+      toast.error(error instanceof Error ? error.message : t.booking?.failedToBookCar)
     } finally {
       setIsLoading(false)
     }
@@ -156,37 +158,37 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Car className="h-5 w-5" />
-            Book {car.brand} {car.model} ({car.year})
+            {t.booking?.bookCar} {car.brand} {car.model} ({car.year})
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Car Details */}
           <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold mb-2">Car Details</h3>
+            <h3 className="font-semibold mb-2">{t.booking?.carDetails}</h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-600">Brand/Model:</span>
+                <span className="text-gray-600">{t.booking?.brand}:</span>
                 <p className="font-medium">{car.brand} {car.model}</p>
               </div>
               <div>
-                <span className="text-gray-600">Year:</span>
+                <span className="text-gray-600">{t.booking?.year}:</span>
                 <p className="font-medium">{car.year}</p>
               </div>
               <div>
-                <span className="text-gray-600">Color:</span>
+                <span className="text-gray-600">{t.booking?.color}:</span>
                 <p className="font-medium capitalize">{car.color}</p>
               </div>
               <div>
-                <span className="text-gray-600">License Plate:</span>
+                <span className="text-gray-600">{t.booking?.licensePlate}:</span>
                 <p className="font-medium">{car.licensePlate}</p>
               </div>
               <div>
-                <span className="text-gray-600">Location:</span>
+                <span className="text-gray-600">{t.booking?.location}:</span>
                 <p className="font-medium">{car.currentLocation}</p>
               </div>
               <div>
-                <span className="text-gray-600">Price per Day:</span>
+                <span className="text-gray-600">{t.booking?.pricePerDay}:</span>
                 <p className="font-medium">{car.pricePerDay} {car.currency}</p>
               </div>
             </div>
@@ -194,10 +196,10 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
 
           {/* Date Selection */}
           <div className="space-y-4">
-            <h3 className="font-semibold">Rental Period</h3>
+            <h3 className="font-semibold">{t.booking?.rentalPeriod}</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="start-date">Start Date</Label>
+                <Label htmlFor="start-date">{t.booking?.startDate}</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -205,7 +207,7 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
                       className="w-full justify-start text-left font-normal"
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, "PPP") : "Pick a date"}
+                      {startDate ? format(startDate, "PPP") : t.booking?.pickADate}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 z-[10000]">
@@ -221,7 +223,7 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="end-date">End Date</Label>
+                <Label htmlFor="end-date">{t.booking?.endDate}</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -229,7 +231,7 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
                       className="w-full justify-start text-left font-normal"
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {endDate ? format(endDate, "PPP") : "Pick a date"}
+                      {endDate ? format(endDate, "PPP") : t.booking?.pickADate}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 z-[10000]">
@@ -248,10 +250,10 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
 
           {/* Guests and Driver */}
           <div className="space-y-4">
-            <h3 className="font-semibold">Rental Options</h3>
+            <h3 className="font-semibold">{t.booking?.rentalOptions}</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="guests">Number of Guests</Label>
+                <Label htmlFor="guests">{t.booking?.numberOfGuests}</Label>
                 <Input
                   id="guests"
                   type="number"
@@ -263,7 +265,7 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="driver">Include Driver</Label>
+                <Label htmlFor="driver">{t.booking?.includeDriver}</Label>
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="driver"
@@ -271,7 +273,7 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
                     onCheckedChange={setIncludeDriver}
                   />
                   <span className="text-sm text-gray-600">
-                    Professional driver (+$50/day)
+                    {t.booking?.professionalDriver}
                   </span>
                 </div>
               </div>
@@ -280,10 +282,10 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
 
           {/* Contact Information */}
           <div className="space-y-4">
-            <h3 className="font-semibold">Contact Information</h3>
+            <h3 className="font-semibold">{t.booking?.contactInformation}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="contact-name">Full Name</Label>
+                <Label htmlFor="contact-name">{t.booking?.fullName}</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
@@ -297,7 +299,7 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="contact-phone">Phone Number</Label>
+                <Label htmlFor="contact-phone">{t.booking?.phoneNumber}</Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
@@ -312,7 +314,7 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="contact-email">Email Address</Label>
+                <Label htmlFor="contact-email">{t.booking?.emailAddress}</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
@@ -330,12 +332,12 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
 
           {/* Special Requests */}
           <div className="space-y-2">
-            <Label htmlFor="special-requests">Special Requests (Optional)</Label>
+            <Label htmlFor="special-requests">{t.booking?.specialRequests}</Label>
             <Textarea
               id="special-requests"
               value={specialRequests}
               onChange={(e) => setSpecialRequests(e.target.value)}
-              placeholder="Any special requirements or requests..."
+              placeholder={t.booking?.anySpecialRequirements}
               rows={3}
             />
           </div>
@@ -343,21 +345,21 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
           {/* Price Summary */}
           {totalPrice > 0 && (
             <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="font-semibold mb-2">Price Summary</h3>
+              <h3 className="font-semibold mb-2">{t.booking?.priceSummary}</h3>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span>Rental ({durationDays} days):</span>
+                  <span>{t.booking?.rental} ({durationDays} {t.booking?.days}):</span>
                   <span>{car.pricePerDay * durationDays} {car.currency}</span>
                 </div>
                 {includeDriver && (
                   <div className="flex justify-between">
-                    <span>Driver ({durationDays} days):</span>
+                    <span>{t.booking?.driver} ({durationDays} {t.booking?.days}):</span>
                     <span>{50 * durationDays} {car.currency}</span>
                   </div>
                 )}
                 <div className="border-t pt-1 mt-2">
                   <div className="flex justify-between font-semibold">
-                    <span>Total:</span>
+                    <span>{t.booking?.total}:</span>
                     <span>{totalPrice} {car.currency}</span>
                   </div>
                 </div>
@@ -373,14 +375,14 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
               onClick={onClose}
               className="flex-1"
             >
-              Cancel
+              {t.booking?.cancel}
             </Button>
             <Button
               type="submit"
               disabled={isLoading || !startDate || !endDate}
               className="flex-1"
             >
-              {isLoading ? "Booking..." : "Book Now"}
+              {isLoading ? t.booking?.booking : t.booking?.bookNow}
             </Button>
           </div>
         </form>

@@ -298,6 +298,83 @@ export interface Translations {
     pageNotFound: string
     pageNotFoundMessage: string
   }
+  booking?: {
+    bookTour: string
+    bookCar: string
+    tourDetails: string
+    carDetails: string
+    rentalPeriod: string
+    rentalOptions: string
+    contactInformation: string
+    specialRequests: string
+    priceSummary: string
+    bookingSummary: string
+    tourDates: string
+    tourGuide: string
+    description: string
+    startLocation: string
+    endLocation: string
+    duration: string
+    capacity: string
+    pricePerPerson: string
+    pricePerDay: string
+    startDate: string
+    endDate: string
+    numberOfGuests: string
+    includeDriver: string
+    professionalDriver: string
+    fullName: string
+    phoneNumber: string
+    emailAddress: string
+    specialRequirements: string
+    anySpecialRequirements: string
+    total: string
+    rental: string
+    driver: string
+    days: string
+    confirmBooking: string
+    creatingBooking: string
+    bookNow: string
+    booking: string
+    cancel: string
+    close: string
+    bookThisTour: string
+    maximumCapacity: string
+    totalPrice: string
+    theseDatesAreFixed: string
+    authenticationRequired: string
+    pleaseSignInToBook: string
+    bookingNotAllowed: string
+    serviceProvidersCannotBook: string
+    validationError: string
+    pleaseFillRequiredFields: string
+    capacityError: string
+    tourCanOnlyAccommodate: string
+    numberGuestsMustBeAtLeast: string
+    bookingSuccessful: string
+    tourBookingCreated: string
+    bookingError: string
+    failedToCreateBooking: string
+    pleaseSignInToBookCar: string
+    cannotBookOwnCar: string
+    pleaseSelectDates: string
+    endDateMustBeAfterStart: string
+    startDateCannotBePast: string
+    bookingRequestSent: string
+    waitingForApproval: string
+    failedToBookCar: string
+    brand: string
+    model: string
+    year: string
+    color: string
+    licensePlate: string
+    location: string
+    pickADate: string
+    reviews: string
+    guide: string
+    dates: string
+    guests: string
+  }
 }
 
 export const translations: Record<Language, Translations> = {
@@ -605,6 +682,83 @@ export const translations: Record<Language, Translations> = {
       pageNotFound: "Page Not Found",
       pageNotFoundMessage: "The page you are looking for doesn't exist or has been moved.",
     },
+    booking: {
+      bookTour: "Book Tour",
+      bookCar: "Book Car",
+      tourDetails: "Tour Details",
+      carDetails: "Car Details",
+      rentalPeriod: "Rental Period",
+      rentalOptions: "Rental Options",
+      contactInformation: "Contact Information",
+      specialRequests: "Special Requests (Optional)",
+      priceSummary: "Price Summary",
+      bookingSummary: "Booking Summary",
+      tourDates: "Tour Dates",
+      tourGuide: "Tour Guide",
+      description: "Description",
+      startLocation: "Start Location",
+      endLocation: "End Location",
+      duration: "Duration",
+      capacity: "Capacity",
+      pricePerPerson: "Price per person",
+      pricePerDay: "Price per Day",
+      startDate: "Start Date",
+      endDate: "End Date",
+      numberOfGuests: "Number of Guests",
+      includeDriver: "Include Driver",
+      professionalDriver: "Professional driver (+$50/day)",
+      fullName: "Full Name",
+      phoneNumber: "Phone Number",
+      emailAddress: "Email Address",
+      specialRequirements: "Special Requirements",
+      anySpecialRequirements: "Any special requirements or requests...",
+      total: "Total",
+      rental: "Rental",
+      driver: "Driver",
+      days: "days",
+      confirmBooking: "Confirm Booking",
+      creatingBooking: "Creating Booking...",
+      bookNow: "Book Now",
+      booking: "Booking...",
+      cancel: "Cancel",
+      close: "Close",
+      bookThisTour: "Book This Tour",
+      maximumCapacity: "Maximum capacity",
+      totalPrice: "Total Price",
+      theseDatesAreFixed: "These dates are fixed for this tour and cannot be changed.",
+      authenticationRequired: "Authentication Required",
+      pleaseSignInToBook: "Please sign in to make a booking.",
+      bookingNotAllowed: "Booking Not Allowed",
+      serviceProvidersCannotBook: "Service providers and administrators cannot make bookings. Please use a customer account.",
+      validationError: "Validation Error",
+      pleaseFillRequiredFields: "Please fill in all required fields.",
+      capacityError: "Capacity Error",
+      tourCanOnlyAccommodate: "This tour can only accommodate up to",
+      numberGuestsMustBeAtLeast: "Number of guests must be at least 1.",
+      bookingSuccessful: "Booking Successful!",
+      tourBookingCreated: "Your tour booking has been created successfully.",
+      bookingError: "Booking Error",
+      failedToCreateBooking: "Failed to create booking. Please try again.",
+      pleaseSignInToBookCar: "Please sign in to book a car",
+      cannotBookOwnCar: "You cannot book your own car.",
+      pleaseSelectDates: "Please select start and end dates",
+      endDateMustBeAfterStart: "End date must be after start date",
+      startDateCannotBePast: "Start date cannot be in the past",
+      bookingRequestSent: "Booking request sent successfully! Waiting for car owner approval.",
+      waitingForApproval: "Waiting for car owner approval.",
+      failedToBookCar: "Failed to book car",
+      brand: "Brand/Model",
+      model: "Model",
+      year: "Year",
+      color: "Color",
+      licensePlate: "License Plate",
+      location: "Location",
+      pickADate: "Pick a date",
+      reviews: "reviews",
+      guide: "Guide",
+      dates: "Dates",
+      guests: "Guests",
+    },
   },
   ar: {
     common: {
@@ -908,6 +1062,83 @@ export const translations: Record<Language, Translations> = {
     errors: {
       pageNotFound: "الصفحة غير موجودة",
       pageNotFoundMessage: "الصفحة التي تبحث عنها غير موجودة أو تم نقلها.",
+    },
+    booking: {
+      bookTour: "حجز جولة",
+      bookCar: "حجز سيارة",
+      tourDetails: "تفاصيل الجولة",
+      carDetails: "تفاصيل السيارة",
+      rentalPeriod: "فترة التأجير",
+      rentalOptions: "خيارات التأجير",
+      contactInformation: "معلومات الاتصال",
+      specialRequests: "طلبات خاصة (اختياري)",
+      priceSummary: "ملخص السعر",
+      bookingSummary: "ملخص الحجز",
+      tourDates: "تواريخ الجولة",
+      tourGuide: "المرشد السياحي",
+      description: "الوصف",
+      startLocation: "موقع البداية",
+      endLocation: "موقع النهاية",
+      duration: "المدة",
+      capacity: "السعة",
+      pricePerPerson: "السعر للشخص الواحد",
+      pricePerDay: "السعر في اليوم",
+      startDate: "تاريخ البداية",
+      endDate: "تاريخ النهاية",
+      numberOfGuests: "عدد الضيوف",
+      includeDriver: "تضمين سائق",
+      professionalDriver: "سائق محترف (+50$ في اليوم)",
+      fullName: "الاسم الكامل",
+      phoneNumber: "رقم الهاتف",
+      emailAddress: "عنوان البريد الإلكتروني",
+      specialRequirements: "المتطلبات الخاصة",
+      anySpecialRequirements: "أي متطلبات أو طلبات خاصة...",
+      total: "المجموع",
+      rental: "التأجير",
+      driver: "السائق",
+      days: "أيام",
+      confirmBooking: "تأكيد الحجز",
+      creatingBooking: "جاري إنشاء الحجز...",
+      bookNow: "احجز الآن",
+      booking: "جاري الحجز...",
+      cancel: "إلغاء",
+      close: "إغلاق",
+      bookThisTour: "احجز هذه الجولة",
+      maximumCapacity: "السعة القصوى",
+      totalPrice: "السعر الإجمالي",
+      theseDatesAreFixed: "هذه التواريخ ثابتة لهذه الجولة ولا يمكن تغييرها.",
+      authenticationRequired: "مطلوب تسجيل الدخول",
+      pleaseSignInToBook: "يرجى تسجيل الدخول لإجراء الحجز.",
+      bookingNotAllowed: "الحجز غير مسموح",
+      serviceProvidersCannotBook: "لا يمكن لمقدمي الخدمات والإداريين إجراء الحجوزات. يرجى استخدام حساب العميل.",
+      validationError: "خطأ في التحقق",
+      pleaseFillRequiredFields: "يرجى ملء جميع الحقول المطلوبة.",
+      capacityError: "خطأ في السعة",
+      tourCanOnlyAccommodate: "يمكن لهذه الجولة استيعاب ما يصل إلى",
+      numberGuestsMustBeAtLeast: "يجب أن يكون عدد الضيوف واحد على الأقل.",
+      bookingSuccessful: "تم الحجز بنجاح!",
+      tourBookingCreated: "تم إنشاء حجز الجولة بنجاح.",
+      bookingError: "خطأ في الحجز",
+      failedToCreateBooking: "فشل في إنشاء الحجز. يرجى المحاولة مرة أخرى.",
+      pleaseSignInToBookCar: "يرجى تسجيل الدخول لحجز سيارة",
+      cannotBookOwnCar: "لا يمكنك حجز سيارتك الخاصة.",
+      pleaseSelectDates: "يرجى اختيار تواريخ البداية والنهاية",
+      endDateMustBeAfterStart: "يجب أن يكون تاريخ النهاية بعد تاريخ البداية",
+      startDateCannotBePast: "لا يمكن أن يكون تاريخ البداية في الماضي",
+      bookingRequestSent: "تم إرسال طلب الحجز بنجاح! في انتظار موافقة مالك السيارة.",
+      waitingForApproval: "في انتظار موافقة مالك السيارة.",
+      failedToBookCar: "فشل في حجز السيارة",
+      brand: "الماركة/الموديل",
+      model: "الموديل",
+      year: "السنة",
+      color: "اللون",
+      licensePlate: "رقم اللوحة",
+      location: "الموقع",
+      pickADate: "اختر تاريخاً",
+      reviews: "مراجعات",
+      guide: "المرشد",
+      dates: "التواريخ",
+      guests: "الضيوف",
     },
   },
   fr: {
@@ -1213,6 +1444,83 @@ export const translations: Record<Language, Translations> = {
     errors: {
       pageNotFound: "Page non trouvée",
       pageNotFoundMessage: "La page que vous recherchez n'existe pas ou a été déplacée.",
+    },
+    booking: {
+      bookTour: "Réserver un circuit",
+      bookCar: "Réserver une voiture",
+      tourDetails: "Détails du circuit",
+      carDetails: "Détails de la voiture",
+      rentalPeriod: "Période de location",
+      rentalOptions: "Options de location",
+      contactInformation: "Informations de contact",
+      specialRequests: "Demandes spéciales (optionnel)",
+      priceSummary: "Résumé des prix",
+      bookingSummary: "Résumé de la réservation",
+      tourDates: "Dates du circuit",
+      tourGuide: "Guide touristique",
+      description: "Description",
+      startLocation: "Lieu de départ",
+      endLocation: "Lieu d'arrivée",
+      duration: "Durée",
+      capacity: "Capacité",
+      pricePerPerson: "Prix par personne",
+      pricePerDay: "Prix par jour",
+      startDate: "Date de début",
+      endDate: "Date de fin",
+      numberOfGuests: "Nombre d'invités",
+      includeDriver: "Inclure un chauffeur",
+      professionalDriver: "Chauffeur professionnel (+50$/jour)",
+      fullName: "Nom complet",
+      phoneNumber: "Numéro de téléphone",
+      emailAddress: "Adresse e-mail",
+      specialRequirements: "Exigences spéciales",
+      anySpecialRequirements: "Toute exigence ou demande spéciale...",
+      total: "Total",
+      rental: "Location",
+      driver: "Chauffeur",
+      days: "jours",
+      confirmBooking: "Confirmer la réservation",
+      creatingBooking: "Création de la réservation...",
+      bookNow: "Réserver maintenant",
+      booking: "Réservation...",
+      cancel: "Annuler",
+      close: "Fermer",
+      bookThisTour: "Réserver ce circuit",
+      maximumCapacity: "Capacité maximale",
+      totalPrice: "Prix total",
+      theseDatesAreFixed: "Ces dates sont fixes pour ce circuit et ne peuvent pas être modifiées.",
+      authenticationRequired: "Authentification requise",
+      pleaseSignInToBook: "Veuillez vous connecter pour effectuer une réservation.",
+      bookingNotAllowed: "Réservation non autorisée",
+      serviceProvidersCannotBook: "Les prestataires de services et les administrateurs ne peuvent pas effectuer de réservations. Veuillez utiliser un compte client.",
+      validationError: "Erreur de validation",
+      pleaseFillRequiredFields: "Veuillez remplir tous les champs obligatoires.",
+      capacityError: "Erreur de capacité",
+      tourCanOnlyAccommodate: "Ce circuit ne peut accueillir que jusqu'à",
+      numberGuestsMustBeAtLeast: "Le nombre d'invités doit être d'au moins 1.",
+      bookingSuccessful: "Réservation réussie !",
+      tourBookingCreated: "Votre réservation de circuit a été créée avec succès.",
+      bookingError: "Erreur de réservation",
+      failedToCreateBooking: "Échec de la création de la réservation. Veuillez réessayer.",
+      pleaseSignInToBookCar: "Veuillez vous connecter pour réserver une voiture",
+      cannotBookOwnCar: "Vous ne pouvez pas réserver votre propre voiture.",
+      pleaseSelectDates: "Veuillez sélectionner les dates de début et de fin",
+      endDateMustBeAfterStart: "La date de fin doit être après la date de début",
+      startDateCannotBePast: "La date de début ne peut pas être dans le passé",
+      bookingRequestSent: "Demande de réservation envoyée avec succès ! En attente de l'approbation du propriétaire de la voiture.",
+      waitingForApproval: "En attente de l'approbation du propriétaire de la voiture.",
+      failedToBookCar: "Échec de la réservation de la voiture",
+      brand: "Marque/Modèle",
+      model: "Modèle",
+      year: "Année",
+      color: "Couleur",
+      licensePlate: "Plaque d'immatriculation",
+      location: "Emplacement",
+      pickADate: "Choisir une date",
+      reviews: "avis",
+      guide: "Guide",
+      dates: "Dates",
+      guests: "Invités",
     },
   },
 }

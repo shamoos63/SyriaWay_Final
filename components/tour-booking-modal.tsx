@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Calendar, Users, DollarSign, MapPin, Clock, User, Star } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth-context"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 interface Tour {
   id: string
@@ -45,6 +46,7 @@ interface BookingForm {
 export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProps) {
   const { toast } = useToast()
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState<BookingForm>({
     guests: 1,
@@ -77,8 +79,8 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
     // Check if user is signed in
     if (!user) {
       toast({
-        title: "Authentication Required",
-        description: "Please sign in to make a booking.",
+        title: t.booking?.authenticationRequired,
+        description: t.booking?.pleaseSignInToBook,
         variant: "destructive",
       })
       return
@@ -87,8 +89,8 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
     // Check if user is a customer
     if (user.role !== 'CUSTOMER') {
       toast({
-        title: "Booking Not Allowed",
-        description: "Service providers and administrators cannot make bookings. Please use a customer account.",
+        title: t.booking?.bookingNotAllowed,
+        description: t.booking?.serviceProvidersCannotBook,
         variant: "destructive",
       })
       return
@@ -97,8 +99,8 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
     // Validate form
     if (!form.contactName || !form.contactEmail) {
       toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields.",
+        title: t.booking?.validationError,
+        description: t.booking?.pleaseFillRequiredFields,
         variant: "destructive",
       })
       return
@@ -106,8 +108,8 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
 
     if (form.guests > tour.capacity) {
       toast({
-        title: "Capacity Error",
-        description: `This tour can only accommodate up to ${tour.capacity} guests.`,
+        title: t.booking?.capacityError,
+        description: `${t.booking?.tourCanOnlyAccommodate} ${tour.capacity} ${t.booking?.guests}.`,
         variant: "destructive",
       })
       return
@@ -115,8 +117,8 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
 
     if (form.guests < 1) {
       toast({
-        title: "Validation Error",
-        description: "Number of guests must be at least 1.",
+        title: t.booking?.validationError,
+        description: t.booking?.numberGuestsMustBeAtLeast,
         variant: "destructive",
       })
       return
@@ -154,8 +156,8 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
       const result = await response.json()
 
       toast({
-        title: "Booking Successful!",
-        description: `Your tour booking for "${tour.name}" has been created successfully.`,
+        title: t.booking?.bookingSuccessful,
+        description: t.booking?.tourBookingCreated,
       })
 
       // Reset form and close modal
@@ -171,8 +173,8 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
     } catch (error) {
       console.error('Error creating booking:', error)
       toast({
-        title: "Booking Error",
-        description: error instanceof Error ? error.message : "Failed to create booking. Please try again.",
+        title: t.booking?.bookingError,
+        description: error instanceof Error ? error.message : t.booking?.failedToCreateBooking,
         variant: "destructive",
       })
     } finally {
@@ -197,7 +199,7 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl text-syria-gold">Book Tour: {tour.name}</DialogTitle>
+          <DialogTitle className="text-2xl text-syria-gold">{t.booking?.bookTour}: {tour.name}</DialogTitle>
           <DialogDescription>
             Complete your tour booking by filling out the form below.
           </DialogDescription>
@@ -206,7 +208,7 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
         <div className="space-y-6">
           {/* Tour Information */}
           <div className="p-4 bg-syria-gold/10 rounded-lg">
-            <h3 className="font-semibold text-syria-gold mb-3">Tour Details</h3>
+            <h3 className="font-semibold text-syria-gold mb-3">{t.booking?.tourDetails}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-syria-gold" />
@@ -214,15 +216,15 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-syria-gold" />
-                <span>{tour.duration} hours</span>
+                <span>{tour.duration} {t.booking?.duration}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-syria-gold" />
-                <span>Capacity: {tour.capacity} people</span>
+                <span>{t.booking?.capacity}: {tour.capacity} {t.booking?.guests}</span>
               </div>
               <div className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-syria-gold" />
-                <span>${tour.price}/person</span>
+                <span>${tour.price}/{t.booking?.pricePerPerson}</span>
               </div>
             </div>
             
@@ -233,36 +235,36 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
               </div>
               <div className="flex items-center gap-2">
                 {renderStars(tour.averageRating)}
-                <span className="text-sm">{tour.averageRating} ({tour.reviewCount} reviews)</span>
+                <span className="text-sm">{tour.averageRating} ({tour.reviewCount} {t.booking?.reviews})</span>
               </div>
             </div>
           </div>
 
           {/* Tour Dates - Fixed */}
           <div className="p-4 bg-blue-50 rounded-lg">
-            <h3 className="font-semibold text-syria-gold mb-2">Tour Dates</h3>
+            <h3 className="font-semibold text-syria-gold mb-2">{t.booking?.tourDates}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-syria-gold" />
-                <span><strong>Start:</strong> {new Date(tour.startDate).toLocaleDateString()}</span>
+                <span><strong>{t.booking?.startDate}:</strong> {new Date(tour.startDate).toLocaleDateString()}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-syria-gold" />
-                <span><strong>End:</strong> {new Date(tour.endDate).toLocaleDateString()}</span>
+                <span><strong>{t.booking?.endDate}:</strong> {new Date(tour.endDate).toLocaleDateString()}</span>
               </div>
             </div>
             <p className="text-xs text-gray-600 mt-2">
-              These dates are fixed for this tour and cannot be changed.
+              {t.booking?.theseDatesAreFixed}
             </p>
           </div>
 
           {/* Booking Form */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-syria-gold">Booking Information</h3>
+            <h3 className="font-semibold text-syria-gold">{t.booking?.bookingSummary}</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="guests">Number of Guests *</Label>
+                <Label htmlFor="guests">{t.booking?.numberOfGuests} *</Label>
                 <Input
                   id="guests"
                   type="number"
@@ -271,10 +273,10 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
                   value={form.guests}
                   onChange={(e) => setForm({...form, guests: parseInt(e.target.value) || 1})}
                 />
-                <p className="text-xs text-gray-500 mt-1">Maximum capacity: {tour.capacity}</p>
+                <p className="text-xs text-gray-500 mt-1">{t.booking?.maximumCapacity}: {tour.capacity}</p>
               </div>
               <div>
-                <Label htmlFor="totalPrice">Total Price</Label>
+                <Label htmlFor="totalPrice">{t.booking?.totalPrice}</Label>
                 <Input
                   id="totalPrice"
                   value={`$${calculateTotalPrice()}`}
@@ -286,7 +288,7 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="contactName">Contact Name *</Label>
+                <Label htmlFor="contactName">{t.booking?.fullName} *</Label>
                 <Input
                   id="contactName"
                   value={form.contactName}
@@ -295,7 +297,7 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
                 />
               </div>
               <div>
-                <Label htmlFor="contactEmail">Contact Email *</Label>
+                <Label htmlFor="contactEmail">{t.booking?.emailAddress} *</Label>
                 <Input
                   id="contactEmail"
                   type="email"
@@ -307,7 +309,7 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
             </div>
 
             <div>
-              <Label htmlFor="contactPhone">Contact Phone</Label>
+              <Label htmlFor="contactPhone">{t.booking?.phoneNumber}</Label>
               <Input
                 id="contactPhone"
                 value={form.contactPhone}
@@ -317,12 +319,12 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
             </div>
 
             <div>
-              <Label htmlFor="specialRequests">Special Requests</Label>
+              <Label htmlFor="specialRequests">{t.booking?.specialRequests}</Label>
               <Textarea
                 id="specialRequests"
                 value={form.specialRequests}
                 onChange={(e) => setForm({...form, specialRequests: e.target.value})}
-                placeholder="Any special requirements or requests..."
+                placeholder={t.booking?.anySpecialRequirements}
                 rows={3}
               />
             </div>
@@ -330,32 +332,32 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
 
           {/* Booking Summary */}
           <div className="p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-semibold text-syria-gold mb-2">Booking Summary</h3>
+            <h3 className="font-semibold text-syria-gold mb-2">{t.booking?.bookingSummary}</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span>Tour:</span>
+                <span>{t.booking?.bookTour}:</span>
                 <span className="font-medium">{tour.name}</span>
               </div>
               <div className="flex justify-between">
-                <span>Guide:</span>
+                <span>{t.booking?.guide}:</span>
                 <span className="font-medium">{tour.guideName}</span>
               </div>
               <div className="flex justify-between">
-                <span>Dates:</span>
+                <span>{t.booking?.dates}:</span>
                 <span className="font-medium">
                   {new Date(tour.startDate).toLocaleDateString()} - {new Date(tour.endDate).toLocaleDateString()}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>Guests:</span>
+                <span>{t.booking?.guests}:</span>
                 <span className="font-medium">{form.guests}</span>
               </div>
               <div className="flex justify-between">
-                <span>Price per person:</span>
+                <span>{t.booking?.pricePerPerson}:</span>
                 <span className="font-medium">${tour.price}</span>
               </div>
               <div className="flex justify-between border-t pt-2">
-                <span className="font-semibold">Total:</span>
+                <span className="font-semibold">{t.booking?.total}:</span>
                 <span className="font-bold text-syria-gold">${calculateTotalPrice()}</span>
               </div>
             </div>
@@ -368,14 +370,14 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
             onClick={onClose}
             disabled={loading}
           >
-            Cancel
+            {t.booking?.cancel}
           </Button>
           <Button 
             className="bg-syria-gold hover:bg-syria-dark-gold"
             onClick={handleSubmit}
             disabled={loading}
           >
-            {loading ? "Creating Booking..." : "Confirm Booking"}
+            {loading ? t.booking?.creatingBooking : t.booking?.confirmBooking}
           </Button>
         </DialogFooter>
       </DialogContent>
