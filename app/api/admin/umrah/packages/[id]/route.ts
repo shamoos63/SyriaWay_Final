@@ -23,19 +23,19 @@ export async function GET(
     // Check if user is admin (you might want to add role checking here)
     const { id } = await params
 
-    const [package] = await db
+    const [umrahPackage] = await db
       .select()
       .from(umrahPackages)
       .where(eq(umrahPackages.id, parseInt(id)))
 
-    if (!package) {
+    if (!umrahPackage) {
       return NextResponse.json(
         { error: 'Umrah package not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json({ package })
+    return NextResponse.json({ package: umrahPackage })
   } catch (error) {
     console.error('Error fetching admin Umrah package:', error)
     return NextResponse.json(
