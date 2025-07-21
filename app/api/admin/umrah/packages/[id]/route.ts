@@ -35,7 +35,7 @@ export async function GET(
       )
     }
 
-    return NextResponse.json({ package: umrahPackage })
+    return NextResponse.json({ umrahPackage })
   } catch (error) {
     console.error('Error fetching admin Umrah package:', error)
     return NextResponse.json(
@@ -88,7 +88,7 @@ export async function PUT(
       .returning()
 
     return NextResponse.json({
-      package: updatedPackage,
+      umrahPackage: updatedPackage,
       message: 'Umrah package updated successfully'
     })
   } catch (error) {
