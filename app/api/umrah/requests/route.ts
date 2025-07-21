@@ -124,12 +124,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if package exists
-    const [package] = await db
+    const [umrahPackage] = await db
       .select()
       .from(umrahPackages)
       .where(eq(umrahPackages.id, parseInt(packageId)))
 
-    if (!package) {
+    if (!umrahPackage) {
       return NextResponse.json(
         { error: 'Umrah package not found' },
         { status: 404 }
