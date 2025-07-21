@@ -35,7 +35,11 @@ export default function UserDashboard() {
       
       try {
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+        const timeoutId = setTimeout(() => {
+          if (!controller.signal.aborted) {
+            controller.abort()
+          }
+        }, 10000) // 10 second timeout
         
         // Fetch stats and spending data in parallel
         const [statsResponse, spendingResponse] = await Promise.all([
@@ -53,6 +57,7 @@ export default function UserDashboard() {
           })
         ])
         
+        // Clear timeout if requests completed successfully
         clearTimeout(timeoutId)
         
         if (statsResponse.ok && spendingResponse.ok) {
@@ -64,8 +69,11 @@ export default function UserDashboard() {
           throw new Error('Failed to fetch data')
         }
       } catch (error) {
-        console.error("Error fetching data:", error)
-        setError(error instanceof Error ? error.message : 'Failed to load dashboard data')
+        // Don't set error for AbortError (user navigation or timeout)
+        if (error instanceof Error && error.name !== 'AbortError') {
+          console.error("Error fetching data:", error)
+          setError(error.message || 'Failed to load dashboard data')
+        }
       } finally {
         setLoading(false)
       }
@@ -86,33 +94,6 @@ export default function UserDashboard() {
 
   // Memoize stats to prevent unnecessary re-renders
   const memoizedStats = useMemo(() => stats, [stats])
-
-  const testNotification = async () => {
-    try {
-      const response = await fetch('/api/test-notification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.id}`
-        },
-        body: JSON.stringify({
-          title: 'Test Notification',
-          message: 'This is a test notification to verify the system is working!',
-          type: 'TEST',
-          category: 'SYSTEM',
-          priority: 'NORMAL'
-        })
-      })
-
-      if (response.ok) {
-        console.log('Test notification sent successfully')
-      } else {
-        console.error('Failed to send test notification')
-      }
-    } catch (error) {
-      console.error('Error sending test notification:', error)
-    }
-  }
 
   if (!mounted) {
     return null
@@ -229,7 +210,7 @@ export default function UserDashboard() {
         </div>
 
         {/* Spending Breakdown */}
-        {spending && Object.keys(spending.spendingByService).length > 0 && (
+        {spending && spending.spendingByService && Object.keys(spending.spendingByService).length > 0 && (
           <Card className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-syria-gold/20 mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -260,7 +241,7 @@ export default function UserDashboard() {
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Link href="/user-dashboard/bookings">
             <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-syria-gold/20 hover:border-syria-gold/40">
               <CardContent className="p-6">
@@ -303,25 +284,6 @@ export default function UserDashboard() {
             </Card>
           </Link>
         </div>
-
-        {/* Test Section */}
-        <Card className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-syria-gold/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5 text-syria-gold" />
-              Test Notifications
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Test the notification system by sending a test notification.
-            </p>
-            <Button onClick={testNotification} className="bg-syria-gold hover:bg-syria-dark-gold text-white">
-              <Plus className="h-4 w-4 mr-2" />
-              Send Test Notification
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )

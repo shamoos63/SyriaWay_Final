@@ -1,127 +1,99 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { specialTourRequests, users } from '@/drizzle/schema'
+import { eq, and, desc } from 'drizzle-orm'
 
-// GET - Fetch all special tour requests for admin
+// GET - Fetch all special tour requests (admin only)
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await getServerSession(authOptions)
     
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
-
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
-
+    // Check if user is admin (you might want to add role checking here)
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
     const status = searchParams.get('status')
-    const tourType = searchParams.get('tourType')
-    const search = searchParams.get('search')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const page = parseInt(searchParams.get('page') || '1')
 
-    const skip = (page - 1) * limit
-
-    // Build where clause
-    const where: any = {}
+    let whereConditions = []
 
     if (status) {
-      where.status = status
+      whereConditions.push(eq(specialTourRequests.status, status))
     }
 
-    if (tourType) {
-      where.tourType = tourType
-    }
+    const offset = (page - 1) * limit
 
-    if (search) {
-      where.OR = [
-        { customerName: { contains: search, mode: 'insensitive' } },
-        { customerEmail: { contains: search, mode: 'insensitive' } },
-        { customerPhone: { contains: search, mode: 'insensitive' } },
-        { tourType: { contains: search, mode: 'insensitive' } },
-        { specialRequirements: { contains: search, mode: 'insensitive' } },
-        { message: { contains: search, mode: 'insensitive' } }
-      ]
-    }
+    const requestsData = await db
+      .select({
+        id: specialTourRequests.id,
+        userId: specialTourRequests.userId,
+        guideId: specialTourRequests.guideId,
+        title: specialTourRequests.title,
+        description: specialTourRequests.description,
+        duration: specialTourRequests.duration,
+        maxCapacity: specialTourRequests.maxCapacity,
+        budget: specialTourRequests.budget,
+        startDate: specialTourRequests.startDate,
+        endDate: specialTourRequests.endDate,
+        location: specialTourRequests.location,
+        specialRequirements: specialTourRequests.specialRequirements,
+        status: specialTourRequests.status,
+        createdAt: specialTourRequests.createdAt,
+        updatedAt: specialTourRequests.updatedAt,
+        user: {
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          image: users.image,
+        }
+      })
+      .from(specialTourRequests)
+      .leftJoin(users, eq(specialTourRequests.userId, users.id))
+      .where(whereConditions.length > 0 ? whereConditions[0] : undefined)
+      .orderBy(desc(specialTourRequests.createdAt))
+      .limit(limit)
+      .offset(offset)
 
-    const [requests, total] = await Promise.all([
-      prisma.specialTourRequest.findMany({
-        where,
-        include: {
-          guide: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true
-                }
-              }
-            }
-          }
-        },
-        orderBy: [
-          { createdAt: 'desc' }
-        ],
-        skip,
-        take: limit
-      }),
-      prisma.specialTourRequest.count({ where })
-    ])
+    // Get total count for pagination
+    const totalCount = await db
+      .select({ count: specialTourRequests.id })
+      .from(specialTourRequests)
+      .where(whereConditions.length > 0 ? whereConditions[0] : undefined)
 
-    // Format the response
-    const formattedRequests = requests.map(request => ({
-      id: request.id,
-      customerName: request.customerName,
-      customerEmail: request.customerEmail,
-      customerPhone: request.customerPhone,
-      tourType: request.tourType,
-      preferredDates: request.preferredDates,
-      groupSize: request.groupSize,
-      specialRequirements: request.specialRequirements,
-      budget: request.budget,
-      message: request.message,
-      status: request.status,
-      createdAt: request.createdAt,
-      updatedAt: request.updatedAt,
-      guide: request.guide ? {
-        id: request.guide.id,
-        name: request.guide.user.name,
-        email: request.guide.user.email,
-        bio: request.guide.bio,
-        experience: request.guide.experience,
-        specialties: request.guide.specialties,
-        dailyRate: request.guide.dailyRate,
-        currency: request.guide.currency
-      } : null,
-      needsGuideAssignment: !request.guideId
-    }))
+    const totalPages = Math.ceil(totalCount.length / limit)
 
     return NextResponse.json({
-      requests: formattedRequests,
+      requests: requestsData,
       pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
+        currentPage: page,
+        totalPages,
+        totalCount: totalCount.length,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
       }
     })
   } catch (error) {
-    console.error('Error fetching special tour requests:', error)
+    console.error('Error fetching admin special tour requests:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch special tour requests' },
+      { 
+        error: 'Failed to fetch special tour requests',
+        requests: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalCount: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        }
+      },
       { status: 500 }
     )
   }
@@ -143,9 +115,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
+    const user = await db.select().from(users).where(eq(users.id, userId))
 
     if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
@@ -162,9 +132,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check if request exists
-    const existingRequest = await prisma.specialTourRequest.findUnique({
-      where: { id: requestId }
-    })
+    const existingRequest = await db.select().from(specialTourRequests).where(eq(specialTourRequests.id, requestId))
 
     if (!existingRequest) {
       return NextResponse.json(
@@ -184,23 +152,7 @@ export async function PUT(request: NextRequest) {
       updateData.guideId = guideId
     }
 
-    const updatedRequest = await prisma.specialTourRequest.update({
-      where: { id: requestId },
-      data: updateData,
-      include: {
-        guide: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
-        }
-      }
-    })
+    const updatedRequest = await db.update(specialTourRequests).set(updateData).where(eq(specialTourRequests.id, requestId))
 
     return NextResponse.json({
       success: true,

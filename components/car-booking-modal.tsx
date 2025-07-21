@@ -92,18 +92,46 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
       return
     }
     
+    // Validate required fields with better error messages
     if (!startDate || !endDate) {
-      toast.error(t.booking?.pleaseSelectDates)
+      toast.error("Please select both start and end dates")
       return
     }
 
     if (startDate >= endDate) {
-      toast.error(t.booking?.endDateMustBeAfterStart)
+      toast.error("End date must be after start date")
       return
     }
 
     if (startDate < new Date()) {
-      toast.error(t.booking?.startDateCannotBePast)
+      toast.error("Start date cannot be in the past")
+      return
+    }
+
+    if (!contactName || contactName.trim() === '') {
+      toast.error("Please enter your full name")
+      return
+    }
+
+    if (!contactEmail || contactEmail.trim() === '') {
+      toast.error("Please enter your email address")
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(contactEmail)) {
+      toast.error("Please enter a valid email address")
+      return
+    }
+
+    if (!contactPhone || contactPhone.trim() === '') {
+      toast.error("Please enter your phone number")
+      return
+    }
+
+    if (guests < 1) {
+      toast.error("Number of guests must be at least 1")
       return
     }
 
@@ -113,15 +141,10 @@ export function CarBookingModal({ isOpen, onClose, car }: CarBookingModalProps) 
       const requestBody = {
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
-        guests,
-        includeDriver,
-        specialRequests,
-        contactName,
-        contactPhone,
-        contactEmail,
+        totalAmount: calculateTotalPrice(),
+        specialRequests: specialRequests || null,
       }
 
-      // Use the real user ID and car ID
       const response = await fetch(`/api/cars/${car.id}/book`, {
         method: "POST",
         headers: {

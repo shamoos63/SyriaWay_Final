@@ -1,123 +1,99 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { tours, bookings } from '@/drizzle/schema'
+import { eq, and, sql } from 'drizzle-orm'
 
-// Helper function to get guide ID from user ID
-async function getGuideIdFromUserId(userId: string) {
-  const tourGuide = await prisma.tourGuide.findFirst({
-    where: { userId: userId }
-  })
-  return tourGuide?.id
-}
-
+// GET - Fetch tour guide statistics
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    const userId = authHeader.replace('Bearer ', '')
+    const session = await getServerSession(authOptions)
     
-    // Get guide ID from user ID
-    const guideId = await getGuideIdFromUserId(userId)
-    if (!guideId) {
-      return NextResponse.json({ error: 'Guide not found' }, { status: 404 })
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    // Get current date for calculations
-    const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    const userId = parseInt(session.user.id)
 
-    // Calculate various statistics
-    const [
-      totalTours,
-      activeBookings,
-      upcomingBookings,
-      totalRevenue,
-      monthlyRevenue,
-      totalCustomers,
-      averageRating
-    ] = await Promise.all([
-      // Total tours created by this guide
-      prisma.tour.count({
-        where: {
-          guideId: guideId
+    // Get user's tours
+    const userTours = await db
+      .select({ id: tours.id })
+      .from(tours)
+      .where(eq(tours.guideId, userId))
+
+    const tourIds = userTours.map(tour => tour.id)
+
+    if (tourIds.length === 0) {
+      return NextResponse.json({
+        stats: {
+          totalTours: 0,
+          totalBookings: 0,
+          totalRevenue: 0,
+          averageRating: 0,
+          activeBookings: 0,
+          completedBookings: 0,
+          cancelledBookings: 0,
+          activeTours: 0,
         }
-      }),
-      // Active bookings (CONFIRMED status with current dates)
-      prisma.booking.count({
-        where: {
-          guideId: guideId,
-          serviceType: 'TOUR',
-          status: 'CONFIRMED',
-          startDate: { lte: now },
-          endDate: { gte: now }
-        }
-      }),
-      // Upcoming bookings (PENDING or CONFIRMED with future dates)
-      prisma.booking.count({
-        where: {
-          guideId: guideId,
-          serviceType: 'TOUR',
-          status: { in: ['PENDING', 'CONFIRMED'] },
-          startDate: { gt: now }
-        }
-      }),
-      // Total revenue
-      prisma.booking.aggregate({
-        where: {
-          guideId: guideId,
-          serviceType: 'TOUR',
-          status: { in: ['CONFIRMED', 'COMPLETED'] }
-        },
-        _sum: { totalPrice: true }
-      }),
-      // Monthly revenue
-      prisma.booking.aggregate({
-        where: {
-          guideId: guideId,
-          serviceType: 'TOUR',
-          status: { in: ['CONFIRMED', 'COMPLETED'] },
-          createdAt: {
-            gte: startOfMonth,
-            lte: endOfMonth
-          }
-        },
-        _sum: { totalPrice: true }
-      }),
-      // Total unique customers
-      prisma.booking.groupBy({
-        by: ['userId'],
-        where: {
-          guideId: guideId,
-          serviceType: 'TOUR'
-        },
-        _count: true
-      }),
-      // Average rating
-      prisma.review.aggregate({
-        where: {
-          guideId: guideId
-        },
-        _avg: { rating: true }
       })
-    ])
+    }
 
-    return NextResponse.json({
-      stats: {
-        totalTours,
-        activeBookings,
-        upcomingBookings,
-        totalRevenue: totalRevenue._sum.totalPrice || 0,
-        monthlyRevenue: monthlyRevenue._sum.totalPrice || 0,
-        totalCustomers: totalCustomers.length,
-        averageRating: averageRating._avg.rating || 0
-      }
-    })
+    // Get booking statistics
+    const bookingStats = await db
+      .select({
+        totalBookings: sql`count(*)`,
+        totalRevenue: sql`sum(totalPrice)`,
+        activeBookings: sql`count(CASE WHEN status = 'CONFIRMED' THEN 1 END)`,
+        completedBookings: sql`count(CASE WHEN status = 'COMPLETED' THEN 1 END)`,
+        cancelledBookings: sql`count(CASE WHEN status = 'CANCELLED' THEN 1 END)`,
+      })
+      .from(bookings)
+      .where(and(
+        eq(bookings.serviceType, 'TOUR'),
+        sql`${bookings.serviceId} IN (${tourIds.join(',')})`
+      ))
+
+    // Get active tours count
+    const activeToursResult = await db
+      .select({ count: sql`count(*)` })
+      .from(tours)
+      .where(and(
+        sql`${tours.id} IN (${tourIds.join(',')})`,
+        eq(tours.isActive, true)
+      ))
+
+    const stats = {
+      totalTours: tourIds.length,
+      totalBookings: bookingStats[0].totalBookings || 0,
+      totalRevenue: bookingStats[0].totalRevenue || 0,
+      averageRating: 0, // Tours don't have ratings in this schema
+      activeBookings: bookingStats[0].activeBookings || 0,
+      completedBookings: bookingStats[0].completedBookings || 0,
+      cancelledBookings: bookingStats[0].cancelledBookings || 0,
+      activeTours: activeToursResult[0].count || 0,
+    }
+
+    return NextResponse.json({ stats })
   } catch (error) {
-    console.error('Error fetching tour guide stats:', error)
+    console.error('Error fetching tour stats:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch stats' },
+      { 
+        error: 'Failed to fetch stats',
+        stats: {
+          totalTours: 0,
+          totalBookings: 0,
+          totalRevenue: 0,
+          averageRating: 0,
+          activeBookings: 0,
+          completedBookings: 0,
+          cancelledBookings: 0,
+          activeTours: 0,
+        }
+      },
       { status: 500 }
     )
   }

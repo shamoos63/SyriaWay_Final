@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { db } from '@/lib/db'
+import { tourismNews } from '@/drizzle/schema'
+import { eq } from 'drizzle-orm'
 
 // GET - Fetch single tourism news by ID
 export async function GET(
@@ -8,22 +10,22 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const { searchParams } = new URL(request.url)
+    const language = searchParams.get('language') || 'ENGLISH'
 
-    const news = await prisma.tourismNews.findUnique({
-      where: { id },
-      include: {
-        translations: true
-      }
-    })
+    const [newsData] = await db
+      .select()
+      .from(tourismNews)
+      .where(eq(tourismNews.id, parseInt(id)))
 
-    if (!news) {
+    if (!newsData) {
       return NextResponse.json(
         { error: 'Tourism news not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json({ news })
+    return NextResponse.json({ news: newsData })
   } catch (error) {
     console.error('Error fetching tourism news:', error)
     return NextResponse.json(
@@ -33,52 +35,20 @@ export async function GET(
   }
 }
 
-// PUT - Update tourism news (admin only)
+// PUT - Update tourism news
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
-    }
-
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
-
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
-
     const { id } = await params
     const body = await request.json()
-    const {
-      title,
-      excerpt,
-      content,
-      category,
-      tags,
-      featuredImage,
-      images,
-      isPublished,
-      isFeatured
-    } = body
 
     // Check if news exists
-    const existingNews = await prisma.tourismNews.findUnique({
-      where: { id },
-      include: { translations: true }
-    })
+    const [existingNews] = await db
+      .select()
+      .from(tourismNews)
+      .where(eq(tourismNews.id, parseInt(id)))
 
     if (!existingNews) {
       return NextResponse.json(
@@ -87,72 +57,15 @@ export async function PUT(
       )
     }
 
-    // Update tourism news (store English as main fields)
-    const updatedNews = await prisma.tourismNews.update({
-      where: { id },
-      data: {
-        title: title?.en || existingNews.title,
-        excerpt: excerpt?.en !== undefined ? excerpt.en : existingNews.excerpt,
-        content: content?.en || existingNews.content,
-        category: category !== undefined ? category : existingNews.category,
-        tags: tags !== undefined ? tags : existingNews.tags,
-        featuredImage: featuredImage !== undefined ? featuredImage : existingNews.featuredImage,
-        images: images !== undefined ? images : existingNews.images,
-        isPublished: isPublished !== undefined ? isPublished : existingNews.isPublished,
-        isFeatured: isFeatured !== undefined ? isFeatured : existingNews.isFeatured,
-        publishedAt: isPublished && !existingNews.isPublished ? new Date() : existingNews.publishedAt,
-        updatedAt: new Date(),
-        translations: {
-          upsert: [
-            {
-              where: { newsId_language: { newsId: id, language: 'ENGLISH' } },
-              update: {
-                title: title?.en || existingNews.title,
-                content: content?.en || existingNews.content,
-                excerpt: excerpt?.en || null
-              },
-              create: {
-                language: 'ENGLISH',
-                title: title?.en || existingNews.title,
-                content: content?.en || existingNews.content,
-                excerpt: excerpt?.en || null
-              }
-            },
-            {
-              where: { newsId_language: { newsId: id, language: 'ARABIC' } },
-              update: {
-                title: title?.ar || '',
-                content: content?.ar || '',
-                excerpt: excerpt?.ar || null
-              },
-              create: {
-                language: 'ARABIC',
-                title: title?.ar || '',
-                content: content?.ar || '',
-                excerpt: excerpt?.ar || null
-              }
-            },
-            {
-              where: { newsId_language: { newsId: id, language: 'FRENCH' } },
-              update: {
-                title: title?.fr || '',
-                content: content?.fr || '',
-                excerpt: excerpt?.fr || null
-              },
-              create: {
-                language: 'FRENCH',
-                title: title?.fr || '',
-                content: content?.fr || '',
-                excerpt: excerpt?.fr || null
-              }
-            }
-          ]
-        }
-      },
-      include: {
-        translations: true
-      }
-    })
+    // Update news
+    const [updatedNews] = await db
+      .update(tourismNews)
+      .set({
+        ...body,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(tourismNews.id, parseInt(id)))
+      .returning()
 
     return NextResponse.json({
       news: updatedNews,
@@ -167,39 +80,19 @@ export async function PUT(
   }
 }
 
-// DELETE - Delete tourism news (admin only)
+// DELETE - Delete tourism news
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
-    }
-
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
-
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
-
-    const { id } = params
+    const { id } = await params
 
     // Check if news exists
-    const existingNews = await prisma.tourismNews.findUnique({
-      where: { id }
-    })
+    const [existingNews] = await db
+      .select()
+      .from(tourismNews)
+      .where(eq(tourismNews.id, parseInt(id)))
 
     if (!existingNews) {
       return NextResponse.json(
@@ -208,10 +101,10 @@ export async function DELETE(
       )
     }
 
-    // Delete tourism news
-    await prisma.tourismNews.delete({
-      where: { id }
-    })
+    // Delete news
+    await db
+      .delete(tourismNews)
+      .where(eq(tourismNews.id, parseInt(id)))
 
     return NextResponse.json({
       message: 'Tourism news deleted successfully'

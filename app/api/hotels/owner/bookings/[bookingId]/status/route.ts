@@ -1,154 +1,79 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@/lib/generated/prisma'
-import { createBookingStatusNotification } from '@/lib/notifications'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { bookings, hotels } from '@/drizzle/schema'
+import { eq, and } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
+// PUT - Update booking status
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { bookingId: string } }
+  { params }: { params: Promise<{ bookingId: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
-    const ownerId = authHeader.replace('Bearer ', '')
 
+    const { bookingId } = await params
     const body = await request.json()
     const { status } = body
 
-    // Validate status
-    const validStatuses = ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED']
-    if (!validStatuses.includes(status)) {
+    if (!status) {
       return NextResponse.json(
-        { error: 'Invalid status' },
+        { error: 'Status is required' },
         { status: 400 }
       )
     }
 
-    // Find the booking and verify it belongs to a hotel owned by this user
-    const booking = await prisma.booking.findFirst({
-      where: { 
-        id: params.bookingId,
-        serviceType: 'HOTEL',
-        hotel: {
-          ownerId: ownerId
-        }
-      },
-      include: {
-        hotel: {
-          select: {
-            id: true,
-            name: true,
-            ownerId: true
-          }
-        },
-        room: {
-          select: {
-            id: true,
-            name: true,
-            roomType: true
-          }
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
-    })
+    // Get the booking
+    const [booking] = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, parseInt(bookingId)))
 
     if (!booking) {
       return NextResponse.json(
-        { error: 'Booking not found or access denied' },
+        { error: 'Booking not found' },
         { status: 404 }
       )
     }
 
-    // Update the booking status
-    const updatedBooking = await prisma.booking.update({
-      where: { id: params.bookingId },
-      data: { status },
-      include: {
-        hotel: {
-          select: {
-            id: true,
-            name: true,
-            ownerId: true
-          }
-        },
-        room: {
-          select: {
-            id: true,
-            name: true,
-            roomType: true
-          }
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
-    })
+    // Check if the hotel belongs to the user
+    const [hotel] = await db
+      .select()
+      .from(hotels)
+      .where(and(
+        eq(hotels.id, booking.serviceId),
+        eq(hotels.ownerId, parseInt(session.user.id))
+      ))
 
-    // Update room availability based on booking status
-    if (updatedBooking.roomId) {
-      let isAvailable = true
-      if (status === 'CONFIRMED') {
-        isAvailable = false
-      } else if (status === 'CANCELLED' || status === 'COMPLETED') {
-        isAvailable = true
-      }
-      
-      await prisma.room.update({
-        where: { id: updatedBooking.roomId },
-        data: { isAvailable }
-      })
+    if (!hotel) {
+      return NextResponse.json(
+        { error: 'Unauthorized to modify this booking' },
+        { status: 403 }
+      )
     }
 
-    // Create notifications for both customer and service provider
-    const serviceName = `${booking.hotel.name}${booking.room ? ` - ${booking.room.name}` : ''}`
-    await createBookingStatusNotification(
-      booking.id,
-      booking.userId,
-      booking.hotel.ownerId,
-      status,
-      serviceName,
-      "HOTEL",
-      status === "CONFIRMED" ? "Your hotel booking has been confirmed!" : 
-      status === "CANCELLED" ? "Your hotel booking has been cancelled." :
-      status === "COMPLETED" ? "Your hotel stay has been completed." : ""
-    )
+    // Update booking status
+    const [updatedBooking] = await db
+      .update(bookings)
+      .set({
+        status,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(bookings.id, parseInt(bookingId)))
+      .returning()
 
     return NextResponse.json({
-      booking: {
-        id: updatedBooking.id,
-        hotelId: updatedBooking.hotelId,
-        hotelName: updatedBooking.hotel?.name,
-        roomType: updatedBooking.room?.roomType,
-        roomName: updatedBooking.room?.name,
-        customerId: updatedBooking.userId,
-        customerName: updatedBooking.user?.name,
-        customerEmail: updatedBooking.user?.email,
-        customerPhone: updatedBooking.user?.phone,
-        checkInDate: updatedBooking.startDate,
-        checkOutDate: updatedBooking.endDate,
-        numberOfGuests: updatedBooking.guests,
-        totalAmount: updatedBooking.totalPrice,
-        status: updatedBooking.status,
-        specialRequests: updatedBooking.specialRequests,
-        createdAt: updatedBooking.createdAt,
-        updatedAt: updatedBooking.updatedAt,
-      },
+      booking: updatedBooking,
       message: 'Booking status updated successfully'
     })
-
   } catch (error) {
     console.error('Error updating booking status:', error)
     return NextResponse.json(

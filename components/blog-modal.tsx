@@ -1,355 +1,404 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Heart, ThumbsDown, Calendar, User, Eye, Globe, ZoomIn } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
-import { Blog, User as UserType } from '@prisma/client'
-import { useLanguage } from "@/lib/i18n/language-context"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
-interface BlogModalProps {
-  blog: Blog & {
-    author: UserType
-  } | null
-  isOpen: boolean
-  onClose: () => void
-  userReactions: Record<string, string>
-  onReaction: (blogId: string, reaction: 'LIKE' | 'DISLIKE') => Promise<void>
-  reacting: string | null
+// Define types without Prisma dependency
+interface User {
+  id: string
+  name: string | null
+  email: string
+  image: string | null
 }
 
-export default function BlogModal({
-  blog,
-  isOpen,
-  onClose,
-  userReactions,
-  onReaction,
-  reacting
-}: BlogModalProps) {
-  const { language } = useLanguage()
-  const [isVisible, setIsVisible] = useState(false)
-  const [localUserReactions, setLocalUserReactions] = useState<Record<string, string>>({})
-  const [selectedLanguage, setSelectedLanguage] = useState(language)
-  const [expandedImage, setExpandedImage] = useState<string | null>(null)
+interface Blog {
+  id: string
+  title: string
+  slug: string
+  excerpt: string | null
+  content: string
+  metaTitle: string | null
+  metaDescription: string | null
+  keywords: string | null
+  featuredImage: string | null
+  images: string | null
+  category: string | null
+  tags: string | null
+  status: string
+  isPublished: boolean
+  isFeatured: boolean
+  likes: number
+  dislikes: number
+  views: number
+  submittedAt: string | null
+  approvedAt: string | null
+  approvedBy: string | null
+  rejectedAt: string | null
+  rejectedBy: string | null
+  rejectionReason: string | null
+  publishedAt: string | null
+  createdAt: string
+  updatedAt: string
+  authorId: string
+  author?: User
+  translations?: BlogTranslation[]
+}
+
+interface BlogTranslation {
+  id: string
+  blogId: string
+  language: string
+  title: string
+  slug: string
+  excerpt: string | null
+  content: string
+  metaTitle: string | null
+  metaDescription: string | null
+}
+
+interface BlogModalProps {
+  blog: Blog | null
+  isOpen: boolean
+  onClose: () => void
+  onSave: (blog: Partial<Blog>) => void
+  isEditing?: boolean
+}
+
+export function BlogModal({ blog, isOpen, onClose, onSave, isEditing = false }: BlogModalProps) {
+  const [formData, setFormData] = useState({
+    title: {
+      en: '',
+      ar: '',
+      fr: ''
+    },
+    excerpt: {
+      en: '',
+      ar: '',
+      fr: ''
+    },
+    content: {
+      en: '',
+      ar: '',
+      fr: ''
+    },
+    category: '',
+    status: 'DRAFT',
+    isPublished: false,
+    isFeatured: false,
+    featuredImage: '',
+    metaTitle: '',
+    metaDescription: '',
+    keywords: ''
+  })
+
+  const [currentLanguage, setCurrentLanguage] = useState<'en' | 'ar' | 'fr'>('en')
 
   useEffect(() => {
-    if (isOpen) {
-      setIsVisible(true)
-      document.body.style.overflow = 'hidden'
-      
-      // Initialize user reactions from blog data
-      if (blog?.reactions) {
-        const reactions: Record<string, string> = {}
-        blog.reactions.forEach(reaction => {
-          reactions[reaction.userId] = reaction.reaction
-        })
-        setLocalUserReactions(reactions)
-      }
+    if (blog) {
+      // Map language codes to enum values
+      const languageMap = {
+        'en': 'ENGLISH',
+        'ar': 'ARABIC', 
+        'fr': 'FRENCH'
+      } as const
+
+      setFormData({
+        title: {
+          en: blog.title || '',
+          ar: blog.translations?.find(t => t.language === languageMap.ar)?.title || '',
+          fr: blog.translations?.find(t => t.language === languageMap.fr)?.title || ''
+        },
+        excerpt: {
+          en: blog.excerpt || '',
+          ar: blog.translations?.find(t => t.language === languageMap.ar)?.excerpt || '',
+          fr: blog.translations?.find(t => t.language === languageMap.fr)?.excerpt || ''
+        },
+        content: {
+          en: blog.content || '',
+          ar: blog.translations?.find(t => t.language === languageMap.ar)?.content || '',
+          fr: blog.translations?.find(t => t.language === languageMap.fr)?.content || ''
+        },
+        category: blog.category || '',
+        status: blog.status,
+        isPublished: blog.isPublished,
+        isFeatured: blog.isFeatured,
+        featuredImage: blog.featuredImage || '',
+        metaTitle: blog.metaTitle || '',
+        metaDescription: blog.metaDescription || '',
+        keywords: blog.keywords || ''
+      })
     } else {
-      setIsVisible(false)
-      document.body.style.overflow = 'unset'
-      setExpandedImage(null)
+      // Reset form for new blog
+      setFormData({
+        title: { en: '', ar: '', fr: '' },
+        excerpt: { en: '', ar: '', fr: '' },
+        content: { en: '', ar: '', fr: '' },
+        category: '',
+        status: 'DRAFT',
+        isPublished: false,
+        isFeatured: false,
+        featuredImage: '',
+        metaTitle: '',
+        metaDescription: '',
+        keywords: ''
+      })
     }
+  }, [blog])
 
-    return () => {
-      document.body.style.overflow = 'unset'
-    }
-  }, [isOpen, blog])
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
 
-  if (!blog || !isOpen) return null
-
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  }
-
-  const userReaction = localUserReactions[blog.author.id] || userReactions[blog.id]
-
-  const handleReaction = async (reaction: 'LIKE' | 'DISLIKE') => {
-    await onReaction(blog.id, reaction)
-    
-    // Update local reactions
-    if (localUserReactions[blog.author.id] === reaction) {
-      const newReactions = { ...localUserReactions }
-      delete newReactions[blog.author.id]
-      setLocalUserReactions(newReactions)
-    } else {
-      setLocalUserReactions({ ...localUserReactions, [blog.author.id]: reaction })
-    }
-  }
-
-  // Get the correct translation for the selected language
-  const getTranslatedContent = (field: 'title' | 'excerpt' | 'content', lang: string) => {
-    if (!blog) return ''
-    
-    // Map language codes to Prisma enum values
-    const languageMap = {
-      'en': 'ENGLISH',
-      'ar': 'ARABIC',
-      'fr': 'FRENCH'
-    } as const
-    
-    const languageEnum = languageMap[lang as keyof typeof languageMap]
-    
-    // If blog has translations, use the one for selected language
-    if (blog.translations && blog.translations.length > 0) {
-      const translation = blog.translations.find(t => t.language === languageEnum)
-      if (translation && translation[field]) {
-        return translation[field]
+    try {
+      const blogData = {
+        title: formData.title.en,
+        excerpt: formData.excerpt.en,
+        content: formData.content.en,
+        category: formData.category,
+        status: formData.status,
+        isPublished: formData.isPublished,
+        isFeatured: formData.isFeatured,
+        featuredImage: formData.featuredImage,
+        metaTitle: formData.metaTitle,
+        metaDescription: formData.metaDescription,
+        keywords: formData.keywords,
+        translations: [
+          {
+            language: 'ARABIC',
+            title: formData.title.ar,
+            excerpt: formData.excerpt.ar,
+            content: formData.content.ar,
+          },
+          {
+            language: 'FRENCH',
+            title: formData.title.fr,
+            excerpt: formData.excerpt.fr,
+            content: formData.content.fr,
+          }
+        ].filter(t => t.title && t.content) // Only include translations with content
       }
+
+      onSave(blogData)
+      onClose()
+      toast({
+        title: isEditing ? "Blog updated successfully" : "Blog created successfully",
+        description: "Your blog has been saved.",
+      })
+    } catch (error) {
+      console.error('Error saving blog:', error)
+      toast({
+        title: "Error",
+        description: "Failed to save blog. Please try again.",
+        variant: "destructive",
+      })
     }
-    
-    // Fallback to main blog fields (English)
-    return blog[field] || ''
-  }
-
-  // Get available translations
-  const getAvailableTranslations = () => {
-    if (!blog?.translations) return []
-    
-    const translations = blog.translations.map(t => t.language)
-    const available = []
-    
-    if (translations.includes('ENGLISH') || blog.title) available.push('en')
-    if (translations.includes('ARABIC')) available.push('ar')
-    if (translations.includes('FRENCH')) available.push('fr')
-    
-    return available
-  }
-
-  const availableTranslations = getAvailableTranslations()
-  const currentTranslation = getTranslatedContent('title', selectedLanguage)
-  const currentExcerpt = getTranslatedContent('excerpt', selectedLanguage)
-  const currentContent = getTranslatedContent('content', selectedLanguage)
-
-  const handleImageClick = (imageUrl: string) => {
-    setExpandedImage(imageUrl)
-  }
-
-  const closeExpandedImage = () => {
-    setExpandedImage(null)
   }
 
   return (
-    <>
-      <div className={`fixed inset-0 z-[9999] transition-all duration-300 ${
-        isVisible ? 'opacity-100' : 'opacity-0'
-      }`}>
-        {/* Backdrop */}
-        <div 
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={onClose}
-        />
-        
-        {/* Modal */}
-        <div className="absolute inset-0 flex items-center justify-center p-4">
-          <div className={`bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden transition-all duration-300 transform ${
-            isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
-          }`}>
-            {/* Header */}
-            <div className="relative bg-gradient-to-r from-syria-gold to-syria-dark-gold p-4 sm:p-6 text-white">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? 'Edit Blog Post' : 'Create New Blog Post'}
+          </DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Language Tabs */}
+          <div className="flex space-x-2 border-b">
+            {(['en', 'ar', 'fr'] as const).map((lang) => (
               <button
-                onClick={onClose}
-                className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+                key={lang}
+                type="button"
+                onClick={() => setCurrentLanguage(lang)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  currentLanguage === lang
+                    ? 'border-syria-gold text-syria-gold'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
               >
-                <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                {lang === 'en' ? 'English' : lang === 'ar' ? 'العربية' : 'Français'}
               </button>
-              
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3">
-                <Badge variant="secondary" className="bg-white/20 text-white border-white/30 text-xs">
-                  <Calendar className="w-3 h-3 mr-1" />
-                  {formatDate(blog.createdAt)}
-                </Badge>
-                <Badge variant="secondary" className="bg-white/20 text-white border-white/30 text-xs">
-                  <User className="w-3 h-3 mr-1" />
-                  {blog.author.name || 'Anonymous'}
-                </Badge>
-                {blog.category && (
-                  <Badge variant="secondary" className="bg-white/20 text-white border-white/30 text-xs">
-                    {blog.category}
-                  </Badge>
-                )}
-              </div>
-              
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight pr-12">{currentTranslation}</h1>
-            </div>
-
-            {/* Featured Image */}
-            {blog.featuredImage && (
-              <div className="relative h-32 sm:h-40 w-full cursor-pointer group" onClick={() => handleImageClick(blog.featuredImage!)}>
-                <img
-                  src={blog.featuredImage}
-                  alt={currentTranslation}
-                  className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
-                  <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                </div>
-              </div>
-            )}
-
-            {/* Language Tabs */}
-            {availableTranslations.length > 1 && (
-              <div className="border-b border-gray-200 dark:border-gray-700">
-                <Tabs value={selectedLanguage} onValueChange={setSelectedLanguage} className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 bg-gray-100 dark:bg-gray-800">
-                    {availableTranslations.includes('en') && (
-                      <TabsTrigger value="en" className="text-xs sm:text-sm">English</TabsTrigger>
-                    )}
-                    {availableTranslations.includes('ar') && (
-                      <TabsTrigger value="ar" className="text-xs sm:text-sm">العربية</TabsTrigger>
-                    )}
-                    {availableTranslations.includes('fr') && (
-                      <TabsTrigger value="fr" className="text-xs sm:text-sm">Français</TabsTrigger>
-                    )}
-                  </TabsList>
-                </Tabs>
-              </div>
-            )}
-
-            {/* Content */}
-            <div className="p-4 sm:p-6 overflow-y-auto max-h-[50vh] sm:max-h-[60vh]">
-              {currentExcerpt && (
-                <div className="mb-6">
-                  <p className="text-lg text-gray-600 dark:text-gray-300 italic border-l-4 border-syria-gold pl-4">
-                    {currentExcerpt}
-                  </p>
-                </div>
-              )}
-              
-              <div className="prose prose-sm sm:prose-base lg:prose-lg max-w-none dark:prose-invert">
-                <div 
-                  className="prose"
-                  dangerouslySetInnerHTML={{ __html: currentContent }}
-                />
-              </div>
-
-              {/* Additional Images */}
-              {blog.images && blog.images.length > 0 && (
-                <div className="mt-8">
-                  <h3 className="text-lg font-semibold mb-4">
-                    {language === "ar" ? "صور إضافية" : language === "fr" ? "Images supplémentaires" : "Additional Images"}
-                  </h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {blog.images.map((image, index) => (
-                      <div 
-                        key={index} 
-                        className="relative h-24 sm:h-32 w-full cursor-pointer group rounded-lg overflow-hidden"
-                        onClick={() => handleImageClick(image)}
-                      >
-                        <img
-                          src={image}
-                          alt={`${blog.title} - Image ${index + 1}`}
-                          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
-                          <ZoomIn className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Tags */}
-              {blog.tags && blog.tags.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-semibold mb-3">
-                    {language === "ar" ? "العلامات" : language === "fr" ? "Tags" : "Tags"}
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {blog.tags.map((tag, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="border-t border-gray-200 dark:border-gray-700 p-4 sm:p-6 bg-gray-50 dark:bg-gray-800">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleReaction('LIKE')}
-                      disabled={reacting === blog.id}
-                      className={`flex items-center gap-2 ${
-                        userReaction === 'LIKE' 
-                          ? 'text-red-500 bg-red-50 hover:bg-red-100' 
-                          : 'hover:bg-gray-100'
-                      }`}
-                    >
-                      <Heart className={`w-4 h-4 ${userReaction === 'LIKE' ? 'fill-current' : ''}`} />
-                      <span className="text-sm">
-                        {blog.reactions?.filter(r => r.reaction === 'LIKE').length || 0}
-                      </span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleReaction('DISLIKE')}
-                      disabled={reacting === blog.id}
-                      className={`flex items-center gap-2 ${
-                        userReaction === 'DISLIKE' 
-                          ? 'text-blue-500 bg-blue-50 hover:bg-blue-100' 
-                          : 'hover:bg-gray-100'
-                      }`}
-                    >
-                      <ThumbsDown className={`w-4 h-4 ${userReaction === 'DISLIKE' ? 'fill-current' : ''}`} />
-                      <span className="text-sm">
-                        {blog.reactions?.filter(r => r.reaction === 'DISLIKE').length || 0}
-                      </span>
-                    </Button>
-                  </div>
-                  <div className="flex items-center gap-1 text-gray-500">
-                    <Eye className="w-4 h-4" />
-                    <span className="text-sm">
-                      {language === "ar" ? "تم النشر في" : language === "fr" ? "Publié le" : "Published on"} {formatDate(blog.createdAt)}
-                    </span>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={onClose}
-                  className="bg-syria-gold hover:bg-syria-dark-gold text-white w-full sm:w-auto"
-                >
-                  {language === "ar" ? "إغلاق" : language === "fr" ? "Fermer" : "Close"}
-                </Button>
-              </div>
-            </div>
+            ))}
           </div>
-        </div>
-      </div>
 
-      {/* Expanded Image Modal */}
-      {expandedImage && (
-        <div className="fixed inset-0 z-[10000] bg-black/90 flex items-center justify-center p-4" onClick={closeExpandedImage}>
-          <div className="relative max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center">
-            <button
-              onClick={closeExpandedImage}
-              className="absolute top-4 right-4 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors z-10"
-            >
-              <X className="w-6 h-6 text-white" />
-            </button>
-            <img
-              src={expandedImage}
-              alt="Expanded view"
-              className="max-w-full max-h-full object-contain"
-              onClick={(e) => e.stopPropagation()}
+          {/* Title */}
+          <div className="space-y-2">
+            <Label htmlFor="title">Title *</Label>
+            <Input
+              id="title"
+              value={formData.title[currentLanguage]}
+              onChange={(e) => setFormData(prev => ({
+                ...prev,
+                title: { ...prev.title, [currentLanguage]: e.target.value }
+              }))}
+              placeholder="Enter blog title..."
+              required={currentLanguage === 'en'}
             />
           </div>
-        </div>
-      )}
-    </>
+
+          {/* Excerpt */}
+          <div className="space-y-2">
+            <Label htmlFor="excerpt">Excerpt</Label>
+            <Textarea
+              id="excerpt"
+              value={formData.excerpt[currentLanguage]}
+              onChange={(e) => setFormData(prev => ({
+                ...prev,
+                excerpt: { ...prev.excerpt, [currentLanguage]: e.target.value }
+              }))}
+              placeholder="Enter blog excerpt..."
+              rows={3}
+            />
+          </div>
+
+          {/* Content */}
+          <div className="space-y-2">
+            <Label htmlFor="content">Content *</Label>
+            <Textarea
+              id="content"
+              value={formData.content[currentLanguage]}
+              onChange={(e) => setFormData(prev => ({
+                ...prev,
+                content: { ...prev.content, [currentLanguage]: e.target.value }
+              }))}
+              placeholder="Enter blog content..."
+              rows={10}
+              required={currentLanguage === 'en'}
+            />
+          </div>
+
+          {/* Category and Status */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="category">Category</Label>
+              <Select
+                value={formData.category}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TRAVEL">Travel</SelectItem>
+                  <SelectItem value="CULTURE">Culture</SelectItem>
+                  <SelectItem value="FOOD">Food</SelectItem>
+                  <SelectItem value="HISTORY">History</SelectItem>
+                  <SelectItem value="NATURE">Nature</SelectItem>
+                  <SelectItem value="ADVENTURE">Adventure</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DRAFT">Draft</SelectItem>
+                  <SelectItem value="PUBLISHED">Published</SelectItem>
+                  <SelectItem value="ARCHIVED">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Featured Image */}
+          <div className="space-y-2">
+            <Label htmlFor="featuredImage">Featured Image URL</Label>
+            <Input
+              id="featuredImage"
+              value={formData.featuredImage}
+              onChange={(e) => setFormData(prev => ({ ...prev, featuredImage: e.target.value }))}
+              placeholder="Enter image URL..."
+            />
+          </div>
+
+          {/* SEO Fields */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">SEO Settings</h3>
+            
+            <div className="space-y-2">
+              <Label htmlFor="metaTitle">Meta Title</Label>
+              <Input
+                id="metaTitle"
+                value={formData.metaTitle}
+                onChange={(e) => setFormData(prev => ({ ...prev, metaTitle: e.target.value }))}
+                placeholder="Enter meta title..."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="metaDescription">Meta Description</Label>
+              <Textarea
+                id="metaDescription"
+                value={formData.metaDescription}
+                onChange={(e) => setFormData(prev => ({ ...prev, metaDescription: e.target.value }))}
+                placeholder="Enter meta description..."
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="keywords">Keywords</Label>
+              <Input
+                id="keywords"
+                value={formData.keywords}
+                onChange={(e) => setFormData(prev => ({ ...prev, keywords: e.target.value }))}
+                placeholder="Enter keywords (comma separated)..."
+              />
+            </div>
+          </div>
+
+          {/* Options */}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="isPublished"
+                checked={formData.isPublished}
+                onChange={(e) => setFormData(prev => ({ ...prev, isPublished: e.target.checked }))}
+                className="rounded"
+              />
+              <Label htmlFor="isPublished">Published</Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="isFeatured"
+                checked={formData.isFeatured}
+                onChange={(e) => setFormData(prev => ({ ...prev, isFeatured: e.target.checked }))}
+                className="rounded"
+              />
+              <Label htmlFor="isFeatured">Featured</Label>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" className="bg-syria-gold hover:bg-syria-dark-gold">
+              {isEditing ? 'Update Blog' : 'Create Blog'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
-} 
+}
+
+// Add default export
+export default BlogModal 

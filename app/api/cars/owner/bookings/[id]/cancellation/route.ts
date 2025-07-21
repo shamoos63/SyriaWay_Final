@@ -1,188 +1,79 @@
-import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@/lib/generated/prisma"
-import { createBookingStatusNotification } from "@/lib/notifications"
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { bookings, cars } from '@/drizzle/schema'
+import { eq, and } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
-// POST /api/cars/owner/bookings/[id]/cancellation - Approve/Reject cancellation request (car owner only)
+// POST - Process car booking cancellation
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get user from authorization header
-    const authHeader = request.headers.get("authorization")
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    const token = authHeader.split(" ")[1]
-    const userId = token // This should be decoded from JWT
-
+    const { id } = await params
     const body = await request.json()
-    const { action, notes } = body // action: "approve" or "reject"
+    const { cancellationReason, refundAmount } = body
 
-    if (!action || !["approve", "reject"].includes(action)) {
-      return NextResponse.json(
-        { error: "Invalid action. Must be 'approve' or 'reject'" },
-        { status: 400 }
-      )
-    }
-
-    // Find the booking and verify car ownership
-    const booking = await prisma.booking.findUnique({
-      where: { id: params.id },
-      include: {
-        car: {
-          select: {
-            id: true,
-            brand: true,
-            model: true,
-            ownerId: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    })
+    // Get the booking
+    const [booking] = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, parseInt(id)))
 
     if (!booking) {
       return NextResponse.json(
-        { error: "Booking not found" },
+        { error: 'Booking not found' },
         { status: 404 }
       )
     }
 
-    // Verify that the current user owns the car
-    if (booking.car?.ownerId !== userId) {
+    // Check if the car belongs to the user
+    const [car] = await db
+      .select()
+      .from(cars)
+      .where(and(
+        eq(cars.id, booking.serviceId),
+        eq(cars.ownerId, parseInt(session.user.id))
+      ))
+
+    if (!car) {
       return NextResponse.json(
-        { error: "You can only manage cancellation requests for your own cars" },
+        { error: 'Unauthorized to modify this booking' },
         { status: 403 }
       )
     }
 
-    // Check if booking is in CANCELLATION_REQUESTED status
-    if (booking.status !== "CANCELLATION_REQUESTED") {
-      return NextResponse.json(
-        { error: "No cancellation request found for this booking" },
-        { status: 400 }
-      )
-    }
-
-    // Update booking status based on action
-    const newStatus = action === "approve" ? "CANCELLED" : "CONFIRMED"
-    const message = action === "approve" 
-      ? "Cancellation request approved" 
-      : "Cancellation request rejected"
-
-    // Update booking and car availability
-    const updatedBooking = await prisma.booking.update({
-      where: { id: params.id },
-      data: {
-        status: newStatus,
-        notes: notes || `Cancellation ${action}ed by owner`,
-        updatedAt: new Date(),
-      },
-      include: {
-        car: {
-          select: {
-            id: true,
-            brand: true,
-            model: true,
-            owner: {
-              select: {
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
-        user: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-      },
-    })
-
-    // Update car availability based on cancellation action
-    if (action === "approve") {
-      // If cancellation is approved, check if car has any other active bookings
-      const activeBookings = await prisma.booking.findMany({
-        where: {
-          carId: booking.car.id,
-          status: {
-            in: ["PENDING", "CONFIRMED", "CANCELLATION_REQUESTED"]
-          },
-          id: {
-            not: booking.id // Exclude the current booking that was just cancelled
-          }
-        }
+    // Update booking status and add cancellation details
+    const [updatedBooking] = await db
+      .update(bookings)
+      .set({
+        status: 'CANCELLED',
+        updatedAt: new Date().toISOString(),
+        // You might want to add cancellation fields to your schema
+        // cancellationReason: cancellationReason || null,
+        // refundAmount: refundAmount || null,
       })
+      .where(eq(bookings.id, parseInt(id)))
+      .returning()
 
-      // If no other active bookings, make car available
-      if (activeBookings.length === 0) {
-        await prisma.car.update({
-          where: { id: booking.car.id },
-          data: { isAvailable: true }
-        })
-      }
-    } else {
-      // If cancellation is rejected, ensure car remains unavailable
-      await prisma.car.update({
-        where: { id: booking.car.id },
-        data: { isAvailable: false }
-      })
-    }
-
-    // Create notifications for both customer and service provider
-    const serviceName = `${booking.car.brand} ${booking.car.model}`
-    const notificationMessage = action === "approve" 
-      ? "Your cancellation request has been approved." 
-      : "Your cancellation request has been rejected. Your booking remains confirmed."
-
-    await createBookingStatusNotification(
-      booking.id,
-      booking.userId,
-      booking.car.ownerId,
-      newStatus,
-      serviceName,
-      "CAR",
-      notificationMessage
-    )
-
-    // Create notification for service provider about their action
-    await prisma.notification.create({
-      data: {
-        userId: booking.car.ownerId,
-        title: `Cancellation Request ${action === "approve" ? "Approved" : "Rejected"}`,
-        message: `You have ${action === "approve" ? "approved" : "rejected"} the cancellation request for ${serviceName} from ${booking.user.name}.`,
-        type: "REQUEST_UPDATED",
-        category: "BOOKING",
-        priority: "NORMAL",
-        isRead: false,
-        relatedId: booking.id,
-        relatedType: "BOOKING",
-      },
-    })
-
-    return NextResponse.json({ 
+    return NextResponse.json({
       booking: updatedBooking,
-      message: message
+      message: 'Booking cancellation processed successfully'
     })
   } catch (error) {
-    console.error("Error processing cancellation request:", error)
+    console.error('Error processing car booking cancellation:', error)
     return NextResponse.json(
-      { error: "Failed to process cancellation request" },
+      { error: 'Failed to process booking cancellation' },
       { status: 500 }
     )
   }

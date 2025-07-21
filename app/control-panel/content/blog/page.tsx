@@ -501,12 +501,12 @@ export default function AdminBlogPage() {
                       {blog.category}
                     </Badge>
                   )}
-                  {blog.tags?.slice(0, 3).map((tag, index) => (
+                  {(Array.isArray(blog.tags) ? blog.tags : typeof blog.tags === 'string' ? blog.tags.split(',') : []).slice(0, 3).map((tag, index) => (
                     <Badge key={index} variant="outline" className="text-xs">
                       {tag}
                     </Badge>
                   ))}
-                  {blog.tags && blog.tags.length > 3 && (
+                  {Array.isArray(blog.tags) && blog.tags.length > 3 && (
                     <Badge variant="outline" className="text-xs">
                       +{blog.tags.length - 3} more
                     </Badge>
@@ -720,7 +720,7 @@ export default function AdminBlogPage() {
                 {viewingBlog.category && (
                   <Badge variant="outline">{viewingBlog.category}</Badge>
                 )}
-                {viewingBlog.tags?.map((tag, index) => (
+                {(Array.isArray(viewingBlog.tags) ? viewingBlog.tags : typeof viewingBlog.tags === 'string' ? viewingBlog.tags.split(',') : []).map((tag, index) => (
                   <Badge key={index} variant="outline">{tag}</Badge>
                 ))}
               </div>

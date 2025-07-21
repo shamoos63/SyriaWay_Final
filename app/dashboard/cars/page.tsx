@@ -586,9 +586,9 @@ export default function CarOwnerDashboard() {
                       Total Revenue
                     </p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      ${revenueData?.totalRevenue?.toFixed(2) || stats?.totalRevenue || 0}
+                      ${typeof revenueData?.totalRevenue === 'number' ? revenueData.totalRevenue.toFixed(2) : (typeof stats?.totalRevenue === 'number' ? stats.totalRevenue.toFixed(2) : '0.00')}
                     </p>
-                    {revenueData?.revenueGrowth !== undefined && revenueData.revenueGrowth !== 0 && (
+                    {typeof revenueData?.revenueGrowth === 'number' && revenueData.revenueGrowth !== 0 && (
                       <p className={`text-xs mt-1 ${revenueData.revenueGrowth > 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {revenueData.revenueGrowth > 0 ? '+' : ''}{revenueData.revenueGrowth.toFixed(1)}% vs last month
                       </p>
@@ -642,13 +642,13 @@ export default function CarOwnerDashboard() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600 dark:text-gray-400">This Month</span>
-                    <span className="font-medium">${revenueData?.monthlyRevenue?.toFixed(2) || stats?.monthlyRevenue || 0}</span>
+                    <span className="font-medium">${typeof revenueData?.monthlyRevenue === 'number' ? revenueData.monthlyRevenue.toFixed(2) : (typeof stats?.monthlyRevenue === 'number' ? stats.monthlyRevenue.toFixed(2) : '0.00')}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600 dark:text-gray-400">Total</span>
-                    <span className="font-medium">${revenueData?.totalRevenue?.toFixed(2) || stats?.totalRevenue || 0}</span>
+                    <span className="font-medium">${typeof revenueData?.totalRevenue === 'number' ? revenueData.totalRevenue.toFixed(2) : (typeof stats?.totalRevenue === 'number' ? stats.totalRevenue.toFixed(2) : '0.00')}</span>
                   </div>
-                  {revenueData?.averagePerBooking && (
+                  {typeof revenueData?.averagePerBooking === 'number' && (
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600 dark:text-gray-400">Average per Booking</span>
                       <span className="font-medium">${revenueData.averagePerBooking.toFixed(2)}</span>

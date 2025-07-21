@@ -1,119 +1,104 @@
-import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@/lib/generated/prisma"
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { bookings } from '@/drizzle/schema'
+import { eq, and, gte, lte } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
-// GET /api/user/spending - Get user's total spending
 export async function GET(request: NextRequest) {
   try {
-    // Get user from authorization header
-    const authHeader = request.headers.get("authorization")
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "Authentication required. Please sign in to view your spending." },
+        { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    const token = authHeader.split(" ")[1]
-    const userId = token // In this implementation, the token is the user ID
+    const { searchParams } = new URL(request.url)
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    const serviceType = searchParams.get('serviceType')
 
-    // Validate that the user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, name: true, status: true }
-    })
+    let whereConditions = [eq(bookings.userId, parseInt(session.user.id))]
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      )
+    // Filter by date range
+    if (startDate) {
+      whereConditions.push(gte(bookings.createdAt, startDate))
     }
 
-    if (user.status !== "ACTIVE") {
-      return NextResponse.json(
-        { error: "Account is not active" },
-        { status: 403 }
-      )
+    if (endDate) {
+      whereConditions.push(lte(bookings.createdAt, endDate))
     }
 
-    // Get all completed and confirmed bookings for the user
-    const bookings = await prisma.booking.findMany({
-      where: {
-        userId: userId,
-        status: {
-          in: ["CONFIRMED", "COMPLETED"]
-        }
-      },
-      select: {
-        id: true,
-        totalPrice: true,
-        currency: true,
-        status: true,
-        serviceType: true,
-        createdAt: true,
-        startDate: true,
-        endDate: true
+    // Filter by service type
+    if (serviceType) {
+      whereConditions.push(eq(bookings.serviceType, serviceType))
+    }
+
+    const spendingData = await db
+      .select({
+        id: bookings.id,
+        serviceType: bookings.serviceType,
+        serviceId: bookings.serviceId,
+        startDate: bookings.startDate,
+        endDate: bookings.endDate,
+        totalPrice: bookings.totalPrice,
+        currency: bookings.currency,
+        status: bookings.status,
+        paymentStatus: bookings.paymentStatus,
+        numberOfPeople: bookings.numberOfPeople,
+        createdAt: bookings.createdAt,
+      })
+      .from(bookings)
+      .where(and(...whereConditions))
+      .orderBy(bookings.createdAt)
+
+    // Calculate totals
+    const totalSpent = spendingData.reduce((sum, booking) => {
+      if (booking.paymentStatus === 'PAID') {
+        return sum + booking.totalPrice
       }
-    })
-
-    // Calculate total spending
-    const totalSpending = bookings.reduce((total, booking) => {
-      return total + booking.totalPrice
+      return sum
     }, 0)
 
-    // Group spending by service type
-    const spendingByService = bookings.reduce((acc, booking) => {
+    const totalBookings = spendingData.length
+    const completedBookings = spendingData.filter(b => b.status === 'COMPLETED').length
+    const pendingBookings = spendingData.filter(b => b.status === 'PENDING').length
+
+    // Group by service type
+    const spendingByService = spendingData.reduce((acc, booking) => {
       const serviceType = booking.serviceType
       if (!acc[serviceType]) {
         acc[serviceType] = {
-          total: 0,
           count: 0,
-          currency: booking.currency
+          totalSpent: 0,
+          bookings: []
         }
       }
-      acc[serviceType].total += booking.totalPrice
-      acc[serviceType].count += 1
+      acc[serviceType].count++
+      if (booking.paymentStatus === 'PAID') {
+        acc[serviceType].totalSpent += booking.totalPrice
+      }
+      acc[serviceType].bookings.push(booking)
       return acc
-    }, {} as Record<string, { total: number; count: number; currency: string }>)
-
-    // Get spending by month (last 12 months)
-    const twelveMonthsAgo = new Date()
-    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
-
-    const monthlySpending = bookings
-      .filter(booking => new Date(booking.createdAt) >= twelveMonthsAgo)
-      .reduce((acc, booking) => {
-        const month = new Date(booking.createdAt).toISOString().slice(0, 7) // YYYY-MM format
-        if (!acc[month]) {
-          acc[month] = 0
-        }
-        acc[month] += booking.totalPrice
-        return acc
-      }, {} as Record<string, number>)
-
-    // Get recent spending (last 30 days)
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-    const recentSpending = bookings
-      .filter(booking => new Date(booking.createdAt) >= thirtyDaysAgo)
-      .reduce((total, booking) => total + booking.totalPrice, 0)
+    }, {} as Record<string, any>)
 
     return NextResponse.json({
-      totalSpending,
-      currency: bookings.length > 0 ? bookings[0].currency : "USD",
-      totalBookings: bookings.length,
-      spendingByService,
-      monthlySpending,
-      recentSpending,
-      bookings: bookings.slice(0, 10) // Return last 10 bookings for reference
+      spending: spendingData,
+      summary: {
+        totalSpent,
+        totalBookings,
+        completedBookings,
+        pendingBookings,
+        spendingByService
+      }
     })
   } catch (error) {
-    console.error("Error fetching user spending:", error)
+    console.error('Error fetching user spending:', error)
     return NextResponse.json(
-      { error: "Failed to fetch spending data" },
+      { error: 'Failed to fetch spending data' },
       { status: 500 }
     )
   }

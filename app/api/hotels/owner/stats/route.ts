@@ -1,150 +1,104 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@/lib/generated/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { hotels, bookings, rooms } from '@/drizzle/schema'
+import { eq, and, sql } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
+// GET - Fetch hotel owner statistics
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
-    const ownerId = authHeader.replace('Bearer ', '')
 
-    // Find all hotels owned by this user
-    const hotels = await prisma.hotel.findMany({
-      where: { ownerId },
-      select: { id: true }
-    })
-    const hotelIds = hotels.map(h => h.id)
+    const userId = parseInt(session.user.id)
+
+    // Get user's hotels
+    const userHotels = await db
+      .select({ id: hotels.id })
+      .from(hotels)
+      .where(eq(hotels.ownerId, userId))
+
+    const hotelIds = userHotels.map(hotel => hotel.id)
 
     if (hotelIds.length === 0) {
       return NextResponse.json({
         stats: {
           totalHotels: 0,
-          totalBookings: 0,
-          activeReservations: 0,
-          upcomingReservations: 0,
-          totalRevenue: 0,
-          monthlyRevenue: 0,
-          averageRating: 0,
           totalRooms: 0,
-          availableRooms: 0,
-          occupiedRooms: 0
+          totalBookings: 0,
+          totalRevenue: 0,
+          averageRating: 0,
+          activeBookings: 0,
+          completedBookings: 0,
+          cancelledBookings: 0,
         }
       })
     }
 
-    // Get current date for calculations
-    const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    // Get total rooms
+    const totalRoomsResult = await db
+      .select({ count: sql`count(*)` })
+      .from(rooms)
+      .where(sql`${rooms.hotelId} IN (${hotelIds.join(',')})`)
 
-    // Calculate various statistics
-    const [
-      totalBookings,
-      activeReservations,
-      upcomingReservations,
-      totalRevenue,
-      monthlyRevenue,
-      totalRooms,
-      availableRooms,
-      occupiedRooms,
-      averageRating
-    ] = await Promise.all([
-      // Total bookings
-      prisma.booking.count({
-        where: {
-          hotelId: { in: hotelIds },
-          serviceType: 'HOTEL'
-        }
-      }),
-      // Active reservations (CONFIRMED status with current dates)
-      prisma.booking.count({
-        where: {
-          hotelId: { in: hotelIds },
-          serviceType: 'HOTEL',
-          status: 'CONFIRMED',
-          startDate: { lte: now },
-          endDate: { gte: now }
-        }
-      }),
-      // Upcoming reservations (PENDING or CONFIRMED with future dates)
-      prisma.booking.count({
-        where: {
-          hotelId: { in: hotelIds },
-          serviceType: 'HOTEL',
-          status: { in: ['PENDING', 'CONFIRMED'] },
-          startDate: { gt: now }
-        }
-      }),
-      // Total revenue
-      prisma.booking.aggregate({
-        where: {
-          hotelId: { in: hotelIds },
-          serviceType: 'HOTEL',
-          status: { in: ['CONFIRMED', 'COMPLETED'] }
-        },
-        _sum: { totalPrice: true }
-      }),
-      // Monthly revenue
-      prisma.booking.aggregate({
-        where: {
-          hotelId: { in: hotelIds },
-          serviceType: 'HOTEL',
-          status: { in: ['CONFIRMED', 'COMPLETED'] },
-          createdAt: {
-            gte: startOfMonth,
-            lte: endOfMonth
-          }
-        },
-        _sum: { totalPrice: true }
-      }),
-      // Total rooms
-      prisma.room.count({
-        where: { hotelId: { in: hotelIds } }
-      }),
-      // Available rooms
-      prisma.room.count({
-        where: { 
-          hotelId: { in: hotelIds },
-          isAvailable: true
-        }
-      }),
-      // Occupied rooms
-      prisma.room.count({
-        where: { 
-          hotelId: { in: hotelIds },
-          isAvailable: false
-        }
-      }),
-      // Average rating
-      prisma.review.aggregate({
-        where: {
-          hotelId: { in: hotelIds }
-        },
-        _avg: { rating: true }
+    const totalRooms = totalRoomsResult[0]?.count || 0
+
+    // Get booking statistics
+    const bookingStats = await db
+      .select({
+        totalBookings: sql`count(*)`,
+        totalRevenue: sql`sum(totalPrice)`,
+        activeBookings: sql`count(CASE WHEN status = 'CONFIRMED' THEN 1 END)`,
+        completedBookings: sql`count(CASE WHEN status = 'COMPLETED' THEN 1 END)`,
+        cancelledBookings: sql`count(CASE WHEN status = 'CANCELLED' THEN 1 END)`,
       })
-    ])
+      .from(bookings)
+      .where(and(
+        eq(bookings.serviceType, 'HOTEL'),
+        sql`${bookings.serviceId} IN (${hotelIds.join(',')})`
+      ))
 
-    return NextResponse.json({
-      stats: {
-        totalHotels: hotels.length,
-        totalBookings,
-        activeReservations,
-        upcomingReservations,
-        totalRevenue: totalRevenue._sum.totalPrice || 0,
-        monthlyRevenue: monthlyRevenue._sum.totalPrice || 0,
-        averageRating: averageRating._avg.rating || 0,
-        totalRooms,
-        availableRooms,
-        occupiedRooms
-      }
-    })
+    // Get average rating
+    const avgRatingResult = await db
+      .select({ avgRating: sql`avg(rating)` })
+      .from(hotels)
+      .where(sql`${hotels.id} IN (${hotelIds.join(',')})`)
+
+    const stats = {
+      totalHotels: hotelIds.length,
+      totalRooms: totalRooms,
+      totalBookings: bookingStats[0].totalBookings || 0,
+      totalRevenue: bookingStats[0].totalRevenue || 0,
+      averageRating: avgRatingResult[0].avgRating || 0,
+      activeBookings: bookingStats[0].activeBookings || 0,
+      completedBookings: bookingStats[0].completedBookings || 0,
+      cancelledBookings: bookingStats[0].cancelledBookings || 0,
+    }
+
+    return NextResponse.json({ stats })
   } catch (error) {
-    console.error('Error fetching hotel owner stats:', error)
+    console.error('Error fetching hotel stats:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch stats' },
+      { 
+        error: 'Failed to fetch stats',
+        stats: {
+          totalHotels: 0,
+          totalRooms: 0,
+          totalBookings: 0,
+          totalRevenue: 0,
+          averageRating: 0,
+          activeBookings: 0,
+          completedBookings: 0,
+          cancelledBookings: 0,
+        }
+      },
       { status: 500 }
     )
   }

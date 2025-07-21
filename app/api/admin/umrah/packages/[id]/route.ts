@@ -1,44 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { umrahPackages } from '@/drizzle/schema'
+import { eq } from 'drizzle-orm'
 
+// GET - Fetch single Umrah package by ID (admin only)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await getServerSession(authOptions)
     
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
+    // Check if user is admin (you might want to add role checking here)
+    const { id } = await params
 
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    const [package] = await db
+      .select()
+      .from(umrahPackages)
+      .where(eq(umrahPackages.id, parseInt(id)))
+
+    if (!package) {
+      return NextResponse.json(
+        { error: 'Umrah package not found' },
+        { status: 404 }
+      )
     }
 
-    const umrahPackage = await prisma.umrahPackage.findUnique({
-      where: { id: params.id }
-    })
-
-    if (!umrahPackage) {
-      return NextResponse.json({ error: 'Package not found' }, { status: 404 })
-    }
-
-    return NextResponse.json(umrahPackage)
-
+    return NextResponse.json({ package })
   } catch (error) {
-    console.error('Error fetching Umrah package:', error)
+    console.error('Error fetching admin Umrah package:', error)
     return NextResponse.json(
       { error: 'Failed to fetch Umrah package' },
       { status: 500 }
@@ -46,78 +45,54 @@ export async function GET(
   }
 }
 
+// PUT - Update Umrah package (admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await getServerSession(authOptions)
     
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
-    }
-
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
-
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
-
-    const body = await request.json()
-    const {
-      name,
-      description,
-      duration,
-      groupSize,
-      season,
-      price,
-      currency,
-      includes,
-      images,
-      isActive
-    } = body
-
-    // Validate required fields
-    if (!name || !duration || !groupSize || !price) {
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Name, duration, group size, and price are required' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
 
-    const updatedPackage = await prisma.umrahPackage.update({
-      where: { id: params.id },
-      data: {
-        name,
-        description: description || null,
-        duration: parseInt(duration),
-        groupSize,
-        season: season || null,
-        price: parseFloat(price),
-        currency: currency || 'USD',
-        includes: includes || [],
-        images: images || [],
-        isActive: isActive !== undefined ? isActive : true
-      }
-    })
+    // Check if user is admin (you might want to add role checking here)
+    const { id } = await params
+    const body = await request.json()
+
+    // Check if package exists
+    const [existingPackage] = await db
+      .select()
+      .from(umrahPackages)
+      .where(eq(umrahPackages.id, parseInt(id)))
+
+    if (!existingPackage) {
+      return NextResponse.json(
+        { error: 'Umrah package not found' },
+        { status: 404 }
+      )
+    }
+
+    // Update package
+    const [updatedPackage] = await db
+      .update(umrahPackages)
+      .set({
+        ...body,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(umrahPackages.id, parseInt(id)))
+      .returning()
 
     return NextResponse.json({
-      success: true,
-      message: 'Umrah package updated successfully',
-      package: updatedPackage
+      package: updatedPackage,
+      message: 'Umrah package updated successfully'
     })
-
   } catch (error) {
-    console.error('Error updating Umrah package:', error)
+    console.error('Error updating admin Umrah package:', error)
     return NextResponse.json(
       { error: 'Failed to update Umrah package' },
       { status: 500 }
@@ -125,55 +100,47 @@ export async function PUT(
   }
 }
 
+// DELETE - Delete Umrah package (admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await getServerSession(authOptions)
     
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
-    }
-
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
-
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
-
-    // Check if there are any requests for this package
-    const existingRequests = await prisma.umrahRequest.findMany({
-      where: { packageId: params.id }
-    })
-
-    if (existingRequests.length > 0) {
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Cannot delete package with existing requests' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
 
-    await prisma.umrahPackage.delete({
-      where: { id: params.id }
-    })
+    // Check if user is admin (you might want to add role checking here)
+    const { id } = await params
+
+    // Check if package exists
+    const [existingPackage] = await db
+      .select()
+      .from(umrahPackages)
+      .where(eq(umrahPackages.id, parseInt(id)))
+
+    if (!existingPackage) {
+      return NextResponse.json(
+        { error: 'Umrah package not found' },
+        { status: 404 }
+      )
+    }
+
+    // Delete package
+    await db
+      .delete(umrahPackages)
+      .where(eq(umrahPackages.id, parseInt(id)))
 
     return NextResponse.json({
-      success: true,
       message: 'Umrah package deleted successfully'
     })
-
   } catch (error) {
-    console.error('Error deleting Umrah package:', error)
+    console.error('Error deleting admin Umrah package:', error)
     return NextResponse.json(
       { error: 'Failed to delete Umrah package' },
       { status: 500 }

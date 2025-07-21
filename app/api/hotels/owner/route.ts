@@ -1,150 +1,124 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@/lib/generated/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { hotels, users } from '@/drizzle/schema'
+import { eq } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
+// GET - Fetch hotels owned by the authenticated user
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
-    const ownerId = authHeader.replace('Bearer ', '')
 
-    // Find all hotels owned by this user with their rooms
-    const hotels = await prisma.hotel.findMany({
-      where: { ownerId },
-      include: {
-        rooms: {
-          include: {
-            bookings: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true
-                  }
-                }
-              },
-              orderBy: { startDate: 'desc' }
-            }
-          },
-          orderBy: { name: 'asc' }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    })
+    const hotelsData = await db
+      .select({
+        id: hotels.id,
+        name: hotels.name,
+        description: hotels.description,
+        address: hotels.address,
+        city: hotels.city,
+        country: hotels.country,
+        phone: hotels.phone,
+        email: hotels.email,
+        website: hotels.website,
+        rating: hotels.rating,
+        priceRange: hotels.priceRange,
+        amenities: hotels.amenities,
+        images: hotels.images,
+        isActive: hotels.isActive,
+        isVerified: hotels.isVerified,
+        createdAt: hotels.createdAt,
+        updatedAt: hotels.updatedAt,
+        ownerId: hotels.ownerId,
+      })
+      .from(hotels)
+      .where(eq(hotels.ownerId, parseInt(session.user.id)))
 
-    // Format hotels for the frontend
-    const formatted = hotels.map(hotel => ({
-      id: hotel.id,
-      name: hotel.name,
-      description: hotel.description,
-      address: hotel.address,
-      city: hotel.city,
-      phone: hotel.phone,
-      email: hotel.email,
-      website: hotel.website,
-      starRating: hotel.starRating,
-      checkInTime: hotel.checkInTime,
-      checkOutTime: hotel.checkOutTime,
-      amenities: hotel.amenities,
-      images: hotel.images,
-      latitude: hotel.latitude,
-      longitude: hotel.longitude,
-      isActive: hotel.isActive,
-      isVerified: hotel.isVerified,
-      createdAt: hotel.createdAt,
-      updatedAt: hotel.updatedAt,
-      rooms: hotel.rooms.map(room => ({
-        id: room.id,
-        hotelId: room.hotelId,
-        name: room.name,
-        roomNumber: room.roomNumber,
-        roomType: room.roomType,
-        capacity: room.capacity,
-        pricePerNight: room.pricePerNight,
-        price: room.pricePerNight,
-        isAvailable: room.isAvailable,
-        bedType: room.bedType,
-        amenities: room.amenities,
-        images: room.images,
-        description: room.description,
-        floor: room.floor,
-        size: room.size,
-        currency: room.currency,
-        bedCount: room.bedCount,
-        bathroomCount: room.bathroomCount,
-        maxOccupancy: room.maxOccupancy,
-        bookings: room.bookings,
-        createdAt: room.createdAt,
-        updatedAt: room.updatedAt,
-      }))
-    }))
-
-    return NextResponse.json({
-      hotels: formatted,
-      total: formatted.length
-    })
+    return NextResponse.json({ hotels: hotelsData })
   } catch (error) {
-    console.error('Error fetching hotel owner hotels:', error)
+    console.error('Error fetching hotels:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch hotels' },
+      { 
+        error: 'Failed to fetch hotels',
+        hotels: []
+      },
       { status: 500 }
     )
   }
 }
 
+// POST - Create new hotel
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
-    const ownerId = authHeader.replace('Bearer ', '')
 
     const body = await request.json()
-    const { name, address, city, starRating, phone, email, website, description, amenities, images } = body
+    const {
+      name,
+      description,
+      address,
+      city,
+      country,
+      phone,
+      email,
+      website,
+      priceRange,
+      amenities,
+      images
+    } = body
 
     // Validate required fields
-    if (!name || !address || !city) {
+    if (!name || !description || !address || !city || !country) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
-    // Create new hotel
-    const hotel = await prisma.hotel.create({
-      data: {
+    // Create hotel
+    const [newHotel] = await db
+      .insert(hotels)
+      .values({
         name,
-        description: description || null,
+        description,
         address,
         city,
+        country,
         phone: phone || null,
         email: email || null,
         website: website || null,
-        starRating: starRating ? parseInt(starRating) : null,
-        checkInTime: '14:00',
-        checkOutTime: '12:00',
-        amenities: amenities || [],
-        images: images || [],
-        ownerId,
+        rating: 0,
+        priceRange: priceRange || null,
+        amenities: amenities || null,
+        images: images || null,
         isActive: true,
         isVerified: false,
-      }
-    })
+        ownerId: parseInt(session.user.id),
+      })
+      .returning()
 
     return NextResponse.json({
-      hotel,
-      message: 'Hotel added successfully'
+      hotel: newHotel,
+      message: 'Hotel created successfully'
     }, { status: 201 })
-
   } catch (error) {
-    console.error('Error adding hotel:', error)
+    console.error('Error creating hotel:', error)
     return NextResponse.json(
-      { error: 'Failed to add hotel' },
+      { error: 'Failed to create hotel' },
       { status: 500 }
     )
   }

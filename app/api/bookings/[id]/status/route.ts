@@ -1,144 +1,67 @@
-import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@/lib/generated/prisma"
-import { z } from "zod"
-import { notifyBookingConfirmed, notifyBookingCancelled } from "@/lib/notifications"
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { bookings } from '@/drizzle/schema'
+import { eq } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
-// Validation schema for updating booking status
-const updateStatusSchema = z.object({
-  status: z.enum(["CONFIRMED", "CANCELLED"]),
-  notes: z.string().optional(),
-})
-
-// PUT /api/bookings/[id]/status - Update booking status (approve/decline)
+// PUT - Update booking status
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get user from authorization header
-    const authHeader = request.headers.get("authorization")
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    const token = authHeader.split(" ")[1]
-    const userId = token // This should be decoded from JWT
-
+    const { id } = await params
     const body = await request.json()
-    
-    // Validate the request body
-    const validatedData = updateStatusSchema.parse(body)
+    const { status } = body
 
-    // Check if booking exists and belongs to user's car
-    const booking = await prisma.booking.findUnique({
-      where: { id: params.id },
-      include: {
-        car: {
-          select: {
-            ownerId: true,
-            brand: true,
-            model: true,
-            licensePlate: true,
-          },
-        },
-        user: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-      },
-    })
+    if (!status) {
+      return NextResponse.json(
+        { error: 'Status is required' },
+        { status: 400 }
+      )
+    }
+
+    // Check if booking exists
+    const [booking] = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, parseInt(id)))
 
     if (!booking) {
       return NextResponse.json(
-        { error: "Booking not found" },
+        { error: 'Booking not found' },
         { status: 404 }
       )
     }
 
-    // Check if user is the car owner
-    if (booking.car.ownerId !== userId) {
-      return NextResponse.json(
-        { error: "Unauthorized to manage this booking" },
-        { status: 403 }
-      )
-    }
+    // Update booking status
+    const [updatedBooking] = await db
+      .update(bookings)
+      .set({
+        status,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(bookings.id, parseInt(id)))
+      .returning()
 
-    // Check if booking is in a valid state for status update
-    if (booking.status !== "PENDING") {
-      return NextResponse.json(
-        { error: "Booking cannot be updated in its current state" },
-        { status: 400 }
-      )
-    }
-
-    // Update the booking status
-    const updatedBooking = await prisma.booking.update({
-      where: { id: params.id },
-      data: {
-        status: validatedData.status,
-        notes: validatedData.notes,
-        updatedAt: new Date(),
-      },
-      include: {
-        car: {
-          select: {
-            brand: true,
-            model: true,
-            year: true,
-            color: true,
-            licensePlate: true,
-            pricePerDay: true,
-            currency: true,
-          },
-        },
-        user: {
-          select: {
-            name: true,
-            email: true,
-            phone: true,
-          },
-        },
-      },
-    })
-
-    // Notify the user about the booking status update
-    if (validatedData.status === "CONFIRMED") {
-      await notifyBookingConfirmed(
-        booking.userId, 
-        booking.id, 
-        `${booking.car.brand} ${booking.car.model}`
-      )
-    } else if (validatedData.status === "CANCELLED") {
-      await notifyBookingCancelled(
-        booking.userId, 
-        booking.id, 
-        `${booking.car.brand} ${booking.car.model}`,
-        validatedData.notes
-      )
-    }
-
-    return NextResponse.json({ 
+    return NextResponse.json({
       booking: updatedBooking,
-      message: `Booking ${validatedData.status.toLowerCase()} successfully` 
+      message: 'Booking status updated successfully'
     })
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Validation error", details: error.errors },
-        { status: 400 }
-      )
-    }
-
-    console.error("Error updating booking status:", error)
+    console.error('Error updating booking status:', error)
     return NextResponse.json(
-      { error: "Failed to update booking status" },
+      { error: 'Failed to update booking status' },
       { status: 500 }
     )
   }

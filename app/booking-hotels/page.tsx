@@ -51,11 +51,14 @@ export default function BookingHotels() {
       .then(async (res) => {
         if (!res.ok) throw new Error("Failed to fetch rooms")
         const data = await res.json()
-        setRooms(data.rooms)
-        setFilteredRooms(data.rooms)
+        // Handle different API response structures
+        const roomsData = data.rooms || data.hotels?.flatMap((hotel: any) => hotel.rooms || []) || []
+        setRooms(roomsData)
+        setFilteredRooms(roomsData)
         setError(null)
       })
       .catch((err) => {
+        console.error('Error fetching rooms:', err)
         setError(err.message)
         setRooms([])
         setFilteredRooms([])
@@ -65,30 +68,35 @@ export default function BookingHotels() {
 
   // Filter rooms based on search criteria
   useEffect(() => {
+    if (!rooms || !Array.isArray(rooms)) {
+      setFilteredRooms([])
+      return
+    }
+
     let filtered = rooms
 
     // Filter by search query (hotel name, room name, city)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(room => 
-        room.hotel.name.toLowerCase().includes(query) ||
-        room.name.toLowerCase().includes(query) ||
-        room.hotel.city.toLowerCase().includes(query) ||
-        room.roomType.toLowerCase().includes(query)
+        room?.hotel?.name?.toLowerCase().includes(query) ||
+        room?.name?.toLowerCase().includes(query) ||
+        room?.hotel?.city?.toLowerCase().includes(query) ||
+        room?.roomType?.toLowerCase().includes(query)
       )
     }
 
     // Filter by location
     if (selectedLocation !== "all") {
       filtered = filtered.filter(room => 
-        room.hotel.city && room.hotel.city.toLowerCase().includes(selectedLocation.toLowerCase())
+        room?.hotel?.city && room.hotel.city.toLowerCase().includes(selectedLocation.toLowerCase())
       )
     }
 
     // Filter by room type
     if (selectedRoomType !== "all") {
       filtered = filtered.filter(room => 
-        room.roomType && room.roomType.toLowerCase() === selectedRoomType.toLowerCase()
+        room?.roomType && room.roomType.toLowerCase() === selectedRoomType.toLowerCase()
       )
     }
 
@@ -96,13 +104,13 @@ export default function BookingHotels() {
     if (selectedGuests !== "all") {
       const guestCount = parseInt(selectedGuests)
       filtered = filtered.filter(room => 
-        room.capacity >= guestCount
+        room?.capacity >= guestCount
       )
     }
 
     // Filter by price range
     filtered = filtered.filter(room => 
-      room.pricePerNight >= priceRange[0] && room.pricePerNight <= priceRange[1]
+      room?.pricePerNight >= priceRange[0] && room?.pricePerNight <= priceRange[1]
     )
 
     setFilteredRooms(filtered)
@@ -138,10 +146,10 @@ export default function BookingHotels() {
     router.push(`/hotels/${hotelId}`)
   }
 
-  // Get unique locations and room types for filters
-  const locations = Array.from(new Set(rooms.map(room => room.hotel.city))).filter(Boolean)
-  const roomTypes = Array.from(new Set(rooms.map(room => room.roomType))).filter(Boolean)
-  const guestOptions = Array.from(new Set(rooms.map(room => room.capacity))).sort((a, b) => a - b)
+  // Get unique locations and room types for filters with null checks
+  const locations = Array.from(new Set((rooms || []).map(room => room?.hotel?.city).filter(Boolean)))
+  const roomTypes = Array.from(new Set((rooms || []).map(room => room?.roomType).filter(Boolean)))
+  const guestOptions = Array.from(new Set((rooms || []).map(room => room?.capacity).filter(Boolean))).sort((a, b) => a - b)
 
   // Translations
   const pageTitle = language === "ar" ? "حجز الفنادق" : language === "fr" ? "Réservation d'Hôtels" : "Hotel Booking"

@@ -1,100 +1,164 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { specialTourRequests, users } from '@/drizzle/schema'
+import { eq, and, desc } from 'drizzle-orm'
 
+// GET - Fetch special tour requests for the authenticated user
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const page = parseInt(searchParams.get('page') || '1')
+
+    let whereConditions = [eq(specialTourRequests.userId, parseInt(session.user.id))]
+
+    if (status) {
+      whereConditions.push(eq(specialTourRequests.status, status))
+    }
+
+    const offset = (page - 1) * limit
+
+    const requestsData = await db
+      .select({
+        id: specialTourRequests.id,
+        userId: specialTourRequests.userId,
+        guideId: specialTourRequests.guideId,
+        title: specialTourRequests.title,
+        description: specialTourRequests.description,
+        duration: specialTourRequests.duration,
+        maxCapacity: specialTourRequests.maxCapacity,
+        budget: specialTourRequests.budget,
+        startDate: specialTourRequests.startDate,
+        endDate: specialTourRequests.endDate,
+        location: specialTourRequests.location,
+        specialRequirements: specialTourRequests.specialRequirements,
+        status: specialTourRequests.status,
+        createdAt: specialTourRequests.createdAt,
+        updatedAt: specialTourRequests.updatedAt,
+        guide: {
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          image: users.image,
+        }
+      })
+      .from(specialTourRequests)
+      .leftJoin(users, eq(specialTourRequests.guideId, users.id))
+      .where(and(...whereConditions))
+      .orderBy(desc(specialTourRequests.createdAt))
+      .limit(limit)
+      .offset(offset)
+
+    // Get total count for pagination
+    const totalCount = await db
+      .select({ count: specialTourRequests.id })
+      .from(specialTourRequests)
+      .where(and(...whereConditions))
+
+    const totalPages = Math.ceil(totalCount.length / limit)
+
+    return NextResponse.json({
+      requests: requestsData,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount: totalCount.length,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      }
+    })
+  } catch (error) {
+    console.error('Error fetching special tour requests:', error)
+    return NextResponse.json(
+      { 
+        error: 'Failed to fetch special tour requests',
+        requests: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalCount: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        }
+      },
+      { status: 500 }
+    )
+  }
+}
+
+// POST - Create new special tour request
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Authentication required. Please sign in to submit a special tour request.' }, { status: 401 })
-    }
+    const session = await getServerSession(authOptions)
     
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
-    }
-
-    // Verify user exists and get their role
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, role: true, status: true }
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found. Please Check information again.' }, { status: 401 })
-    }
-
-    // Check if user is active
-    if (user.status !== 'ACTIVE') {
-      return NextResponse.json({ error: 'Your account is not active. Please contact support.' }, { status: 403 })
-    }
-
-    // Only allow customers to submit special tour requests
-    if (user.role !== 'CUSTOMER') {
-      return NextResponse.json({ 
-        error: 'Service providers and administrators cannot submit special tour requests. Please use a customer account.' 
-      }, { status: 403 })
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
     const body = await request.json()
     const {
-      guideId,
-      customerName,
-      customerEmail,
-      customerPhone,
-      tourType,
-      preferredDates,
-      groupSize,
-      specialRequirements,
+      title,
+      description,
+      duration,
+      maxCapacity,
       budget,
-      message
+      startDate,
+      endDate,
+      location,
+      specialRequirements,
+      guideId
     } = body
 
-    // Validate required fields (guideId is now optional)
-    if (!customerName || !customerEmail || !tourType) {
+    // Validate required fields
+    if (!title || !description || !duration || !startDate || !endDate) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
-    // If no guide is selected, we'll need to handle this differently
-    // For now, we'll create the request without a guideId and let admin assign later
-    const requestData: any = {
-      customerName,
-      customerEmail,
-      customerPhone: customerPhone || null,
-      tourType,
-      preferredDates: preferredDates || null,
-      groupSize: groupSize || null,
-      specialRequirements: specialRequirements || null,
-      budget: budget || null,
-      message: message || null,
-      status: 'PENDING',
-    }
-
-    // Only add guideId if it's provided and not "admin-assign"
-    if (guideId && guideId !== 'admin-assign') {
-      requestData.guideId = guideId
-    }
-
     // Create special tour request
-    const specialRequest = await prisma.specialTourRequest.create({
-      data: requestData
-    })
+    const [newRequest] = await db
+      .insert(specialTourRequests)
+      .values({
+        userId: parseInt(session.user.id),
+        guideId: guideId ? parseInt(guideId) : null,
+        title,
+        description,
+        duration: parseInt(duration),
+        maxCapacity: maxCapacity ? parseInt(maxCapacity) : 10,
+        budget: budget ? parseFloat(budget) : null,
+        startDate: new Date(startDate).toISOString(),
+        endDate: new Date(endDate).toISOString(),
+        location: location || null,
+        specialRequirements: specialRequirements || null,
+        status: 'PENDING',
+      })
+      .returning()
 
-    return NextResponse.json({ 
-      success: true, 
-      message: guideId === 'admin-assign' 
-        ? 'Special tour request submitted successfully. Our team will assign the best guide for you.'
-        : 'Special tour request submitted successfully',
-      request: specialRequest 
-    })
+    return NextResponse.json({
+      request: newRequest,
+      message: 'Special tour request created successfully'
+    }, { status: 201 })
   } catch (error) {
     console.error('Error creating special tour request:', error)
     return NextResponse.json(
-      { error: 'Failed to submit special tour request' },
+      { error: 'Failed to create special tour request' },
       { status: 500 }
     )
   }

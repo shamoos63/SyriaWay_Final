@@ -96,11 +96,31 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
       return
     }
 
-    // Validate form
-    if (!form.contactName || !form.contactEmail) {
+    // Validate form with better error messages
+    if (!form.contactName || form.contactName.trim() === '') {
       toast({
         title: t.booking?.validationError,
-        description: t.booking?.pleaseFillRequiredFields,
+        description: "Please enter your full name",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!form.contactEmail || form.contactEmail.trim() === '') {
+      toast({
+        title: t.booking?.validationError,
+        description: "Please enter your email address",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(form.contactEmail)) {
+      toast({
+        title: t.booking?.validationError,
+        description: "Please enter a valid email address",
         variant: "destructive",
       })
       return
@@ -135,16 +155,11 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
         },
         body: JSON.stringify({
           serviceType: 'TOUR',
-          tourId: tour.id,
-          guideId: tour.guideId,
-          startDate: tour.startDate, // Use tour's fixed start date
-          endDate: tour.endDate, // Use tour's fixed end date
-          guests: form.guests,
-          totalPrice: calculateTotalPrice(),
+          serviceId: tour.id,
+          startDate: tour.startDate,
+          endDate: tour.endDate,
+          totalAmount: calculateTotalPrice(),
           specialRequests: form.specialRequests || null,
-          contactName: form.contactName,
-          contactEmail: form.contactEmail,
-          contactPhone: form.contactPhone
         })
       })
 

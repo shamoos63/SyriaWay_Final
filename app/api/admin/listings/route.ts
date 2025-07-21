@@ -1,80 +1,113 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-
-// Helper to check admin
-async function isAdmin(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false
-  const userId = authHeader.replace('Bearer ', '')
-  
-  // For demo purposes, allow demo-user-id
-  if (userId === 'demo-user-id') return true
-  
-  const user = await prisma.user.findUnique({ 
-    where: { id: userId }, 
-    select: { role: true } 
-  })
-  return user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')
-}
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { cars, hotels, tours, users } from '@/drizzle/schema'
+import { desc } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
-  if (!(await isAdmin(request))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
-  }
-
-  // Fetch all hotels, cars, and tours
-  const [hotels, cars, tours] = await Promise.all([
-    prisma.hotel.findMany({
-      include: { owner: { select: { id: true, name: true, email: true } } }
-    }),
-    prisma.car.findMany({
-      include: { owner: { select: { id: true, name: true, email: true } } }
-    }),
-    prisma.tour.findMany({
-      include: {
-        guide: {
-          include: { user: { select: { id: true, name: true, email: true } } }
-        }
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    // Pagination and filtering
+    const { searchParams } = new URL(request.url)
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const page = parseInt(searchParams.get('page') || '1')
+    const typeFilter = searchParams.get('type')?.toUpperCase()
+    const offset = (page - 1) * limit
+    // Fetch all cars with owner
+    const carRows = await db
+      .select({
+        id: cars.id,
+        type: 'CAR',
+        name: cars.brand,
+        model: cars.model,
+        providerId: cars.ownerId,
+        createdAt: cars.createdAt,
+        status: cars.isAvailable,
+        price: cars.pricePerDay,
+      })
+      .from(cars)
+    // Fetch all hotels with owner
+    const hotelRows = await db
+      .select({
+        id: hotels.id,
+        type: 'HOTEL',
+        name: hotels.name,
+        model: null,
+        providerId: hotels.ownerId,
+        createdAt: hotels.createdAt,
+        status: hotels.isActive,
+        price: null,
+      })
+      .from(hotels)
+    // Fetch all tours with guide
+    const tourRows = await db
+      .select({
+        id: tours.id,
+        type: 'TOUR',
+        name: tours.name,
+        model: null,
+        providerId: tours.guideId,
+        createdAt: tours.createdAt,
+        status: tours.isActive,
+        price: tours.price,
+      })
+      .from(tours)
+    // Combine all
+    let allListings = [...carRows, ...hotelRows, ...tourRows]
+    // Filter by type if requested
+    if (typeFilter && ['CAR', 'HOTEL', 'TOUR'].includes(typeFilter)) {
+      allListings = allListings.filter(l => l.type === typeFilter)
+    }
+    // Fetch all providers in one go
+    const providerIds = Array.from(new Set(allListings.map(l => l.providerId)))
+    const providerRows = providerIds.length > 0 ? await db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .where(users.id.in(providerIds)) : []
+    const providerMap = Object.fromEntries(providerRows.map(u => [u.id, u]))
+    // Attach provider info
+    allListings = allListings.map(l => ({
+      ...l,
+      provider: providerMap[l.providerId] || null
+    }))
+    // Sort by createdAt desc (ISO string sort is fine)
+    allListings.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+    // Pagination
+    const paginated = allListings.slice(offset, offset + limit)
+    const totalCount = allListings.length
+    const totalPages = Math.ceil(totalCount / limit)
+    return NextResponse.json({
+      listings: paginated,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
       }
     })
-  ])
-
-  // Normalize data for frontend
-  const listings = [
-    ...hotels.map(hotel => ({
-      id: hotel.id,
-      type: 'HOTEL',
-      name: hotel.name,
-      provider: hotel.owner,
-      isVerified: hotel.isVerified,
-      isSpecialOffer: hotel.isSpecialOffer,
-      city: hotel.city,
-      createdAt: hotel.createdAt,
-      updatedAt: hotel.updatedAt
-    })),
-    ...cars.map(car => ({
-      id: car.id,
-      type: 'CAR',
-      name: `${car.brand} ${car.model}`,
-      provider: car.owner,
-      isVerified: car.isVerified,
-      isSpecialOffer: car.isSpecialOffer,
-      currentLocation: car.currentLocation,
-      createdAt: car.createdAt,
-      updatedAt: car.updatedAt
-    })),
-    ...tours.map(tour => ({
-      id: tour.id,
-      type: 'TOUR',
-      name: tour.name,
-      provider: tour.guide?.user,
-      isVerified: false, // Optionally add isVerified to Tour if needed
-      isSpecialOffer: tour.isSpecialOffer,
-      category: tour.category,
-      createdAt: tour.createdAt,
-      updatedAt: tour.updatedAt
-    }))
-  ]
-
-  return NextResponse.json({ listings })
+  } catch (error) {
+    console.error('Error fetching admin listings:', error)
+    return NextResponse.json(
+      {
+        error: 'Failed to fetch listings',
+        listings: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalCount: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        }
+      },
+      { status: 500 }
+    )
+  }
 } 

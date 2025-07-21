@@ -1,73 +1,118 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { db } from '@/lib/db'
+import { websiteSettings, systemSettings } from '@/drizzle/schema'
+import { eq } from 'drizzle-orm'
 
-// GET - Fetch public website settings (no auth required)
 export async function GET(request: NextRequest) {
   try {
-    // Get the first (and only) settings record
-    let settings = await prisma.websiteSettings.findFirst()
-    
-    // If no settings exist, create default settings
-    if (!settings) {
-      settings = await prisma.websiteSettings.create({
-        data: {
-          siteName: "Syria Ways",
-          siteDescription: "Syria Ways is a comprehensive tourism platform for exploring Syria's rich cultural heritage, historical sites, and natural beauty.",
-          contactEmail: "info@syriaways.com",
-          contactPhone: "+963 11 123 4567",
-          contactAddress: "Damascus, Syria",
-          facebookUrl: "https://facebook.com/syriaways",
-          instagramUrl: "https://instagram.com/syriaways",
-          twitterUrl: "https://twitter.com/syriaways",
-          websiteUrl: "https://syriaways.com",
-          metaTitle: "Syria Ways - Discover the Beauty of Syria",
-          metaDescription: "Explore Syria's rich cultural heritage, historical sites, and natural beauty with Syria Ways. Book tours, hotels, and more.",
-          keywords: "Syria tourism, Syria travel, Syria hotels, Syria tours, Damascus, Aleppo, Palmyra, Syrian history",
-          autoReplyMessage: "Thank you for contacting Syria Ways. We have received your message and will get back to you as soon as possible.",
-        }
-      })
+    // Get website settings with timeout handling
+    let websiteSettingsData = []
+    try {
+      websiteSettingsData = await db
+        .select()
+        .from(websiteSettings)
+        .limit(1)
+    } catch (error) {
+      console.error('Error fetching website settings:', error)
+      // Return default settings if database fails
+      websiteSettingsData = [{
+        id: 1,
+        siteName: 'SyriaWay',
+        siteDescription: 'Your gateway to Syrian tourism',
+        siteKeywords: 'Syria, tourism, travel, culture',
+        siteLogo: null,
+        siteFavicon: null,
+        contactEmail: 'info@syriaway.com',
+        contactPhone: null,
+        contactAddress: null,
+        socialFacebook: null,
+        socialTwitter: null,
+        socialInstagram: null,
+        socialLinkedin: null,
+        socialYoutube: null,
+        googleAnalyticsId: null,
+        googleMapsApiKey: null,
+        stripePublicKey: null,
+        stripeSecretKey: null,
+        paypalClientId: null,
+        paypalSecret: null,
+        smtpHost: null,
+        smtpPort: null,
+        smtpUser: null,
+        smtpPass: null,
+        defaultLanguage: 'ENGLISH',
+        supportedLanguages: '["ENGLISH","ARABIC","FRENCH"]',
+        maintenanceMode: false,
+        maintenanceMessage: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }]
     }
-    
-    // Return only public settings (exclude sensitive data)
-    const publicSettings = {
-      siteName: settings.siteName,
-      siteDescription: settings.siteDescription,
-      logoUrl: settings.logoUrl,
-      faviconUrl: settings.faviconUrl,
-      contactEmail: settings.contactEmail,
-      contactPhone: settings.contactPhone,
-      contactAddress: settings.contactAddress,
-      googleMapsEmbed: settings.googleMapsEmbed,
-      facebookUrl: settings.facebookUrl,
-      instagramUrl: settings.instagramUrl,
-      twitterUrl: settings.twitterUrl,
-      websiteUrl: settings.websiteUrl,
-      youtubeUrl: settings.youtubeUrl,
-      linkedinUrl: settings.linkedinUrl,
-      enableContactForm: settings.enableContactForm,
-      enableSocialSharing: settings.enableSocialSharing,
-      shareFacebook: settings.shareFacebook,
-      shareTwitter: settings.shareTwitter,
-      shareInstagram: settings.shareInstagram,
-      shareWhatsapp: settings.shareWhatsapp,
-      metaTitle: settings.metaTitle,
-      metaDescription: settings.metaDescription,
-      keywords: settings.keywords,
-      generateSitemap: settings.generateSitemap,
-      enableRobotsTxt: settings.enableRobotsTxt,
-      enableAnalytics: settings.enableAnalytics,
-      enableCookieConsent: settings.enableCookieConsent,
-      defaultLanguage: settings.defaultLanguage,
-      timezone: settings.timezone,
-      dateFormat: settings.dateFormat,
-      currency: settings.currency,
+
+    // Get public system settings with timeout handling
+    let systemSettingsData = []
+    try {
+      systemSettingsData = await db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.isPublic, true))
+    } catch (error) {
+      console.error('Error fetching system settings:', error)
+      // Return empty array if database fails
+      systemSettingsData = []
     }
-    
-    return NextResponse.json({ settings: publicSettings })
+
+    const website = websiteSettingsData[0] || {}
+    const system = systemSettingsData.reduce((acc, setting) => {
+      acc[setting.key] = setting.value
+      return acc
+    }, {} as Record<string, string>)
+
+    // Return the structure that the footer expects
+    const settings = {
+      siteName: website.siteName || 'SyriaWay',
+      siteDescription: website.siteDescription || 'Your gateway to Syrian tourism',
+      contactEmail: website.contactEmail || 'info@syriaway.com',
+      contactPhone: website.contactPhone || null,
+      contactAddress: website.contactAddress || null,
+      facebookUrl: website.socialFacebook || null,
+      twitterUrl: website.socialTwitter || null,
+      instagramUrl: website.socialInstagram || null,
+      linkedinUrl: website.socialLinkedin || null,
+      youtubeUrl: website.socialYoutube || null,
+      websiteUrl: null,
+    }
+
+    return NextResponse.json({
+      settings,
+      website,
+      system
+    })
   } catch (error) {
-    console.error('Error fetching public website settings:', error)
+    console.error('Error in settings route:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch website settings' },
+      { 
+        error: 'Failed to fetch settings',
+        settings: {
+          siteName: 'SyriaWay',
+          siteDescription: 'Your gateway to Syrian tourism',
+          contactEmail: 'info@syriaway.com',
+          contactPhone: null,
+          contactAddress: null,
+          facebookUrl: null,
+          twitterUrl: null,
+          instagramUrl: null,
+          linkedinUrl: null,
+          youtubeUrl: null,
+          websiteUrl: null,
+        },
+        website: {
+          siteName: 'SyriaWay',
+          siteDescription: 'Your gateway to Syrian tourism',
+          defaultLanguage: 'ENGLISH',
+        },
+        system: {}
+      },
       { status: 500 }
     )
   }

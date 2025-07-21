@@ -1,7 +1,6 @@
-import { prisma } from './prisma'
-import { PrismaClient } from "@/lib/generated/prisma"
-
-const prismaClient = new PrismaClient()
+import { db } from './db'
+import { notifications } from '@/drizzle/schema'
+import { eq, and, desc } from 'drizzle-orm'
 
 export interface CreateNotificationData {
   userId: string
@@ -16,23 +15,57 @@ export interface CreateNotificationData {
 
 export async function createNotification(data: CreateNotificationData) {
   try {
-    const notification = await prisma.notification.create({
-      data: {
-        userId: data.userId,
-        title: data.title,
-        message: data.message,
-        type: data.type,
-        category: data.category,
-        relatedId: data.relatedId,
-        relatedType: data.relatedType,
-        priority: data.priority || 'NORMAL'
-      }
-    })
-    
-    return { success: true, notification }
+    const [notification] = await db.insert(notifications).values({
+      userId: data.userId,
+      title: data.title,
+      message: data.message,
+      type: data.type,
+      category: data.category,
+      relatedId: data.relatedId,
+      relatedType: data.relatedType,
+      priority: data.priority || 'NORMAL',
+    }).returning()
+
+    return notification
   } catch (error) {
     console.error('Error creating notification:', error)
-    return { success: false, error }
+    throw error
+  }
+}
+
+export async function markNotificationAsRead(notificationId: string) {
+  try {
+    const [notification] = await db
+      .update(notifications)
+      .set({ 
+        isRead: true,
+        readAt: new Date().toISOString()
+      })
+      .where(eq(notifications.id, notificationId))
+      .returning()
+
+    return notification
+  } catch (error) {
+    console.error('Error marking notification as read:', error)
+    throw error
+  }
+}
+
+export async function getUnreadNotifications(userId: string) {
+  try {
+    const unreadNotifications = await db
+      .select()
+      .from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.isRead, false)
+      ))
+      .orderBy(desc(notifications.createdAt))
+
+    return unreadNotifications
+  } catch (error) {
+    console.error('Error fetching unread notifications:', error)
+    throw error
   }
 }
 
@@ -163,34 +196,30 @@ export async function createBookingStatusNotification(
     }
 
     // Create notification for customer
-    await prismaClient.notification.create({
-      data: {
-        userId: customerId,
+    await db.insert(notifications).values({
+      userId: customerId,
+      title: `Booking ${status.toLowerCase()}`,
+      message: `Your ${serviceType.toLowerCase()} booking for ${serviceName} has been ${status.toLowerCase()}.${notes ? ` Notes: ${notes}` : ''}`,
+      type: notificationType,
+      category: "BOOKING",
+      priority: status === "CONFIRMED" ? "HIGH" : "MEDIUM",
+      isRead: false,
+      relatedId: bookingId,
+      relatedType: "BOOKING",
+    })
+
+    // Create notification for service provider if they exist
+    if (serviceProviderId) {
+      await db.insert(notifications).values({
+        userId: serviceProviderId,
         title: `Booking ${status.toLowerCase()}`,
-        message: `Your ${serviceType.toLowerCase()} booking for ${serviceName} has been ${status.toLowerCase()}.${notes ? ` Notes: ${notes}` : ''}`,
+        message: `A ${serviceType.toLowerCase()} booking for ${serviceName} has been ${status.toLowerCase()}.${notes ? ` Notes: ${notes}` : ''}`,
         type: notificationType,
         category: "BOOKING",
         priority: status === "CONFIRMED" ? "HIGH" : "MEDIUM",
         isRead: false,
         relatedId: bookingId,
         relatedType: "BOOKING",
-      },
-    })
-
-    // Create notification for service provider if they exist
-    if (serviceProviderId) {
-      await prismaClient.notification.create({
-        data: {
-          userId: serviceProviderId,
-          title: `Booking ${status.toLowerCase()}`,
-          message: `A ${serviceType.toLowerCase()} booking for ${serviceName} has been ${status.toLowerCase()}.${notes ? ` Notes: ${notes}` : ''}`,
-          type: notificationType,
-          category: "BOOKING",
-          priority: status === "CONFIRMED" ? "HIGH" : "MEDIUM",
-          isRead: false,
-          relatedId: bookingId,
-          relatedType: "BOOKING",
-        },
       })
     }
   } catch (error) {
@@ -209,18 +238,16 @@ export async function createCancellationRequestNotification(
   try {
     // Create notification for service provider
     if (serviceProviderId) {
-      await prismaClient.notification.create({
-        data: {
-          userId: serviceProviderId,
-          title: "Cancellation Request",
-          message: `A customer has requested to cancel their ${serviceType.toLowerCase()} booking for ${serviceName}. Please review and respond.`,
-          type: NOTIFICATION_TYPES.REQUEST_UPDATED,
-          category: "BOOKING",
-          priority: "HIGH",
-          isRead: false,
-          relatedId: bookingId,
-          relatedType: "BOOKING",
-        },
+      await db.insert(notifications).values({
+        userId: serviceProviderId,
+        title: "Cancellation Request",
+        message: `A customer has requested to cancel their ${serviceType.toLowerCase()} booking for ${serviceName}. Please review and respond.`,
+        type: NOTIFICATION_TYPES.REQUEST_UPDATED,
+        category: "BOOKING",
+        priority: "HIGH",
+        isRead: false,
+        relatedId: bookingId,
+        relatedType: "BOOKING",
       })
     }
   } catch (error) {

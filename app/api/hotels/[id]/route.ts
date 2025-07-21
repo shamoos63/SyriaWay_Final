@@ -1,33 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@/lib/generated/prisma'
+import { db } from '@/lib/db'
+import { hotels, hotelRooms } from '@/drizzle/schema'
+import { eq } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
+// GET - Fetch single hotel by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const hotelId = params.id
+    const { id } = await params
+    const { searchParams } = new URL(request.url)
+    const includeRooms = searchParams.get('includeRooms') === 'true'
 
-    // Fetch hotel with rooms and their bookings
-    const hotel = await prisma.hotel.findUnique({
-      where: { id: hotelId },
-      include: {
-        rooms: {
-          include: {
-            bookings: {
-              where: {
-                status: 'CONFIRMED',
-                startDate: { lte: new Date() },
-                endDate: { gte: new Date() }
-              }
-            }
-          },
-          orderBy: { name: 'asc' }
-        }
-      }
-    })
+    const [hotel] = await db
+      .select()
+      .from(hotels)
+      .where(eq(hotels.id, parseInt(id)))
 
     if (!hotel) {
       return NextResponse.json(
@@ -36,61 +25,22 @@ export async function GET(
       )
     }
 
-    // Format the response
-    const formattedHotel = {
-      id: hotel.id,
-      name: hotel.name,
-      description: hotel.description,
-      address: hotel.address,
-      city: hotel.city,
-      phone: hotel.phone,
-      email: hotel.email,
-      website: hotel.website,
-      starRating: hotel.starRating,
-      checkInTime: hotel.checkInTime,
-      checkOutTime: hotel.checkOutTime,
-      amenities: hotel.amenities,
-      images: hotel.images,
-      googleMapLink: hotel.googleMapLink,
-      isActive: hotel.isActive,
-      isVerified: hotel.isVerified,
-      createdAt: hotel.createdAt,
-      updatedAt: hotel.updatedAt
+    let rooms = []
+    if (includeRooms) {
+      rooms = await db
+        .select()
+        .from(hotelRooms)
+        .where(eq(hotelRooms.hotelId, parseInt(id)))
     }
 
-    const formattedRooms = hotel.rooms.map(room => ({
-      id: room.id,
-      hotelId: room.hotelId,
-      name: room.name,
-      roomNumber: room.roomNumber,
-      roomType: room.roomType,
-      capacity: room.capacity,
-      pricePerNight: room.pricePerNight,
-      price: room.pricePerNight,
-      isAvailable: room.isAvailable,
-      bedType: room.bedType,
-      amenities: room.amenities,
-      images: room.images,
-      description: room.description,
-      floor: room.floor,
-      size: room.size,
-      currency: room.currency,
-      bedCount: room.bedCount,
-      bathroomCount: room.bathroomCount,
-      maxOccupancy: room.maxOccupancy,
-      bookings: room.bookings,
-      createdAt: room.createdAt,
-      updatedAt: room.updatedAt,
-    }))
-
-    return NextResponse.json({
-      hotel: formattedHotel,
-      rooms: formattedRooms
+    return NextResponse.json({ 
+      hotel,
+      rooms: includeRooms ? rooms : undefined
     })
   } catch (error) {
-    console.error('Error fetching hotel details:', error)
+    console.error('Error fetching hotel:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch hotel details' },
+      { error: 'Failed to fetch hotel' },
       { status: 500 }
     )
   }

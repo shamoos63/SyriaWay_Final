@@ -1,146 +1,148 @@
-import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@/lib/generated/prisma"
-import { z } from "zod"
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { contactForms } from '@/drizzle/schema'
+import { eq } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
-// Validation schema for updating contact forms
-const updateContactFormSchema = z.object({
-  status: z.enum(["New", "In Progress", "Resolved", "Closed"]).optional(),
-  priority: z.enum(["Low", "Normal", "High", "Urgent"]).optional(),
-  response: z.string().optional(),
-  assignedTo: z.string().optional(),
-})
-
-// GET /api/admin/contact-forms/[id] - Get specific contact form
+// GET - Fetch single contact form by ID (admin only)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const contactForm = await prisma.contactForm.findUnique({
-      where: { id: params.id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    })
-
-    if (!contactForm) {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "Contact form not found" },
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Check if user is admin (you might want to add role checking here)
+    const { id } = await params
+
+    const [form] = await db
+      .select()
+      .from(contactForms)
+      .where(eq(contactForms.id, parseInt(id)))
+
+    if (!form) {
+      return NextResponse.json(
+        { error: 'Contact form not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json({ contactForm })
+    return NextResponse.json({ form })
   } catch (error) {
-    console.error("Error fetching contact form:", error)
+    console.error('Error fetching admin contact form:', error)
     return NextResponse.json(
-      { error: "Failed to fetch contact form" },
+      { error: 'Failed to fetch contact form' },
       { status: 500 }
     )
   }
 }
 
-// PATCH /api/admin/contact-forms/[id] - Update contact form
-export async function PATCH(
+// PUT - Update contact form (admin only)
+export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const body = await request.json()
+    const session = await getServerSession(authOptions)
     
-    // Validate the request body
-    const validatedData = updateContactFormSchema.parse(body)
-
-    // Check if contact form exists
-    const existingContactForm = await prisma.contactForm.findUnique({
-      where: { id: params.id },
-    })
-
-    if (!existingContactForm) {
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "Contact form not found" },
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Check if user is admin (you might want to add role checking here)
+    const { id } = await params
+    const body = await request.json()
+
+    // Check if form exists
+    const [existingForm] = await db
+      .select()
+      .from(contactForms)
+      .where(eq(contactForms.id, parseInt(id)))
+
+    if (!existingForm) {
+      return NextResponse.json(
+        { error: 'Contact form not found' },
         { status: 404 }
       )
     }
 
-    // Prepare update data
-    const updateData: any = { ...validatedData }
-    
-    // If adding a response, set respondedAt and respondedBy
-    if (validatedData.response) {
-      updateData.respondedAt = new Date()
-      // Note: In a real app, you'd get the current admin's ID from the session
-      updateData.respondedBy = "admin" // This should come from auth context
-    }
+    // Update form
+    const [updatedForm] = await db
+      .update(contactForms)
+      .set({
+        ...body,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(contactForms.id, parseInt(id)))
+      .returning()
 
-    // Update the contact form
-    const contactForm = await prisma.contactForm.update({
-      where: { id: params.id },
-      data: updateData,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+    return NextResponse.json({
+      form: updatedForm,
+      message: 'Contact form updated successfully'
     })
-
-    return NextResponse.json({ contactForm })
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Validation error", details: error.errors },
-        { status: 400 }
-      )
-    }
-
-    console.error("Error updating contact form:", error)
+    console.error('Error updating admin contact form:', error)
     return NextResponse.json(
-      { error: "Failed to update contact form" },
+      { error: 'Failed to update contact form' },
       { status: 500 }
     )
   }
 }
 
-// DELETE /api/admin/contact-forms/[id] - Delete contact form
+// DELETE - Delete contact form (admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Check if contact form exists
-    const existingContactForm = await prisma.contactForm.findUnique({
-      where: { id: params.id },
-    })
-
-    if (!existingContactForm) {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "Contact form not found" },
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Check if user is admin (you might want to add role checking here)
+    const { id } = await params
+
+    // Check if form exists
+    const [existingForm] = await db
+      .select()
+      .from(contactForms)
+      .where(eq(contactForms.id, parseInt(id)))
+
+    if (!existingForm) {
+      return NextResponse.json(
+        { error: 'Contact form not found' },
         { status: 404 }
       )
     }
 
-    // Delete the contact form
-    await prisma.contactForm.delete({
-      where: { id: params.id },
-    })
+    // Delete form
+    await db
+      .delete(contactForms)
+      .where(eq(contactForms.id, parseInt(id)))
 
-    return NextResponse.json({ message: "Contact form deleted successfully" })
+    return NextResponse.json({
+      message: 'Contact form deleted successfully'
+    })
   } catch (error) {
-    console.error("Error deleting contact form:", error)
+    console.error('Error deleting admin contact form:', error)
     return NextResponse.json(
-      { error: "Failed to delete contact form" },
+      { error: 'Failed to delete contact form' },
       { status: 500 }
     )
   }

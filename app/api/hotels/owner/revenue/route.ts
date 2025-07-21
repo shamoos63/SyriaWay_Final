@@ -1,222 +1,135 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@/lib/generated/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { hotels, bookings } from '@/drizzle/schema'
+import { eq, and, sql, gte, lte } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
+// GET - Fetch hotel owner revenue data
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
-    const ownerId = authHeader.replace('Bearer ', '')
 
-    // Find all hotels owned by this user
-    const hotels = await prisma.hotel.findMany({
-      where: { ownerId },
-      select: { id: true, name: true, city: true }
-    })
-    const hotelIds = hotels.map(h => h.id)
+    const { searchParams } = new URL(request.url)
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    const period = searchParams.get('period') || 'month'
+
+    const userId = parseInt(session.user.id)
+
+    // Get user's hotels
+    const userHotels = await db
+      .select({ id: hotels.id })
+      .from(hotels)
+      .where(eq(hotels.ownerId, userId))
+
+    const hotelIds = userHotels.map(hotel => hotel.id)
 
     if (hotelIds.length === 0) {
       return NextResponse.json({
-        totalRevenue: 0,
-        monthlyRevenue: 0,
-        revenueGrowth: 0,
-        averagePerBooking: 0,
-        totalBookings: 0,
-        monthlyBreakdown: [],
-        hotelRevenue: [],
-        recentTransactions: []
+        revenue: {
+          total: 0,
+          monthly: [],
+          daily: [],
+          byHotel: []
+        }
       })
     }
 
-    // Get current date for calculations
-    const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+    let whereConditions = [
+      eq(bookings.serviceType, 'HOTEL'),
+      sql`${bookings.serviceId} IN (${hotelIds.join(',')})`,
+      eq(bookings.paymentStatus, 'PAID')
+    ]
 
-    // Calculate revenue statistics
-    const [
-      totalRevenue,
-      monthlyRevenue,
-      lastMonthRevenue,
-      totalBookings,
-      monthlyBookings,
-      averagePerBooking
-    ] = await Promise.all([
-      // Total revenue
-      prisma.booking.aggregate({
-        where: {
-          hotelId: { in: hotelIds },
-          serviceType: 'HOTEL',
-          status: { in: ['CONFIRMED', 'COMPLETED'] }
-        },
-        _sum: { totalPrice: true }
-      }),
-      // Monthly revenue
-      prisma.booking.aggregate({
-        where: {
-          hotelId: { in: hotelIds },
-          serviceType: 'HOTEL',
-          status: { in: ['CONFIRMED', 'COMPLETED'] },
-          createdAt: {
-            gte: startOfMonth,
-            lte: endOfMonth
-          }
-        },
-        _sum: { totalPrice: true }
-      }),
-      // Last month revenue for growth calculation
-      prisma.booking.aggregate({
-        where: {
-          hotelId: { in: hotelIds },
-          serviceType: 'HOTEL',
-          status: { in: ['CONFIRMED', 'COMPLETED'] },
-          createdAt: {
-            gte: startOfLastMonth,
-            lte: endOfLastMonth
-          }
-        },
-        _sum: { totalPrice: true }
-      }),
-      // Total bookings
-      prisma.booking.count({
-        where: {
-          hotelId: { in: hotelIds },
-          serviceType: 'HOTEL',
-          status: { in: ['CONFIRMED', 'COMPLETED'] }
-        }
-      }),
-      // Monthly bookings
-      prisma.booking.count({
-        where: {
-          hotelId: { in: hotelIds },
-          serviceType: 'HOTEL',
-          status: { in: ['CONFIRMED', 'COMPLETED'] },
-          createdAt: {
-            gte: startOfMonth,
-            lte: endOfMonth
-          }
-        }
-      }),
-      // Average per booking
-      prisma.booking.aggregate({
-        where: {
-          hotelId: { in: hotelIds },
-          serviceType: 'HOTEL',
-          status: { in: ['CONFIRMED', 'COMPLETED'] }
-        },
-        _avg: { totalPrice: true }
-      })
-    ])
-
-    // Calculate revenue growth
-    const currentRevenue = monthlyRevenue._sum.totalPrice || 0
-    const previousRevenue = lastMonthRevenue._sum.totalPrice || 0
-    const revenueGrowth = previousRevenue > 0 
-      ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 
-      : 0
-
-    // Get monthly breakdown for the last 6 months
-    const monthlyBreakdown = []
-    for (let i = 5; i >= 0; i--) {
-      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0)
-      
-      const monthData = await prisma.booking.aggregate({
-        where: {
-          hotelId: { in: hotelIds },
-          serviceType: 'HOTEL',
-          status: { in: ['CONFIRMED', 'COMPLETED'] },
-          createdAt: {
-            gte: monthStart,
-            lte: monthEnd
-          }
-        },
-        _sum: { totalPrice: true },
-        _count: true
-      })
-
-      monthlyBreakdown.push({
-        month: monthStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-        revenue: monthData._sum.totalPrice || 0,
-        bookings: monthData._count || 0,
-        average: monthData._count > 0 ? (monthData._sum.totalPrice || 0) / monthData._count : 0
-      })
+    if (startDate) {
+      whereConditions.push(gte(bookings.createdAt, startDate))
     }
+
+    if (endDate) {
+      whereConditions.push(lte(bookings.createdAt, endDate))
+    }
+
+    // Get total revenue
+    const totalRevenueResult = await db
+      .select({ total: sql`sum(totalPrice)` })
+      .from(bookings)
+      .where(and(...whereConditions))
+
+    const totalRevenue = totalRevenueResult[0].total || 0
+
+    // Get monthly revenue
+    const monthlyRevenue = await db
+      .select({
+        month: sql`strftime('%Y-%m', createdAt)`,
+        revenue: sql`sum(totalPrice)`,
+        bookings: sql`count(*)`
+      })
+      .from(bookings)
+      .where(and(...whereConditions))
+      .groupBy(sql`strftime('%Y-%m', createdAt)`)
+      .orderBy(sql`strftime('%Y-%m', createdAt)`)
+
+    // Get daily revenue for current month
+    const currentDate = new Date()
+    const currentMonth = currentDate.toISOString().slice(0, 7)
+    
+    const dailyRevenue = await db
+      .select({
+        date: sql`strftime('%Y-%m-%d', createdAt)`,
+        revenue: sql`sum(totalPrice)`,
+        bookings: sql`count(*)`
+      })
+      .from(bookings)
+      .where(and(
+        eq(bookings.serviceType, 'HOTEL'),
+        sql`${bookings.serviceId} IN (${hotelIds.join(',')})`,
+        eq(bookings.paymentStatus, 'PAID'),
+        sql`strftime('%Y-%m', createdAt) = ${currentMonth}`
+      ))
+      .groupBy(sql`strftime('%Y-%m-%d', createdAt)`)
+      .orderBy(sql`strftime('%Y-%m-%d', createdAt)`)
 
     // Get revenue by hotel
-    const hotelRevenue = await Promise.all(
-      hotels.map(async (hotel) => {
-        const hotelBookings = await prisma.booking.aggregate({
-          where: {
-            hotelId: hotel.id,
-            serviceType: 'HOTEL',
-            status: { in: ['CONFIRMED', 'COMPLETED'] }
-          },
-          _sum: { totalPrice: true },
-          _count: true
-        })
-
-        const hotelAvg = await prisma.booking.aggregate({
-          where: {
-            hotelId: hotel.id,
-            serviceType: 'HOTEL',
-            status: { in: ['CONFIRMED', 'COMPLETED'] }
-          },
-          _avg: { totalPrice: true }
-        })
-
-        return {
-          hotelId: hotel.id,
-          hotelName: hotel.name,
-          city: hotel.city,
-          totalRevenue: hotelBookings._sum.totalPrice || 0,
-          totalBookings: hotelBookings._count || 0,
-          averagePerBooking: hotelAvg._avg.totalPrice || 0
-        }
+    const revenueByHotel = await db
+      .select({
+        hotelId: bookings.serviceId,
+        hotelName: hotels.name,
+        revenue: sql`sum(bookings.totalPrice)`,
+        bookings: sql`count(*)`
       })
-    )
+      .from(bookings)
+      .leftJoin(hotels, eq(bookings.serviceId, hotels.id))
+      .where(and(...whereConditions))
+      .groupBy(bookings.serviceId, hotels.name)
 
-    // Get recent transactions
-    const recentTransactions = await prisma.booking.findMany({
-      where: {
-        hotelId: { in: hotelIds },
-        serviceType: 'HOTEL',
-        status: { in: ['CONFIRMED', 'COMPLETED'] }
-      },
-      include: {
-        hotel: true
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 10
-    })
+    const revenue = {
+      total: totalRevenue,
+      monthly: monthlyRevenue,
+      daily: dailyRevenue,
+      byHotel: revenueByHotel
+    }
 
-    const formattedTransactions = recentTransactions.map(booking => ({
-      id: booking.id,
-      hotelName: booking.hotel?.name || 'Unknown Hotel',
-      amount: booking.totalPrice,
-      status: booking.status,
-      createdAt: booking.createdAt
-    }))
-
-    return NextResponse.json({
-      totalRevenue: totalRevenue._sum.totalPrice || 0,
-      monthlyRevenue: currentRevenue,
-      revenueGrowth,
-      averagePerBooking: averagePerBooking._avg.totalPrice || 0,
-      totalBookings,
-      monthlyBreakdown,
-      hotelRevenue,
-      recentTransactions: formattedTransactions
-    })
+    return NextResponse.json({ revenue })
   } catch (error) {
-    console.error('Error fetching hotel owner revenue:', error)
+    console.error('Error fetching hotel revenue:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch revenue data' },
+      { 
+        error: 'Failed to fetch revenue',
+        revenue: {
+          total: 0,
+          monthly: [],
+          daily: [],
+          byHotel: []
+        }
+      },
       { status: 500 }
     )
   }

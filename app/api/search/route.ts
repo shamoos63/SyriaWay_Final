@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { db } from '@/lib/db'
+import { hotels, users, tours, cars, tourismSites, blogs } from '@/drizzle/schema'
+import { eq, and, or, like } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,29 +24,37 @@ export async function GET(request: NextRequest) {
 
     // Search hotels
     if (type === 'all' || type === 'hotels') {
-      const hotels = await prisma.hotel.findMany({
-        where: {
-          OR: [
-            { name: { contains: searchTerm } },
-            { description: { contains: searchTerm } },
-            { city: { contains: searchTerm } },
-            { address: { contains: searchTerm } }
-          ],
-          isVerified: true,
-          isActive: true
-        },
-        include: {
+      const hotelsData = await db
+        .select({
+          id: hotels.id,
+          name: hotels.name,
+          description: hotels.description,
+          city: hotels.city,
+          address: hotels.address,
+          isVerified: hotels.isVerified,
+          isActive: hotels.isActive,
+          starRating: hotels.starRating,
+          images: hotels.images,
           owner: {
-            select: {
-              name: true,
-              email: true
-            }
+            name: users.name,
+            email: users.email
           }
-        },
-        take: limit
-      })
+        })
+        .from(hotels)
+        .leftJoin(users, eq(hotels.ownerId, users.id))
+        .where(and(
+          or(
+            like(hotels.name, `%${searchTerm}%`),
+            like(hotels.description, `%${searchTerm}%`),
+            like(hotels.city, `%${searchTerm}%`),
+            like(hotels.address, `%${searchTerm}%`)
+          ),
+          eq(hotels.isVerified, true),
+          eq(hotels.isActive, true)
+        ))
+        .limit(limit)
 
-      results.push(...hotels.map(hotel => ({
+      results.push(...hotelsData.map(hotel => ({
         id: hotel.id,
         name: hotel.name,
         description: hotel.description || '',
@@ -52,214 +62,173 @@ export async function GET(request: NextRequest) {
         price: 100, // Default price since pricePerNight doesn't exist in schema
         rating: hotel.starRating || 0,
         location: `${hotel.city}, ${hotel.address}`,
-        image: hotel.images?.[0] || '/placeholder.svg',
+        image: hotel.images ? JSON.parse(hotel.images)[0] : '/placeholder.svg',
         url: `/hotels/${hotel.id}`,
         provider: hotel.owner?.name
       })))
     }
 
-    // Search cars
-    if (type === 'all' || type === 'cars') {
-      const cars = await prisma.car.findMany({
-        where: {
-          OR: [
-            { brand: { contains: searchTerm } },
-            { model: { contains: searchTerm } },
-            { currentLocation: { contains: searchTerm } },
-            { category: { contains: searchTerm } }
-          ],
-          isVerified: true,
-          isAvailable: true
-        },
-        include: {
-          owner: {
-            select: {
-              name: true,
-              email: true
-            }
-          }
-        },
-        take: limit
-      })
-
-      results.push(...cars.map(car => ({
-        id: car.id,
-        name: `${car.brand} ${car.model}`,
-        description: `${car.year} ${car.color} ${car.category}`,
-        type: 'car',
-        price: car.pricePerDay,
-        rating: 0, // No rating field in Car model
-        location: car.currentLocation || 'Location not specified',
-        image: car.images?.[0] || '/placeholder.svg',
-        url: '/cars-rental',
-        provider: car.owner?.name,
-        details: [`${car.year}`, car.category, `${car.seats} seats`]
-      })))
-    }
-
     // Search tours
     if (type === 'all' || type === 'tours') {
-      const tours = await prisma.tour.findMany({
-        where: {
-          OR: [
-            { name: { contains: searchTerm } },
-            { description: { contains: searchTerm } },
-            { startLocation: { contains: searchTerm } },
-            { endLocation: { contains: searchTerm } }
-          ],
-          isActive: true
-        },
-        include: {
-          guide: {
-            include: {
-              user: {
-                select: {
-                  name: true,
-                  email: true
-                }
-              }
-            }
-          }
-        },
-        take: limit
-      })
+      const toursData = await db
+        .select({
+          id: tours.id,
+          name: tours.name,
+          description: tours.description,
+          startLocation: tours.startLocation,
+          endLocation: tours.endLocation,
+          price: tours.price,
+          isActive: tours.isActive,
+          images: tours.images,
+        })
+        .from(tours)
+        .where(and(
+          or(
+            like(tours.name, `%${searchTerm}%`),
+            like(tours.description, `%${searchTerm}%`),
+            like(tours.startLocation, `%${searchTerm}%`),
+            like(tours.endLocation, `%${searchTerm}%`)
+          ),
+          eq(tours.isActive, true)
+        ))
+        .limit(limit)
 
-      results.push(...tours.map(tour => ({
+      results.push(...toursData.map(tour => ({
         id: tour.id,
         name: tour.name,
         description: tour.description || '',
         type: 'tour',
         price: tour.price,
-        rating: 0, // No rating field in Tour model
-        location: `${tour.startLocation} → ${tour.endLocation}`,
-        image: tour.images?.[0] || '/placeholder.svg',
-        url: '/tours',
-        provider: tour.guide?.user?.name,
-        details: [`${tour.duration}h`, `${tour.capacity} people`]
+        rating: 0, // No rating system for tours yet
+        location: `${tour.startLocation} to ${tour.endLocation}`,
+        image: tour.images ? JSON.parse(tour.images)[0] : '/placeholder.svg',
+        url: `/tours/${tour.id}`,
+        provider: 'Tour Guide'
       })))
     }
 
-    // Search special offers
-    if (type === 'all' || type === 'offers') {
-      const hotels = await prisma.hotel.findMany({
-        where: {
-          AND: [
-            { isSpecialOffer: true },
-            {
-              OR: [
-                { name: { contains: searchTerm } },
-                { description: { contains: searchTerm } },
-                { city: { contains: searchTerm } },
-                { address: { contains: searchTerm } }
-              ]
-            }
-          ],
-          isVerified: true,
-          isActive: true
-        },
-        take: limit
-      })
+    // Search cars
+    if (type === 'all' || type === 'cars') {
+      const carsData = await db
+        .select({
+          id: cars.id,
+          brand: cars.brand,
+          model: cars.model,
+          year: cars.year,
+          pricePerDay: cars.pricePerDay,
+          isAvailable: cars.isAvailable,
+          isVerified: cars.isVerified,
+          images: cars.images,
+        })
+        .from(cars)
+        .where(and(
+          or(
+            like(cars.brand, `%${searchTerm}%`),
+            like(cars.model, `%${searchTerm}%`)
+          ),
+          eq(cars.isAvailable, true),
+          eq(cars.isVerified, true)
+        ))
+        .limit(limit)
 
-      const cars = await prisma.car.findMany({
-        where: {
-          AND: [
-            { isSpecialOffer: true },
-            {
-              OR: [
-                { brand: { contains: searchTerm } },
-                { model: { contains: searchTerm } }
-              ]
-            }
-          ],
-          isVerified: true,
-          isAvailable: true
-        },
-        take: limit
-      })
-
-      const tours = await prisma.tour.findMany({
-        where: {
-          AND: [
-            { isSpecialOffer: true },
-            {
-              OR: [
-                { name: { contains: searchTerm } },
-                { description: { contains: searchTerm } }
-              ]
-            }
-          ],
-          isActive: true
-        },
-        take: limit
-      })
-
-      results.push(...hotels.map(hotel => ({
-        id: hotel.id,
-        name: hotel.name,
-        description: hotel.description || '',
-        type: 'offer',
-        price: 80, // Discounted price
-        originalPrice: 100, // Original price
-        rating: hotel.starRating || 0,
-        location: `${hotel.city}, ${hotel.address}`,
-        image: hotel.images?.[0] || '/placeholder.svg',
-        url: `/hotels/${hotel.id}`,
-        discount: '20% OFF'
-      })))
-
-      results.push(...cars.map(car => ({
+      results.push(...carsData.map(car => ({
         id: car.id,
-        name: `${car.brand} ${car.model}`,
-        description: `${car.year} ${car.color} ${car.category}`,
-        type: 'offer',
-        price: car.pricePerDay * 0.85, // 15% discount
-        originalPrice: car.pricePerDay,
-        rating: 0,
-        location: car.currentLocation || 'Location not specified',
-        image: car.images?.[0] || '/placeholder.svg',
-        url: '/cars-rental',
-        discount: '15% OFF'
-      })))
-
-      results.push(...tours.map(tour => ({
-        id: tour.id,
-        name: tour.name,
-        description: tour.description || '',
-        type: 'offer',
-        price: tour.price * 0.75, // 25% discount
-        originalPrice: tour.price,
-        rating: 0,
-        location: `${tour.startLocation} → ${tour.endLocation}`,
-        image: tour.images?.[0] || '/placeholder.svg',
-        url: '/tours',
-        discount: '25% OFF'
+        name: `${car.brand} ${car.model} (${car.year})`,
+        description: `${car.brand} ${car.model} available for rent`,
+        type: 'car',
+        price: car.pricePerDay,
+        rating: 0, // No rating system for cars yet
+        location: 'Available for pickup',
+        image: car.images ? JSON.parse(car.images)[0] : '/placeholder.svg',
+        url: `/cars/${car.id}`,
+        provider: 'Car Owner'
       })))
     }
 
-    // Sort results by relevance
-    const sortedResults = results.sort((a, b) => {
-      const aExactMatch = a.name.toLowerCase().includes(searchTerm) || 
-                         a.description.toLowerCase().includes(searchTerm)
-      const bExactMatch = b.name.toLowerCase().includes(searchTerm) || 
-                         b.description.toLowerCase().includes(searchTerm)
-      
-      if (aExactMatch && !bExactMatch) return -1
-      if (!aExactMatch && bExactMatch) return 1
-      
-      return (b.rating || 0) - (a.rating || 0)
-    })
+    // Search tourism sites
+    if (type === 'all' || type === 'sites') {
+      const sitesData = await db
+        .select({
+          id: tourismSites.id,
+          name: tourismSites.name,
+          description: tourismSites.description,
+          city: tourismSites.city,
+          category: tourismSites.category,
+          isActive: tourismSites.isActive,
+          images: tourismSites.images,
+        })
+        .from(tourismSites)
+        .where(and(
+          or(
+            like(tourismSites.name, `%${searchTerm}%`),
+            like(tourismSites.description, `%${searchTerm}%`),
+            like(tourismSites.city, `%${searchTerm}%`)
+          ),
+          eq(tourismSites.isActive, true)
+        ))
+        .limit(limit)
+
+      results.push(...sitesData.map(site => ({
+        id: site.id,
+        name: site.name,
+        description: site.description || '',
+        type: 'site',
+        price: 0, // Free to visit
+        rating: 0, // No rating system for sites yet
+        location: site.city,
+        image: site.images ? JSON.parse(site.images)[0] : '/placeholder.svg',
+        url: `/tourism-sites/${site.id}`,
+        provider: 'Tourism Site'
+      })))
+    }
+
+    // Search blogs
+    if (type === 'all' || type === 'blogs') {
+      const blogsData = await db
+        .select({
+          id: blogs.id,
+          title: blogs.title,
+          excerpt: blogs.excerpt,
+          slug: blogs.slug,
+          isPublished: blogs.isPublished,
+          status: blogs.status,
+          featuredImage: blogs.featuredImage,
+        })
+        .from(blogs)
+        .where(and(
+          or(
+            like(blogs.title, `%${searchTerm}%`),
+            like(blogs.excerpt, `%${searchTerm}%`)
+          ),
+          eq(blogs.isPublished, true),
+          eq(blogs.status, 'PUBLISHED')
+        ))
+        .limit(limit)
+
+      results.push(...blogsData.map(blog => ({
+        id: blog.id,
+        name: blog.title,
+        description: blog.excerpt || '',
+        type: 'blog',
+        price: 0, // Free to read
+        rating: 0, // No rating system for blogs yet
+        location: 'Blog',
+        image: blog.featuredImage || '/placeholder.svg',
+        url: `/blog/${blog.slug}`,
+        provider: 'Blog Author'
+      })))
+    }
 
     return NextResponse.json({
-      results: sortedResults.slice(0, limit),
-      total: sortedResults.length,
-      query: searchTerm,
-      message: `Found ${sortedResults.length} results for "${query}"`
+      results: results.slice(0, limit),
+      total: results.length,
+      query,
+      message: `Found ${results.length} results for "${query}"`
     })
-
   } catch (error) {
     console.error('Search error:', error)
     return NextResponse.json(
-      { error: 'Failed to perform search' },
+      { error: 'Search failed' },
       { status: 500 }
     )
   }

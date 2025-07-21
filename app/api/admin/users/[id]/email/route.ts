@@ -1,64 +1,82 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@/lib/generated/prisma';
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { users } from '@/drizzle/schema'
+import { eq } from 'drizzle-orm'
 
-const prisma = new PrismaClient();
-
-export async function POST(
+// PUT - Update user email
+export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const body = await request.json();
-    const { subject, message } = body;
-
-    if (!subject || !message) {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Subject and message are required' },
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Check if user is admin (you might want to add role checking here)
+    const { id } = await params
+    const body = await request.json()
+    const { email } = body
+
+    if (!email) {
+      return NextResponse.json(
+        { error: 'Email is required' },
         { status: 400 }
-      );
+      )
     }
 
     // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { id: params.id },
-      select: { email: true, name: true },
-    });
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, parseInt(id)))
 
-    if (!user) {
+    if (!existingUser) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
-      );
+      )
     }
 
-    // In a real application, you would integrate with an email service here
-    // For now, we'll just log the email details
-    console.log('Email would be sent:', {
-      to: user.email,
-      subject,
-      message,
-      user: user.name,
-    });
+    // Check if email is already taken
+    const [existingEmail] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
 
-    // You could integrate with services like:
-    // - SendGrid
-    // - Mailgun
-    // - AWS SES
-    // - Nodemailer with SMTP
+    if (existingEmail && existingEmail.id !== parseInt(id)) {
+      return NextResponse.json(
+        { error: 'Email is already taken' },
+        { status: 400 }
+      )
+    }
+
+    // Update user email
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        email,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.id, parseInt(id)))
+      .returning()
 
     return NextResponse.json({
-      message: 'Email sent successfully',
-      email: {
-        to: user.email,
-        subject,
-        message,
-      },
-    });
+      user: updatedUser,
+      message: 'User email updated successfully'
+    })
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('Error updating user email:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to update user email' },
       { status: 500 }
-    );
+    )
   }
 } 

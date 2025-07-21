@@ -8,10 +8,12 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useNotifications } from '@/lib/notification-context'
+import { useLanguage } from '@/lib/i18n/language-context'
 import { cn } from '@/lib/utils'
 
 export default function NotificationsPage() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, archiveNotification, loading } = useNotifications()
+  const { t } = useLanguage()
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('ALL')
   const [statusFilter, setStatusFilter] = useState('ALL')
@@ -21,9 +23,9 @@ export default function NotificationsPage() {
     const now = new Date()
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
     
-    if (diffInMinutes < 1) return 'Just now'
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
+    if (diffInMinutes < 1) return t.userDashboard?.justNow || 'Just now'
+    if (diffInMinutes < 60) return `${diffInMinutes}${t.userDashboard?.minutes || 'm'} ${t.userDashboard?.ago || 'ago'}`
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}${t.userDashboard?.hours || 'h'} ${t.userDashboard?.ago || 'ago'}`
     return date.toLocaleDateString()
   }
 
@@ -87,10 +89,10 @@ export default function NotificationsPage() {
             <Bell className="h-8 w-8 text-syria-gold" />
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                Notifications
+                {t.userDashboard?.notifications || "Notifications"}
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
-                {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
+                {unreadCount} {t.userDashboard?.unreadNotifications || "unread notification"}{unreadCount !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
@@ -101,7 +103,7 @@ export default function NotificationsPage() {
               className="bg-syria-gold hover:bg-syria-dark-gold text-white"
             >
               <Check className="h-4 w-4 mr-2" />
-              Mark all as read
+              {t.userDashboard?.markAllAsRead || "Mark all as read"}
             </Button>
           )}
         </div>
@@ -111,7 +113,7 @@ export default function NotificationsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Filter className="h-5 w-5" />
-              Filters
+              {t.userDashboard?.filters || "Filters"}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -119,7 +121,7 @@ export default function NotificationsPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search notifications..."
+                  placeholder={t.userDashboard?.searchNotifications || "Search notifications..."}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -128,7 +130,7 @@ export default function NotificationsPage() {
               
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Category" />
+                  <SelectValue placeholder={t.userDashboard?.category || "Category"} />
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map(category => (
@@ -141,7 +143,7 @@ export default function NotificationsPage() {
               
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder={t.userDashboard?.status || "Status"} />
                 </SelectTrigger>
                 <SelectContent>
                   {statuses.map(status => (
@@ -159,19 +161,19 @@ export default function NotificationsPage() {
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-syria-gold mx-auto"></div>
-            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading notifications...</p>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">{t.userDashboard?.loadingNotifications || "Loading notifications..."}</p>
           </div>
         ) : filteredNotifications.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
               <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                No notifications found
+                {t.userDashboard?.noNotificationsFound || "No notifications found"}
               </h3>
               <p className="text-gray-600 dark:text-gray-400">
                 {searchTerm || categoryFilter !== 'ALL' || statusFilter !== 'ALL' 
-                  ? 'Try adjusting your filters' 
-                  : 'You\'re all caught up!'}
+                  ? (t.userDashboard?.tryAdjustingFilters || 'Try adjusting your filters')
+                  : (t.userDashboard?.allCaughtUp || 'You\'re all caught up!')}
               </p>
             </CardContent>
           </Card>
@@ -213,7 +215,7 @@ export default function NotificationsPage() {
                           </Badge>
                           {notification.priority === 'URGENT' && (
                             <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                              URGENT
+                              {t.userDashboard?.urgent || "URGENT"}
                             </Badge>
                           )}
                         </div>
@@ -236,7 +238,7 @@ export default function NotificationsPage() {
                             className="text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
                           >
                             <Check className="h-4 w-4 mr-1" />
-                            Mark as read
+                            {t.userDashboard?.markAsRead || "Mark as read"}
                           </Button>
                         )}
                         <Button
@@ -246,7 +248,7 @@ export default function NotificationsPage() {
                           className="text-gray-500 hover:text-red-600 border-gray-200 hover:border-red-300"
                         >
                           <Trash2 className="h-4 w-4 mr-1" />
-                          Archive
+                          {t.userDashboard?.archive || "Archive"}
                         </Button>
                       </div>
                     </div>

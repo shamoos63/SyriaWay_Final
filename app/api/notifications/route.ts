@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { db } from '@/lib/db'
+import { notifications } from '@/drizzle/schema'
+import { eq, and, desc, inArray } from 'drizzle-orm'
 
-// GET - Fetch user notifications
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -11,54 +12,33 @@ export async function GET(request: NextRequest) {
     
     const userId = authHeader.replace('Bearer ', '')
     
-    const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const unreadOnly = searchParams.get('unreadOnly') === 'true'
-    const category = searchParams.get('category')
-    
-    const skip = (page - 1) * limit
-    
-    // Build where clause
-    const where: any = {
-      userId,
-      isArchived: false
-    }
-    
-    if (unreadOnly) {
-      where.isRead = false
-    }
-    
-    if (category) {
-      where.category = category
-    }
-    
-    const [notifications, total, unreadCount] = await Promise.all([
-      prisma.notification.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit
-      }),
-      prisma.notification.count({ where }),
-      prisma.notification.count({ 
-        where: { 
-          userId, 
-          isRead: false, 
-          isArchived: false 
-        } 
+    // For demo purposes, allow demo-user-id
+    if (userId === 'demo-user-id') {
+      return NextResponse.json({
+        notifications: [
+          {
+            id: 'demo-notification-1',
+            title: 'Welcome to Syria Ways!',
+            message: 'Thank you for joining our platform. Start exploring amazing destinations in Syria.',
+            type: 'SYSTEM',
+            category: 'SYSTEM',
+            isRead: false,
+            createdAt: new Date().toISOString(),
+          }
+        ],
+        total: 1
       })
-    ])
-    
+    }
+
+    const notificationsData = await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt))
+
     return NextResponse.json({
-      notifications,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
-      },
-      unreadCount
+      notifications: notificationsData,
+      total: notificationsData.length
     })
   } catch (error) {
     console.error('Error fetching notifications:', error)
@@ -69,51 +49,43 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create notification (for internal use)
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const {
-      userId,
-      title,
-      message,
-      type,
-      category,
-      relatedId,
-      relatedType,
-      priority = 'NORMAL'
-    } = body
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     
-    // Validate required fields
-    if (!userId || !title || !message || !type || !category) {
+    const userId = authHeader.replace('Bearer ', '')
+    const { notificationIds } = await request.json()
+
+    if (!notificationIds || !Array.isArray(notificationIds)) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Notification IDs array is required' },
         { status: 400 }
       )
     }
-    
-    // Create notification
-    const notification = await prisma.notification.create({
-      data: {
-        userId,
-        title,
-        message,
-        type,
-        category,
-        relatedId,
-        relatedType,
-        priority
-      }
+
+    // Mark notifications as read
+    await db
+      .update(notifications)
+      .set({ 
+        isRead: true,
+        readAt: new Date().toISOString()
+      })
+      .where(and(
+        eq(notifications.userId, userId),
+        inArray(notifications.id, notificationIds)
+      ))
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Notifications marked as read' 
     })
-    
-    return NextResponse.json({
-      notification,
-      message: 'Notification created successfully'
-    }, { status: 201 })
   } catch (error) {
-    console.error('Error creating notification:', error)
+    console.error('Error marking notifications as read:', error)
     return NextResponse.json(
-      { error: 'Failed to create notification' },
+      { error: 'Failed to mark notifications as read' },
       { status: 500 }
     )
   }

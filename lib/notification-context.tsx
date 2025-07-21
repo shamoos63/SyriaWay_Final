@@ -49,11 +49,23 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       if (response.ok) {
         const data = await response.json()
-        setNotifications(data.notifications)
-        setUnreadCount(data.unreadCount)
+        // Handle both response formats
+        const notificationsList = data.notifications || []
+        const unreadCountValue = data.unreadCount || notificationsList.filter((n: any) => !n.isRead).length
+        
+        setNotifications(notificationsList)
+        setUnreadCount(unreadCountValue)
+      } else {
+        console.error('Failed to fetch notifications:', response.status)
+        // Set empty state on error
+        setNotifications([])
+        setUnreadCount(0)
       }
     } catch (error) {
       console.error('Error fetching notifications:', error)
+      // Set empty state on error
+      setNotifications([])
+      setUnreadCount(0)
     } finally {
       setLoading(false)
     }

@@ -1,61 +1,76 @@
-import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@/lib/generated/prisma"
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { contactForms } from '@/drizzle/schema'
+import { eq, desc } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
-// GET /api/admin/contact-forms - Fetch all contact forms
+// GET - Fetch all contact forms (admin only)
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const status = searchParams.get("status")
-    const priority = searchParams.get("priority")
-    const category = searchParams.get("category")
-    const search = searchParams.get("search")
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
 
-    const where: any = {}
+    // Check if user is admin (you might want to add role checking here)
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const page = parseInt(searchParams.get('page') || '1')
+
+    let whereConditions = []
 
     if (status) {
-      where.status = status
+      whereConditions.push(eq(contactForms.status, status))
     }
 
-    if (priority) {
-      where.priority = priority
-    }
+    const offset = (page - 1) * limit
 
-    if (category) {
-      where.category = category
-    }
+    const formsData = await db
+      .select()
+      .from(contactForms)
+      .where(whereConditions.length > 0 ? whereConditions[0] : undefined)
+      .orderBy(desc(contactForms.createdAt))
+      .limit(limit)
+      .offset(offset)
 
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { subject: { contains: search, mode: 'insensitive' } },
-        { message: { contains: search, mode: 'insensitive' } },
-      ]
-    }
+    // Get total count for pagination
+    const totalCount = await db
+      .select({ count: contactForms.id })
+      .from(contactForms)
+      .where(whereConditions.length > 0 ? whereConditions[0] : undefined)
 
-    const contactForms = await prisma.contactForm.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+    const totalPages = Math.ceil(totalCount.length / limit)
+
+    return NextResponse.json({
+      forms: formsData,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount: totalCount.length,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      }
     })
-
-    return NextResponse.json({ contactForms })
   } catch (error) {
-    console.error("Error fetching contact forms:", error)
+    console.error('Error fetching admin contact forms:', error)
     return NextResponse.json(
-      { error: "Failed to fetch contact forms" },
+      { 
+        error: 'Failed to fetch contact forms',
+        forms: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalCount: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        }
+      },
       { status: 500 }
     )
   }

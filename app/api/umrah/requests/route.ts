@@ -1,161 +1,163 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { umrahRequests, umrahPackages } from '@/drizzle/schema'
+import { eq, and, desc } from 'drizzle-orm'
 
+// GET - Fetch Umrah requests for the authenticated user
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await getServerSession(authOptions)
     
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, role: true, status: true, email: true }
-    })
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const page = parseInt(searchParams.get('page') || '1')
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    let whereConditions = [eq(umrahRequests.userId, parseInt(session.user.id))]
+
+    if (status) {
+      whereConditions.push(eq(umrahRequests.status, status))
     }
 
-    // Check if user is active
-    if (user.status !== 'ACTIVE') {
-      return NextResponse.json({ error: 'Your account is not active. Please contact support.' }, { status: 403 })
-    }
+    const offset = (page - 1) * limit
 
-    // Only allow customers to submit Umrah requests
-    if (user.role !== 'CUSTOMER') {
-      return NextResponse.json({ 
-        error: 'Service providers and administrators cannot submit Umrah requests. Please use a customer account.' 
-      }, { status: 403 })
-    }
+    const requestsData = await db
+      .select({
+        id: umrahRequests.id,
+        userId: umrahRequests.userId,
+        packageId: umrahRequests.packageId,
+        startDate: umrahRequests.startDate,
+        endDate: umrahRequests.endDate,
+        numberOfPeople: umrahRequests.numberOfPeople,
+        specialRequests: umrahRequests.specialRequests,
+        status: umrahRequests.status,
+        createdAt: umrahRequests.createdAt,
+        updatedAt: umrahRequests.updatedAt,
+        package: {
+          id: umrahPackages.id,
+          name: umrahPackages.name,
+          description: umrahPackages.description,
+          duration: umrahPackages.duration,
+          price: umrahPackages.price,
+        }
+      })
+      .from(umrahRequests)
+      .leftJoin(umrahPackages, eq(umrahRequests.packageId, umrahPackages.id))
+      .where(and(...whereConditions))
+      .orderBy(desc(umrahRequests.createdAt))
+      .limit(limit)
+      .offset(offset)
 
-    const requests = await prisma.umrahRequest.findMany({
-      where: {
-        customerId: userId
-      },
-      include: {
-        package: true
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
+    // Get total count for pagination
+    const totalCount = await db
+      .select({ count: umrahRequests.id })
+      .from(umrahRequests)
+      .where(and(...whereConditions))
+
+    const totalPages = Math.ceil(totalCount.length / limit)
 
     return NextResponse.json({
-      requests,
-      total: requests.length
+      requests: requestsData,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount: totalCount.length,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      }
     })
-
   } catch (error) {
     console.error('Error fetching Umrah requests:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch Umrah requests' },
+      { 
+        error: 'Failed to fetch Umrah requests',
+        requests: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalCount: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        }
+      },
       { status: 500 }
     )
   }
 }
 
+// POST - Create new Umrah request
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await getServerSession(authOptions)
     
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
-    }
-
-    // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, role: true, status: true, email: true }
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    // Check if user is active
-    if (user.status !== 'ACTIVE') {
-      return NextResponse.json({ error: 'Your account is not active. Please contact support.' }, { status: 403 })
-    }
-
-    // Only allow customers to submit Umrah requests
-    if (user.role !== 'CUSTOMER') {
-      return NextResponse.json({ 
-        error: 'Service providers and administrators cannot submit Umrah requests. Please use a customer account.' 
-      }, { status: 403 })
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
     const body = await request.json()
     const {
       packageId,
-      preferredDates,
-      groupSize,
-      specialRequirements,
-      phoneNumber,
-      alternativeEmail,
-      message
+      startDate,
+      endDate,
+      numberOfPeople,
+      specialRequests
     } = body
 
     // Validate required fields
-    if (!packageId || !preferredDates || !groupSize) {
+    if (!packageId || !startDate || !endDate || !numberOfPeople) {
       return NextResponse.json(
-        { error: 'Package ID, preferred dates, and group size are required' },
+        { error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
-    // Verify the package exists and is active
-    const umrahPackage = await prisma.umrahPackage.findUnique({
-      where: { id: packageId }
-    })
+    // Check if package exists
+    const [package] = await db
+      .select()
+      .from(umrahPackages)
+      .where(eq(umrahPackages.id, parseInt(packageId)))
 
-    if (!umrahPackage || !umrahPackage.isActive) {
+    if (!package) {
       return NextResponse.json(
-        { error: 'Invalid or inactive Umrah package' },
-        { status: 400 }
+        { error: 'Umrah package not found' },
+        { status: 404 }
       )
     }
 
-    const umrahRequest = await prisma.umrahRequest.create({
-      data: {
-        customerId: userId,
-        packageId,
-        preferredDates,
-        groupSize: parseInt(groupSize),
-        specialRequirements: specialRequirements || null,
-        phoneNumber: phoneNumber || null,
-        alternativeEmail: alternativeEmail || user.email || null,
-        status: 'PENDING'
-      },
-      include: {
-        package: true
-      }
-    })
+    // Create Umrah request
+    const [newRequest] = await db
+      .insert(umrahRequests)
+      .values({
+        userId: parseInt(session.user.id),
+        packageId: parseInt(packageId),
+        startDate: new Date(startDate).toISOString(),
+        endDate: new Date(endDate).toISOString(),
+        numberOfPeople: parseInt(numberOfPeople),
+        specialRequests: specialRequests || null,
+        status: 'PENDING',
+      })
+      .returning()
 
     return NextResponse.json({
-      success: true,
-      message: 'Umrah request submitted successfully',
-      request: umrahRequest
+      request: newRequest,
+      message: 'Umrah request created successfully'
     }, { status: 201 })
-
   } catch (error) {
     console.error('Error creating Umrah request:', error)
     return NextResponse.json(
-      { error: 'Failed to submit Umrah request' },
+      { error: 'Failed to create Umrah request' },
       { status: 500 }
     )
   }

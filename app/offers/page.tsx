@@ -32,6 +32,12 @@ interface SpecialOffer {
     email: string
   }
   createdAt: string
+  serviceType?: string; // Added for filtering
+  serviceId?: string; // Added for linking
+  title?: string; // Added for search
+  discountPercentage?: number; // Added for discount display
+  startDate?: string; // Added for date range
+  endDate?: string; // Added for date range
 }
 
 export default function SpecialOffersPage() {
@@ -57,7 +63,8 @@ export default function SpecialOffersPage() {
       const response = await fetch('/api/special-offers')
       if (response.ok) {
         const data = await response.json()
-        setSpecialOffers(data.specialOffers)
+        // Fix: API returns 'offers' not 'specialOffers'
+        setSpecialOffers(data.offers || [])
       } else {
         setError('Failed to fetch special offers')
       }
@@ -70,17 +77,17 @@ export default function SpecialOffersPage() {
   }
 
   const filterOffers = () => {
-    let filtered = specialOffers
+    // Ensure specialOffers is an array before filtering
+    let filtered = specialOffers || []
 
     if (selectedType !== "all") {
-      filtered = filtered.filter(offer => offer.type.toLowerCase() === selectedType)
+      filtered = filtered.filter(offer => offer.serviceType?.toLowerCase() === selectedType)
     }
 
     if (searchTerm) {
       filtered = filtered.filter(offer =>
-        offer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        offer.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        offer.location.toLowerCase().includes(searchTerm.toLowerCase())
+        offer.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        offer.description?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
@@ -106,8 +113,8 @@ export default function SpecialOffersPage() {
   }
 
   const getOfferLink = (offer: SpecialOffer) => {
-    switch (offer.type) {
-      case 'HOTEL': return `/hotels/${offer.id}`
+    switch (offer.serviceType) {
+      case 'HOTEL': return `/hotels/${offer.serviceId}`
       case 'CAR': return `/cars-rental`
       case 'TOUR': return `/tours`
       default: return '#'
@@ -229,25 +236,25 @@ export default function SpecialOffersPage() {
                   <div className="relative h-48">
                     <Image
                       src={offer.image || "/placeholder.svg"}
-                      alt={offer.name}
+                      alt={offer.title || 'Special Offer'}
                       fill
                       className="object-cover"
                     />
                     <div className="absolute top-3 left-3">
-                      <Badge className={`${getTypeColor(offer.type)} flex items-center gap-1`}>
-                        {getTypeIcon(offer.type)}
-                        {offer.type}
+                      <Badge className={`${getTypeColor(offer.serviceType)} flex items-center gap-1`}>
+                        {getTypeIcon(offer.serviceType)}
+                        {offer.serviceType}
                       </Badge>
                     </div>
                     <div className="absolute top-3 right-3">
                       <Badge className="bg-red-500 text-white">
-                        {offer.discount} OFF
+                        {offer.discountPercentage}% OFF
                       </Badge>
                     </div>
                   </div>
 
                   <CardHeader>
-                    <CardTitle className="text-lg">{offer.name}</CardTitle>
+                    <CardTitle className="text-lg">{offer.title}</CardTitle>
                     <CardDescription className="line-clamp-2">
                       {offer.description}
                     </CardDescription>
@@ -255,28 +262,15 @@ export default function SpecialOffersPage() {
 
                 <CardContent>
                     <div className="flex items-center gap-2 mb-2">
-                      <MapPin className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600 dark:text-gray-400">{offer.location}</span>
+                      <Calendar className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {new Date(offer.startDate).toLocaleDateString()} - {new Date(offer.endDate).toLocaleDateString()}
+                      </span>
                     </div>
-
-                    {offer.rating && (
-                      <div className="flex items-center gap-1 mb-2">
-                        <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                        <span className="text-sm">{offer.rating}/5</span>
-                      </div>
-                    )}
-
-                    {offer.duration && (
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calendar className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-600 dark:text-gray-400">{offer.duration} days</span>
-                      </div>
-                    )}
 
                     <div className="flex items-center justify-between mt-4">
                       <div>
-                        <span className="text-2xl font-bold text-syria-gold">${offer.price}</span>
-                        <span className="text-sm text-gray-500 line-through ml-2">${offer.originalPrice}</span>
+                        <span className="text-sm text-gray-500">Discount: {offer.discountPercentage}%</span>
                       </div>
                     </div>
                 </CardContent>

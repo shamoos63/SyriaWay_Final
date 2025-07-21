@@ -1,70 +1,121 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@/lib/generated/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { bookings, hotels, users } from '@/drizzle/schema'
+import { eq, and, desc } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
+// GET - Fetch bookings for hotels owned by the authenticated user
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
-    const ownerId = authHeader.replace('Bearer ', '')
 
-    // Find all hotels owned by this user
-    const hotels = await prisma.hotel.findMany({
-      where: { ownerId },
-      select: { id: true }
-    })
-    const hotelIds = hotels.map(h => h.id)
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const page = parseInt(searchParams.get('page') || '1')
+
+    // Get hotels owned by user
+    const userHotels = await db
+      .select({ id: hotels.id })
+      .from(hotels)
+      .where(eq(hotels.ownerId, parseInt(session.user.id)))
+
+    const hotelIds = userHotels.map(hotel => hotel.id)
+
     if (hotelIds.length === 0) {
-      return NextResponse.json({ bookings: [], total: 0 })
+      return NextResponse.json({
+        bookings: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 0,
+          totalCount: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        }
+      })
     }
 
-    // Find all bookings for these hotels
-    const bookings = await prisma.booking.findMany({
-      where: {
-        hotelId: { in: hotelIds },
-        serviceType: 'HOTEL',
-      },
-      include: {
-        user: true,
-        hotel: true,
-        room: true,
-      },
-      orderBy: { createdAt: 'desc' }
-    })
+    let whereConditions = [eq(bookings.serviceType, 'HOTEL')]
 
-    // Format bookings for the frontend
-    const formatted = bookings.map(b => ({
-      id: b.id,
-      hotelId: b.hotelId,
-      hotelName: b.hotel?.name,
-      roomType: b.room?.roomType,
-      roomName: b.room?.name,
-      roomNumber: b.room?.roomNumber,
-      customerId: b.userId,
-      customerName: b.user?.name,
-      customerEmail: b.user?.email,
-      customerPhone: b.user?.phone,
-      checkInDate: b.startDate,
-      checkOutDate: b.endDate,
-      numberOfGuests: b.guests,
-      totalAmount: b.totalPrice,
-      status: b.status,
-      specialRequests: b.specialRequests,
-      createdAt: b.createdAt,
-      updatedAt: b.updatedAt,
-    }))
+    if (status) {
+      whereConditions.push(eq(bookings.status, status))
+    }
+
+    const offset = (page - 1) * limit
+
+    const bookingsData = await db
+      .select({
+        id: bookings.id,
+        userId: bookings.userId,
+        serviceType: bookings.serviceType,
+        serviceId: bookings.serviceId,
+        startDate: bookings.startDate,
+        endDate: bookings.endDate,
+        totalAmount: bookings.totalAmount,
+        status: bookings.status,
+        paymentStatus: bookings.paymentStatus,
+        specialRequests: bookings.specialRequests,
+        createdAt: bookings.createdAt,
+        updatedAt: bookings.updatedAt,
+        user: {
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          image: users.image,
+        }
+      })
+      .from(bookings)
+      .leftJoin(users, eq(bookings.userId, users.id))
+      .where(and(...whereConditions))
+      .orderBy(desc(bookings.createdAt))
+      .limit(limit)
+      .offset(offset)
+
+    // Filter bookings for user's hotels
+    const filteredBookings = bookingsData.filter(booking => 
+      hotelIds.includes(booking.serviceId)
+    )
+
+    // Get total count for pagination
+    const totalCount = await db
+      .select({ count: bookings.id })
+      .from(bookings)
+      .where(and(...whereConditions))
+
+    const totalPages = Math.ceil(totalCount.length / limit)
 
     return NextResponse.json({
-      bookings: formatted,
-      total: formatted.length
+      bookings: filteredBookings,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount: totalCount.length,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      }
     })
   } catch (error) {
-    console.error('Error fetching hotel owner bookings:', error)
+    console.error('Error fetching hotel bookings:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch bookings' },
+      { 
+        error: 'Failed to fetch bookings',
+        bookings: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalCount: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        }
+      },
       { status: 500 }
     )
   }

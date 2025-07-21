@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import Image from "next/image"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useLanguage } from "@/lib/i18n/language-context"
 import Link from "next/link"
+import Image from "next/image"
 
 interface SpecialOffer {
   id: string
@@ -45,19 +45,21 @@ export function OfferSlider() {
       const response = await fetch('/api/special-offers?limit=5')
       if (response.ok) {
         const data = await response.json()
-        setOffers(data.specialOffers)
+        setOffers(data.offers || [])
       } else {
         console.error('Failed to fetch special offers')
+        setOffers([])
       }
     } catch (error) {
       console.error('Error fetching special offers:', error)
+      setOffers([])
     } finally {
       setLoading(false)
     }
   }
 
   const nextSlide = useCallback(() => {
-    if (!isAnimating && offers.length > 0) {
+    if (!isAnimating && offers && offers.length > 0) {
       setIsAnimating(true)
       setCurrentSlide((prev) => (prev === offers.length - 1 ? 0 : prev + 1))
       setTimeout(() => setIsAnimating(false), 500)
@@ -65,7 +67,7 @@ export function OfferSlider() {
   }, [isAnimating, offers.length])
 
   const prevSlide = useCallback(() => {
-    if (!isAnimating && offers.length > 0) {
+    if (!isAnimating && offers && offers.length > 0) {
       setIsAnimating(true)
       setCurrentSlide((prev) => (prev === 0 ? offers.length - 1 : prev - 1))
       setTimeout(() => setIsAnimating(false), 500)
@@ -73,7 +75,7 @@ export function OfferSlider() {
   }, [isAnimating, offers.length])
 
   useEffect(() => {
-    if (offers.length > 0) {
+    if (offers && offers.length > 0) {
       const interval = setInterval(nextSlide, 5000)
       return () => clearInterval(interval)
     }
@@ -102,7 +104,7 @@ export function OfferSlider() {
     )
   }
 
-  if (offers.length === 0) {
+  if (!offers || offers.length === 0) {
     return (
       <div className="relative w-full overflow-hidden rounded-2xl bg-white dark:bg-dark-section shadow-lg h-[340px] md:h-[400px]">
         <div className="flex items-center justify-center h-full">
@@ -160,7 +162,7 @@ export function OfferSlider() {
         ))}
       </div>
       {/* Navigation Buttons */}
-      {offers.length > 1 && (
+      {offers && offers.length > 1 && (
         <>
           <Button
             variant="ghost"

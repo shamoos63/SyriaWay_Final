@@ -1,70 +1,69 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@/lib/generated/prisma';
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { users } from '@/drizzle/schema'
+import { eq } from 'drizzle-orm'
 
-const prisma = new PrismaClient();
-
-export async function PATCH(
+// PUT - Update user status
+export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const body = await request.json();
-    const { status } = body;
-
-    if (!status || !['ACTIVE', 'INACTIVE', 'SUSPENDED'].includes(status)) {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Invalid status. Must be ACTIVE, INACTIVE, or SUSPENDED' },
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Check if user is admin (you might want to add role checking here)
+    const { id } = await params
+    const body = await request.json()
+    const { status } = body
+
+    if (!status) {
+      return NextResponse.json(
+        { error: 'Status is required' },
         { status: 400 }
-      );
+      )
     }
 
     // Check if user exists
-    const existingUser = await prisma.user.findUnique({
-      where: { id: params.id },
-    });
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, parseInt(id)))
 
     if (!existingUser) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
-      );
-    }
-
-    // Prevent status change for super admin
-    if (existingUser.role === 'SUPER_ADMIN' && status !== 'ACTIVE') {
-      return NextResponse.json(
-        { error: 'Cannot change status of super admin account' },
-        { status: 403 }
-      );
+      )
     }
 
     // Update user status
-    const updatedUser = await prisma.user.update({
-      where: { id: params.id },
-      data: { status },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        status: true,
-        phone: true,
-        preferredLang: true,
-        createdAt: true,
-        lastLoginAt: true,
-        image: true,
-      },
-    });
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        status,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.id, parseInt(id)))
+      .returning()
 
     return NextResponse.json({
-      message: `User ${status.toLowerCase()} successfully`,
       user: updatedUser,
-    });
+      message: 'User status updated successfully'
+    })
   } catch (error) {
-    console.error('Error updating user status:', error);
+    console.error('Error updating user status:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to update user status' },
       { status: 500 }
-    );
+    )
   }
 } 

@@ -1,178 +1,123 @@
-import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@/lib/generated/prisma"
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { cars, bookings } from '@/drizzle/schema'
+import { eq, and, sql, gte, lte } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
-// GET /api/cars/owner/revenue - Get detailed revenue analytics for car owner
+// GET - Fetch car owner revenue data
 export async function GET(request: NextRequest) {
   try {
-    // Get user from authorization header
-    const authHeader = request.headers.get("authorization")
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({
+        error: 'Unauthorized',
+        revenue: { total: 0, monthly: [], daily: [], byCar: [] }
+      }, { status: 401 })
     }
-
-    const token = authHeader.split(" ")[1]
-    const userId = token // This should be decoded from JWT
-
-    // Get all cars owned by the user
-    const cars = await prisma.car.findMany({
-      where: { ownerId: userId },
-      select: { id: true, brand: true, model: true, licensePlate: true },
-    })
-
-    const carIds = cars.map(car => car.id)
-
+    const userId = parseInt(session.user.id)
+    // Get user's cars
+    let userCars = []
+    try {
+      userCars = await db
+        .select({ id: cars.id })
+        .from(cars)
+        .where(eq(cars.ownerId, userId))
+    } catch (e) {
+      console.error('Error fetching user cars:', e)
+      userCars = []
+    }
+    const carIds = userCars.map(car => car.id)
     if (carIds.length === 0) {
       return NextResponse.json({
-        revenue: {
-          totalRevenue: 0,
-          monthlyRevenue: 0,
-          averagePerBooking: 0,
-          totalBookings: 0,
-          completedBookings: 0,
-          monthlyBreakdown: [],
-          carRevenue: [],
-          recentTransactions: [],
-          revenueGrowth: 0,
-        }
+        revenue: { total: 0, monthly: [], daily: [], byCar: [] }
       })
     }
-
-    // Get current date for calculations
-    const now = new Date()
-    const currentMonth = now.getMonth()
-    const currentYear = now.getFullYear()
-    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1
-    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear
-
-    // Get all completed bookings for revenue calculation
-    const completedBookings = await prisma.booking.findMany({
-      where: { 
-        carId: { in: carIds },
-        status: "COMPLETED"
-      },
-      select: {
-        id: true,
-        totalPrice: true,
-        currency: true,
-        startDate: true,
-        endDate: true,
-        createdAt: true,
-        car: {
-          select: {
-            id: true,
-            brand: true,
-            model: true,
-            licensePlate: true,
-          }
-        }
-      },
-      orderBy: {
-        createdAt: "desc"
-      }
-    })
-
-    // Calculate total revenue
-    const totalRevenue = completedBookings.reduce((sum, booking) => sum + booking.totalPrice, 0)
-
-    // Calculate monthly revenue (current month)
-    const currentMonthBookings = completedBookings.filter(booking => {
-      const bookingDate = new Date(booking.createdAt)
-      return bookingDate.getMonth() === currentMonth && bookingDate.getFullYear() === currentYear
-    })
-    const monthlyRevenue = currentMonthBookings.reduce((sum, booking) => sum + booking.totalPrice, 0)
-
-    // Calculate last month revenue for growth comparison
-    const lastMonthBookings = completedBookings.filter(booking => {
-      const bookingDate = new Date(booking.createdAt)
-      return bookingDate.getMonth() === lastMonth && bookingDate.getFullYear() === lastMonthYear
-    })
-    const lastMonthRevenue = lastMonthBookings.reduce((sum, booking) => sum + booking.totalPrice, 0)
-
-    // Calculate revenue growth percentage
-    const revenueGrowth = lastMonthRevenue > 0 
-      ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 
-      : 0
-
-    // Calculate average per booking
-    const averagePerBooking = completedBookings.length > 0 
-      ? totalRevenue / completedBookings.length 
-      : 0
-
-    // Generate monthly breakdown for the last 12 months
-    const monthlyBreakdown = []
-    for (let i = 11; i >= 0; i--) {
-      const targetMonth = (currentMonth - i + 12) % 12
-      const targetYear = currentMonth - i < 0 ? currentYear - 1 : currentYear
-      
-      const monthBookings = completedBookings.filter(booking => {
-        const bookingDate = new Date(booking.createdAt)
-        return bookingDate.getMonth() === targetMonth && bookingDate.getFullYear() === targetYear
-      })
-      
-      const monthRevenue = monthBookings.reduce((sum, booking) => sum + booking.totalPrice, 0)
-      
-      monthlyBreakdown.push({
-        month: new Date(targetYear, targetMonth).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-        revenue: monthRevenue,
-        bookings: monthBookings.length,
-        average: monthBookings.length > 0 ? monthRevenue / monthBookings.length : 0
-      })
+    let whereConditions = [
+      eq(bookings.serviceType, 'CAR'),
+      sql`${bookings.serviceId} IN (${carIds.join(',')})`,
+      eq(bookings.paymentStatus, 'PAID')
+    ]
+    const { searchParams } = new URL(request.url)
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    if (startDate) {
+      whereConditions.push(gte(bookings.createdAt, startDate))
     }
-
-    // Calculate revenue per car
-    const carRevenue = cars.map(car => {
-      const carBookings = completedBookings.filter(booking => booking.car.id === car.id)
-      const carTotalRevenue = carBookings.reduce((sum, booking) => sum + booking.totalPrice, 0)
-      const carMonthlyRevenue = carBookings.filter(booking => {
-        const bookingDate = new Date(booking.createdAt)
-        return bookingDate.getMonth() === currentMonth && bookingDate.getFullYear() === currentYear
-      }).reduce((sum, booking) => sum + booking.totalPrice, 0)
-
-      return {
-        carId: car.id,
-        carName: `${car.brand} ${car.model}`,
-        licensePlate: car.licensePlate,
-        totalRevenue: carTotalRevenue,
-        monthlyRevenue: carMonthlyRevenue,
-        totalBookings: carBookings.length,
-        averagePerBooking: carBookings.length > 0 ? carTotalRevenue / carBookings.length : 0
-      }
-    }).sort((a, b) => b.totalRevenue - a.totalRevenue)
-
-    // Get recent transactions (last 10 completed bookings)
-    const recentTransactions = completedBookings.slice(0, 10).map(booking => ({
-      id: booking.id,
-      carName: `${booking.car.brand} ${booking.car.model}`,
-      licensePlate: booking.car.licensePlate,
-      amount: booking.totalPrice,
-      currency: booking.currency,
-      date: booking.createdAt,
-      duration: Math.ceil((new Date(booking.endDate).getTime() - new Date(booking.startDate).getTime()) / (1000 * 60 * 60 * 24))
-    }))
-
+    if (endDate) {
+      whereConditions.push(lte(bookings.createdAt, endDate))
+    }
+    let totalRevenue = 0
+    let monthlyRevenue = []
+    let dailyRevenue = []
+    let revenueByCar = []
+    try {
+      // Get total revenue
+      const totalRevenueResult = await db
+        .select({ total: sql`sum(totalPrice)` })
+        .from(bookings)
+        .where(and(...whereConditions))
+      totalRevenue = totalRevenueResult[0]?.total || 0
+      // Get monthly revenue
+      monthlyRevenue = await db
+        .select({
+          month: sql`strftime('%Y-%m', createdAt)`,
+          revenue: sql`sum(totalPrice)`,
+          bookings: sql`count(*)`
+        })
+        .from(bookings)
+        .where(and(...whereConditions))
+        .groupBy(sql`strftime('%Y-%m', createdAt)`)
+        .orderBy(sql`strftime('%Y-%m', createdAt)`)
+      // Get daily revenue for current month
+      const currentDate = new Date()
+      const currentMonth = currentDate.toISOString().slice(0, 7)
+      dailyRevenue = await db
+        .select({
+          date: sql`strftime('%Y-%m-%d', createdAt)`,
+          revenue: sql`sum(totalPrice)`,
+          bookings: sql`count(*)`
+        })
+        .from(bookings)
+        .where(and(
+          eq(bookings.serviceType, 'CAR'),
+          sql`${bookings.serviceId} IN (${carIds.join(',')})`,
+          eq(bookings.paymentStatus, 'PAID'),
+          sql`strftime('%Y-%m', createdAt) = ${currentMonth}`
+        ))
+        .groupBy(sql`strftime('%Y-%m-%d', createdAt)`)
+        .orderBy(sql`strftime('%Y-%m-%d', createdAt)`)
+      // Get revenue by car
+      revenueByCar = await db
+        .select({
+          carId: bookings.serviceId,
+          carName: sql`${cars.make} ${cars.model}`,
+          revenue: sql`sum(bookings.totalPrice)`,
+          bookings: sql`count(*)`
+        })
+        .from(bookings)
+        .leftJoin(cars, eq(bookings.serviceId, cars.id))
+        .where(and(...whereConditions))
+        .groupBy(bookings.serviceId)
+    } catch (e) {
+      console.error('Error fetching revenue data:', e)
+      totalRevenue = 0
+      monthlyRevenue = []
+      dailyRevenue = []
+      revenueByCar = []
+    }
     const revenue = {
-      totalRevenue,
-      monthlyRevenue,
-      averagePerBooking,
-      totalBookings: completedBookings.length,
-      completedBookings: completedBookings.length,
-      monthlyBreakdown,
-      carRevenue,
-      recentTransactions,
-      revenueGrowth,
+      total: typeof totalRevenue === 'number' ? totalRevenue : 0,
+      monthly: Array.isArray(monthlyRevenue) ? monthlyRevenue : [],
+      daily: Array.isArray(dailyRevenue) ? dailyRevenue : [],
+      byCar: Array.isArray(revenueByCar) ? revenueByCar : []
     }
-
     return NextResponse.json({ revenue })
   } catch (error) {
-    console.error("Error fetching car owner revenue:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch revenue data" },
-      { status: 500 }
-    )
+    console.error('Error in car owner revenue API:', error)
+    return NextResponse.json({
+      error: 'Failed to fetch revenue',
+      revenue: { total: 0, monthly: [], daily: [], byCar: [] }
+    }, { status: 500 })
   }
 } 

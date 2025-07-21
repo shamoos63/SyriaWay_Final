@@ -252,30 +252,8 @@ export default function Blog() {
   }
 
   const openBlogModal = async (blog: Blog) => {
-    setLoadingBlogId(blog.id)
-    try {
-      // Fetch full blog details including author and reactions
-      const response = await fetch(`/api/blogs/${blog.id}`)
-      if (response.ok) {
-        const data = await response.json()
-        setSelectedBlog(data.blog)
-        setShowBlogModal(true)
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to load blog details",
-          variant: "destructive"
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load blog details",
-        variant: "destructive"
-      })
-    } finally {
-      setLoadingBlogId(null)
-    }
+    // Navigate to blog details page instead of opening modal
+    window.open(`/blog/${blog.id}`, '_blank')
   }
 
   const closeBlogModal = () => {

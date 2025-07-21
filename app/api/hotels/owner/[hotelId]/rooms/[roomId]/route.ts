@@ -1,45 +1,104 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@/lib/generated/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { hotelRooms, hotels } from '@/drizzle/schema'
+import { eq, and } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
-export async function PUT(
+// GET - Fetch single room
+export async function GET(
   request: NextRequest,
-  { params }: { params: { hotelId: string; roomId: string } }
+  { params }: { params: Promise<{ hotelId: string; roomId: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    const ownerId = authHeader.replace('Bearer ', '')
-
-    // Verify the hotel belongs to this owner
-    const hotel = await prisma.hotel.findFirst({
-      where: { id: params.hotelId, ownerId }
-    })
-    if (!hotel) {
-      return NextResponse.json({ error: 'Hotel not found or access denied' }, { status: 404 })
-    }
-
-    const body = await request.json()
-    const { name, roomType, capacity, pricePerNight, amenities, bedType, images, description } = body
-
-    // Validate required fields
-    if (!name || !roomType || !capacity || !pricePerNight) {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
 
-    // Find the room to update
-    const existingRoom = await prisma.room.findFirst({
-      where: { 
-        id: params.roomId, 
-        hotelId: params.hotelId 
-      }
-    })
+    const { hotelId, roomId } = await params
+
+    // Check if hotel belongs to user
+    const [hotel] = await db
+      .select()
+      .from(hotels)
+      .where(and(
+        eq(hotels.id, parseInt(hotelId)),
+        eq(hotels.ownerId, parseInt(session.user.id))
+      ))
+
+    if (!hotel) {
+      return NextResponse.json(
+        { error: 'Hotel not found' },
+        { status: 404 }
+      )
+    }
+
+    const [room] = await db
+      .select()
+      .from(hotelRooms)
+      .where(eq(hotelRooms.id, parseInt(roomId)))
+
+    if (!room) {
+      return NextResponse.json(
+        { error: 'Room not found' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({ room })
+  } catch (error) {
+    console.error('Error fetching room:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch room' },
+      { status: 500 }
+    )
+  }
+}
+
+// PUT - Update room
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ hotelId: string; roomId: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const { hotelId, roomId } = await params
+    const body = await request.json()
+
+    // Check if hotel belongs to user
+    const [hotel] = await db
+      .select()
+      .from(hotels)
+      .where(and(
+        eq(hotels.id, parseInt(hotelId)),
+        eq(hotels.ownerId, parseInt(session.user.id))
+      ))
+
+    if (!hotel) {
+      return NextResponse.json(
+        { error: 'Hotel not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check if room exists
+    const [existingRoom] = await db
+      .select()
+      .from(hotelRooms)
+      .where(eq(hotelRooms.id, parseInt(roomId)))
 
     if (!existingRoom) {
       return NextResponse.json(
@@ -48,42 +107,20 @@ export async function PUT(
       )
     }
 
-    // Check if room name already exists for this hotel (excluding current room)
-    const duplicateRoom = await prisma.room.findFirst({
-      where: {
-        hotelId: params.hotelId,
-        name,
-        id: { not: params.roomId }
-      }
-    })
-    if (duplicateRoom) {
-      return NextResponse.json(
-        { error: 'Room name already exists' },
-        { status: 400 }
-      )
-    }
-
-    // Update the room
-    const updatedRoom = await prisma.room.update({
-      where: { id: params.roomId },
-      data: {
-        name,
-        roomType,
-        capacity: parseInt(capacity),
-        pricePerNight: parseFloat(pricePerNight),
-        bedType: bedType || null,
-        amenities: amenities || [],
-        images: images || [],
-        description: description || `${roomType} room`,
-        maxOccupancy: parseInt(capacity),
-      }
-    })
+    // Update room
+    const [updatedRoom] = await db
+      .update(hotelRooms)
+      .set({
+        ...body,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(hotelRooms.id, parseInt(roomId)))
+      .returning()
 
     return NextResponse.json({
       room: updatedRoom,
       message: 'Room updated successfully'
     })
-
   } catch (error) {
     console.error('Error updating room:', error)
     return NextResponse.json(
@@ -93,65 +130,60 @@ export async function PUT(
   }
 }
 
+// DELETE - Delete room
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { hotelId: string; roomId: string } }
+  { params }: { params: Promise<{ hotelId: string; roomId: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
-    const ownerId = authHeader.replace('Bearer ', '')
 
-    // Verify the hotel belongs to this owner
-    const hotel = await prisma.hotel.findFirst({
-      where: { id: params.hotelId, ownerId }
-    })
+    const { hotelId, roomId } = await params
+
+    // Check if hotel belongs to user
+    const [hotel] = await db
+      .select()
+      .from(hotels)
+      .where(and(
+        eq(hotels.id, parseInt(hotelId)),
+        eq(hotels.ownerId, parseInt(session.user.id))
+      ))
+
     if (!hotel) {
-      return NextResponse.json({ error: 'Hotel not found or access denied' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'Hotel not found' },
+        { status: 404 }
+      )
     }
 
-    // Find the room to delete
-    const room = await prisma.room.findFirst({
-      where: { 
-        id: params.roomId, 
-        hotelId: params.hotelId 
-      }
-    })
+    // Check if room exists
+    const [existingRoom] = await db
+      .select()
+      .from(hotelRooms)
+      .where(eq(hotelRooms.id, parseInt(roomId)))
 
-    if (!room) {
+    if (!existingRoom) {
       return NextResponse.json(
         { error: 'Room not found' },
         { status: 404 }
       )
     }
 
-    // Check if room has any active bookings
-    const activeBookings = await prisma.booking.findFirst({
-      where: {
-        roomId: params.roomId,
-        status: { in: ['PENDING', 'CONFIRMED'] }
-      }
-    })
-
-    if (activeBookings) {
-      return NextResponse.json(
-        { error: 'Cannot delete room with active bookings' },
-        { status: 400 }
-      )
-    }
-
-    // Delete the room
-    await prisma.room.delete({
-      where: { id: params.roomId }
-    })
+    // Delete room
+    await db
+      .delete(hotelRooms)
+      .where(eq(hotelRooms.id, parseInt(roomId)))
 
     return NextResponse.json({
-      message: 'Room deleted successfully',
-      room: room
+      message: 'Room deleted successfully'
     })
-
   } catch (error) {
     console.error('Error deleting room:', error)
     return NextResponse.json(

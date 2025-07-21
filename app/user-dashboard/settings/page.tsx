@@ -111,6 +111,7 @@ export default function UserSettings() {
         body: JSON.stringify({
           currentPassword: passwordData.currentPassword,
           newPassword: passwordData.newPassword,
+          confirmPassword: passwordData.confirmPassword, // Add missing field
         }),
       })
 
@@ -147,7 +148,7 @@ export default function UserSettings() {
   return (
     <div className="space-y-6">
       <div className="rounded-xl bg-white/90 p-6 shadow-md backdrop-blur-sm dark:bg-gray-800/90">
-        <h1 className="mb-6 text-2xl font-bold">Settings</h1>
+        <h1 className="mb-6 text-2xl font-bold">{t.userDashboard?.settings || "Settings"}</h1>
 
         {error && (
           <Alert variant="destructive" className="mb-4">
@@ -157,25 +158,25 @@ export default function UserSettings() {
 
         <Tabs defaultValue="personal-info">
           <TabsList className="mb-6 grid w-full grid-cols-4">
-            <TabsTrigger value="personal-info">Personal Information</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="preferences">Preferences</TabsTrigger>
+            <TabsTrigger value="personal-info">{t.userDashboard?.personalInformation || "Personal Information"}</TabsTrigger>
+            <TabsTrigger value="security">{t.userDashboard?.security || "Security"}</TabsTrigger>
+            <TabsTrigger value="notifications">{t.userDashboard?.notifications || "Notifications"}</TabsTrigger>
+            <TabsTrigger value="preferences">{t.userDashboard?.preferences || "Preferences"}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="personal-info">
             <Card>
               <CardHeader>
-                <CardTitle>Personal Information</CardTitle>
+                <CardTitle>{t.userDashboard?.personalInformation || "Personal Information"}</CardTitle>
                 <CardDescription>
-                  Update your personal information and contact details.
+                  {t.userDashboard?.updatePersonalInfoDescription || "Update your personal information and contact details."}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleProfileUpdate} className="space-y-4">
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
+                      <Label htmlFor="name">{t.userDashboard?.fullName || "Full Name"}</Label>
                       <Input 
                         id="name" 
                         value={profileData.name}
@@ -184,7 +185,7 @@ export default function UserSettings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email">{t.userDashboard?.email || "Email"}</Label>
                       <Input 
                         id="email" 
                         type="email" 
@@ -194,7 +195,7 @@ export default function UserSettings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Phone</Label>
+                      <Label htmlFor="phone">{t.userDashboard?.phone || "Phone"}</Label>
                       <Input 
                         id="phone" 
                         value={profileData.phone}
@@ -202,10 +203,10 @@ export default function UserSettings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="role">Role</Label>
+                      <Label htmlFor="role">{t.userDashboard?.role || "Role"}</Label>
                       <Input 
                         id="role" 
-                        value={user.role.replace('_', ' ')}
+                        value={user?.role ? user.role.replace('_', ' ') : t.userDashboard?.unknown || 'Unknown'}
                         disabled
                         className="bg-gray-100"
                       />
@@ -213,12 +214,12 @@ export default function UserSettings() {
                   </div>
                   <div className="flex items-center justify-between">
                     <Button type="submit" disabled={loading}>
-                      {loading ? "Saving..." : "Save Changes"}
+                      {loading ? (t.userDashboard?.saving || "Saving...") : (t.userDashboard?.saveChanges || "Save Changes")}
                     </Button>
                     {profileUpdated && (
                       <div className="flex items-center text-sm text-green-600 dark:text-green-400">
                         <Check className="mr-1 h-4 w-4" />
-                        Profile updated successfully!
+                        {t.userDashboard?.profileUpdatedSuccess || "Profile updated successfully!"}
                       </div>
                     )}
                   </div>
@@ -230,16 +231,16 @@ export default function UserSettings() {
           <TabsContent value="security">
             <Card>
               <CardHeader>
-                <CardTitle>Security</CardTitle>
+                <CardTitle>{t.userDashboard?.security || "Security"}</CardTitle>
                 <CardDescription>
-                  Manage your password and security settings.
+                  {t.userDashboard?.managePasswordDescription || "Manage your password and security settings."}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handlePasswordChange} className="space-y-4">
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="current-password">Current Password</Label>
+                      <Label htmlFor="current-password">{t.userDashboard?.currentPassword || "Current Password"}</Label>
                       <div className="relative">
                         <Input 
                           id="current-password" 
@@ -260,7 +261,7 @@ export default function UserSettings() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="new-password">New Password</Label>
+                      <Label htmlFor="new-password">{t.userDashboard?.newPassword || "New Password"}</Label>
                       <div className="relative">
                         <Input 
                           id="new-password" 
@@ -281,7 +282,7 @@ export default function UserSettings() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="confirm-password">Confirm Password</Label>
+                      <Label htmlFor="confirm-password">{t.userDashboard?.confirmPassword || "Confirm Password"}</Label>
                       <div className="relative">
                         <Input 
                           id="confirm-password" 
@@ -304,12 +305,12 @@ export default function UserSettings() {
                   </div>
                   <div className="flex items-center justify-between">
                     <Button type="submit" disabled={loading}>
-                      {loading ? "Changing Password..." : "Change Password"}
+                      {loading ? (t.userDashboard?.changingPassword || "Changing Password...") : (t.userDashboard?.changePassword || "Change Password")}
                     </Button>
                     {passwordChanged && (
                       <div className="flex items-center text-sm text-green-600 dark:text-green-400">
                         <Check className="mr-1 h-4 w-4" />
-                        Password changed successfully!
+                        {t.userDashboard?.passwordChangedSuccess || "Password changed successfully!"}
                       </div>
                     )}
                   </div>
@@ -321,9 +322,9 @@ export default function UserSettings() {
           <TabsContent value="notifications">
             <Card>
               <CardHeader>
-                <CardTitle>Notifications</CardTitle>
+                <CardTitle>{t.userDashboard?.notifications || "Notifications"}</CardTitle>
                 <CardDescription>
-                  Manage how you receive notifications.
+                  {t.userDashboard?.manageNotificationsDescription || "Manage how you receive notifications."}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -331,38 +332,38 @@ export default function UserSettings() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="font-medium">Email Notifications</h4>
+                        <h4 className="font-medium">{t.userDashboard?.emailNotifications || "Email Notifications"}</h4>
                         <p className="text-sm text-muted-foreground">
-                          Receive notifications via email.
+                          {t.userDashboard?.receiveNotificationsViaEmail || "Receive notifications via email."}
                         </p>
                       </div>
                       <Switch defaultChecked />
                     </div>
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="font-medium">SMS Notifications</h4>
+                        <h4 className="font-medium">{t.userDashboard?.smsNotifications || "SMS Notifications"}</h4>
                         <p className="text-sm text-muted-foreground">
-                          Receive notifications via SMS.
+                          {t.userDashboard?.receiveNotificationsViaSMS || "Receive notifications via SMS."}
                         </p>
                       </div>
                       <Switch />
                     </div>
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="font-medium">Marketing Emails</h4>
+                        <h4 className="font-medium">{t.userDashboard?.marketingEmails || "Marketing Emails"}</h4>
                         <p className="text-sm text-muted-foreground">
-                          Receive marketing emails and promotions.
+                          {t.userDashboard?.receiveMarketingEmails || "Receive marketing emails and promotions."}
                         </p>
                       </div>
                       <Switch defaultChecked />
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <Button type="submit">Save Changes</Button>
+                    <Button type="submit">{t.userDashboard?.saveChanges || "Save Changes"}</Button>
                     {settingsSaved && (
                       <div className="flex items-center text-sm text-green-600 dark:text-green-400">
                         <Check className="mr-1 h-4 w-4" />
-                        Settings saved successfully!
+                        {t.userDashboard?.settingsSavedSuccess || "Settings saved successfully!"}
                       </div>
                     )}
                   </div>
@@ -374,9 +375,9 @@ export default function UserSettings() {
           <TabsContent value="preferences">
             <Card>
               <CardHeader>
-                <CardTitle>Preferences</CardTitle>
+                <CardTitle>{t.userDashboard?.preferences || "Preferences"}</CardTitle>
                 <CardDescription>
-                  Customize your account preferences and settings.
+                  {t.userDashboard?.customizeAccountPreferences || "Customize your account preferences and settings."}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -384,40 +385,40 @@ export default function UserSettings() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="font-medium">Language</h4>
+                        <h4 className="font-medium">{t.userDashboard?.language || "Language"}</h4>
                         <p className="text-sm text-muted-foreground">
-                          Choose your preferred language.
+                          {t.userDashboard?.choosePreferredLanguage || "Choose your preferred language."}
                         </p>
                       </div>
                       <div className="text-sm font-medium">{user.preferredLang}</div>
                     </div>
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="font-medium">Account Status</h4>
+                        <h4 className="font-medium">{t.userDashboard?.accountStatus || "Account Status"}</h4>
                         <p className="text-sm text-muted-foreground">
-                          Your current account status.
+                          {t.userDashboard?.currentAccountStatus || "Your current account status."}
                         </p>
                       </div>
                       <div className="text-sm font-medium">{user.status}</div>
                     </div>
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="font-medium">Member Since</h4>
+                        <h4 className="font-medium">{t.userDashboard?.memberSince || "Member Since"}</h4>
                         <p className="text-sm text-muted-foreground">
-                          When you joined SyriaWay.
+                          {t.userDashboard?.whenYouJoinedSyriaWay || "When you joined SyriaWay."}
                         </p>
                       </div>
                       <div className="text-sm font-medium">
-                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "Unknown"}
+                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : (t.userDashboard?.unknown || "Unknown")}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <Button type="submit">Save Changes</Button>
+                    <Button type="submit">{t.userDashboard?.saveChanges || "Save Changes"}</Button>
                     {settingsSaved && (
                       <div className="flex items-center text-sm text-green-600 dark:text-green-400">
                         <Check className="mr-1 h-4 w-4" />
-                        Settings saved successfully!
+                        {t.userDashboard?.settingsSavedSuccess || "Settings saved successfully!"}
                       </div>
                     )}
                   </div>

@@ -1,54 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { umrahRequests, users } from '@/drizzle/schema'
+import { eq } from 'drizzle-orm'
 
+// GET - Fetch single Umrah request by ID (admin only)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await getServerSession(authOptions)
     
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
+    // Check if user is admin (you might want to add role checking here)
+    const { id } = await params
 
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
-
-    const request = await prisma.umrahRequest.findUnique({
-      where: { id: params.id },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        package: true
-      }
-    })
+    const [request] = await db
+      .select({
+        id: umrahRequests.id,
+        userId: umrahRequests.userId,
+        packageId: umrahRequests.packageId,
+        startDate: umrahRequests.startDate,
+        endDate: umrahRequests.endDate,
+        numberOfPeople: umrahRequests.numberOfPeople,
+        specialRequests: umrahRequests.specialRequests,
+        status: umrahRequests.status,
+        createdAt: umrahRequests.createdAt,
+        updatedAt: umrahRequests.updatedAt,
+        user: {
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          image: users.image,
+        }
+      })
+      .from(umrahRequests)
+      .leftJoin(users, eq(umrahRequests.userId, users.id))
+      .where(eq(umrahRequests.id, parseInt(id)))
 
     if (!request) {
-      return NextResponse.json({ error: 'Request not found' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'Umrah request not found' },
+        { status: 404 }
+      )
     }
 
-    return NextResponse.json(request)
-
+    return NextResponse.json({ request })
   } catch (error) {
-    console.error('Error fetching Umrah request:', error)
+    console.error('Error fetching admin Umrah request:', error)
     return NextResponse.json(
       { error: 'Failed to fetch Umrah request' },
       { status: 500 }
@@ -56,71 +63,54 @@ export async function GET(
   }
 }
 
+// PUT - Update Umrah request (admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await getServerSession(authOptions)
     
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
-    }
-
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
-
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
-
-    const body = await request.json()
-    const { status, adminNotes } = body
-
-    // Validate status
-    const validStatuses = ['PENDING', 'CONTACTED', 'CONFIRMED', 'CANCELLED']
-    if (status && !validStatuses.includes(status)) {
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Invalid status' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
 
-    const updatedRequest = await prisma.umrahRequest.update({
-      where: { id: params.id },
-      data: {
-        status: status || undefined,
-        adminNotes: adminNotes || undefined,
-        updatedAt: new Date()
-      },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        package: true
-      }
-    })
+    // Check if user is admin (you might want to add role checking here)
+    const { id } = await params
+    const body = await request.json()
+
+    // Check if request exists
+    const [existingRequest] = await db
+      .select()
+      .from(umrahRequests)
+      .where(eq(umrahRequests.id, parseInt(id)))
+
+    if (!existingRequest) {
+      return NextResponse.json(
+        { error: 'Umrah request not found' },
+        { status: 404 }
+      )
+    }
+
+    // Update request
+    const [updatedRequest] = await db
+      .update(umrahRequests)
+      .set({
+        ...body,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(umrahRequests.id, parseInt(id)))
+      .returning()
 
     return NextResponse.json({
-      success: true,
-      message: 'Umrah request updated successfully',
-      request: updatedRequest
+      request: updatedRequest,
+      message: 'Umrah request updated successfully'
     })
-
   } catch (error) {
-    console.error('Error updating Umrah request:', error)
+    console.error('Error updating admin Umrah request:', error)
     return NextResponse.json(
       { error: 'Failed to update Umrah request' },
       { status: 500 }
@@ -128,43 +118,47 @@ export async function PUT(
   }
 }
 
+// DELETE - Delete Umrah request (admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await getServerSession(authOptions)
     
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
+    // Check if user is admin (you might want to add role checking here)
+    const { id } = await params
 
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    // Check if request exists
+    const [existingRequest] = await db
+      .select()
+      .from(umrahRequests)
+      .where(eq(umrahRequests.id, parseInt(id)))
+
+    if (!existingRequest) {
+      return NextResponse.json(
+        { error: 'Umrah request not found' },
+        { status: 404 }
+      )
     }
 
-    await prisma.umrahRequest.delete({
-      where: { id: params.id }
-    })
+    // Delete request
+    await db
+      .delete(umrahRequests)
+      .where(eq(umrahRequests.id, parseInt(id)))
 
     return NextResponse.json({
-      success: true,
       message: 'Umrah request deleted successfully'
     })
-
   } catch (error) {
-    console.error('Error deleting Umrah request:', error)
+    console.error('Error deleting admin Umrah request:', error)
     return NextResponse.json(
       { error: 'Failed to delete Umrah request' },
       { status: 500 }

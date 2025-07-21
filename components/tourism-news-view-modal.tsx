@@ -60,7 +60,7 @@ export default function TourismNewsViewModal({
   const getTranslatedContent = (field: 'title' | 'excerpt' | 'content', lang: string) => {
     if (!news) return ''
     
-    // Map language codes to Prisma enum values
+    // Map language codes to enum values
     const languageMap = {
       'en': 'ENGLISH',
       'ar': 'ARABIC',

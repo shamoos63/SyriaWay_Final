@@ -1,112 +1,139 @@
-import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@/lib/generated/prisma"
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { bookings } from '@/drizzle/schema'
+import { eq, and, gte, lte } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
-// GET /api/user/bookings/stats - Get statistics for customer
 export async function GET(request: NextRequest) {
   try {
-    // Get user from authorization header
-    const authHeader = request.headers.get("authorization")
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    const token = authHeader.split(" ")[1]
-    const userId = token // This should be decoded from JWT
+    const { searchParams } = new URL(request.url)
+    const period = searchParams.get('period') || 'all' // all, month, year
 
-    // Get current date for calculations
-    const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    let dateFilter = undefined
 
-    // Ultra-optimized: Get all statistics in minimal queries
-    const [
-      allBookings,
-      revenueData,
-      serviceTypeData,
-    ] = await Promise.all([
-      // Get all bookings with status in one query
-      prisma.booking.findMany({
-        where: { userId },
-        select: {
-          status: true,
-          totalPrice: true,
-          startDate: true,
-          endDate: true,
-          createdAt: true,
-          serviceType: true,
-        }
-      }),
-      // Get revenue aggregates in one query
-      prisma.booking.aggregate({
-        where: { 
-          userId,
-          status: { in: ["COMPLETED", "CONFIRMED", "PENDING"] }
-        },
-        _sum: { totalPrice: true },
-        _avg: { totalPrice: true },
-      }),
-      // Get service type distribution
-      prisma.booking.groupBy({
-        by: ['serviceType'],
-        where: { userId },
-        _count: { serviceType: true },
-        orderBy: { _count: { serviceType: 'desc' } },
-        take: 1,
-      }),
-    ])
-
-    // Process booking data in memory (much faster than multiple DB queries)
-    const statusCounts = allBookings.reduce((acc, booking) => {
-      acc[booking.status.toLowerCase()] = (acc[booking.status.toLowerCase()] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
-
-    // Calculate active and upcoming rentals
-    const activeRentals = allBookings.filter(booking => 
-      booking.status === "CONFIRMED" && 
-      new Date(booking.endDate) >= now
-    ).length
-
-    const upcomingRentals = allBookings.filter(booking => 
-      booking.status === "CONFIRMED" && 
-      new Date(booking.startDate) >= now
-    ).length
-
-    // Calculate monthly revenue
-    const monthlyRevenue = allBookings
-      .filter(booking => 
-        booking.status === "COMPLETED" || booking.status === "CONFIRMED" || booking.status === "PENDING"
-      )
-      .filter(booking => {
-        const bookingDate = new Date(booking.createdAt)
-        return bookingDate >= startOfMonth && bookingDate <= endOfMonth
-      })
-      .reduce((sum, booking) => sum + (booking.totalPrice || 0), 0)
-
-    const stats = {
-      totalBookings: allBookings.length,
-      pendingBookings: statusCounts.pending || 0,
-      confirmedBookings: statusCounts.confirmed || 0,
-      completedBookings: statusCounts.completed || 0,
-      cancelledBookings: statusCounts.cancelled || 0,
-      totalSpent: revenueData._sum.totalPrice || 0,
-      monthlySpent: monthlyRevenue,
-      activeRentals,
-      upcomingRentals,
-      favoriteServiceType: serviceTypeData[0]?.serviceType || "None",
-      averageBookingValue: revenueData._avg.totalPrice || 0,
+    if (period === 'month') {
+      const oneMonthAgo = new Date()
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+      dateFilter = gte(bookings.createdAt, oneMonthAgo.toISOString())
+    } else if (period === 'year') {
+      const oneYearAgo = new Date()
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+      dateFilter = gte(bookings.createdAt, oneYearAgo.toISOString())
     }
 
-    return NextResponse.json({ stats })
+    let whereConditions = [eq(bookings.userId, parseInt(session.user.id))]
+    if (dateFilter) {
+      whereConditions.push(dateFilter)
+    }
+
+    // Get total bookings count
+    const totalBookings = await db
+      .select({ count: sql`count(*)` })
+      .from(bookings)
+      .where(and(...whereConditions))
+
+    // Get bookings by status
+    const bookingsByStatus = await db
+      .select({
+        status: bookings.status,
+        count: sql`count(*)`,
+      })
+      .from(bookings)
+      .where(and(...whereConditions))
+      .groupBy(bookings.status)
+
+    // Get bookings by service type
+    const bookingsByService = await db
+      .select({
+        serviceType: bookings.serviceType,
+        count: sql`count(*)`,
+        totalSpent: sql`sum(totalPrice)`,
+      })
+      .from(bookings)
+      .where(and(...whereConditions))
+      .groupBy(bookings.serviceType)
+
+    // Get total spent
+    const totalSpent = await db
+      .select({
+        total: sql`sum(totalPrice)`,
+      })
+      .from(bookings)
+      .where(and(
+        ...whereConditions,
+        eq(bookings.paymentStatus, 'PAID')
+      ))
+
+    // Get recent bookings (last 5)
+    const recentBookings = await db
+      .select({
+        id: bookings.id,
+        serviceType: bookings.serviceType,
+        status: bookings.status,
+        totalPrice: bookings.totalPrice,
+        createdAt: bookings.createdAt,
+      })
+      .from(bookings)
+      .where(and(...whereConditions))
+      .orderBy(bookings.createdAt)
+      .limit(5)
+
+    // Get monthly spending for the last 12 months
+    const monthlySpending = await db
+      .select({
+        month: sql`strftime('%Y-%m', createdAt)`,
+        total: sql`sum(totalPrice)`,
+        count: sql`count(*)`,
+      })
+      .from(bookings)
+      .where(and(
+        ...whereConditions,
+        eq(bookings.paymentStatus, 'PAID')
+      ))
+      .groupBy(sql`strftime('%Y-%m', createdAt)`)
+      .orderBy(sql`strftime('%Y-%m', createdAt)`)
+      .limit(12)
+
+    const stats = {
+      totalBookings: totalBookings[0].count,
+      totalSpent: totalSpent[0].total || 0,
+      bookingsByStatus: bookingsByStatus.reduce((acc, item) => {
+        acc[item.status] = item.count
+        return acc
+      }, {} as Record<string, number>),
+      bookingsByService: bookingsByService.reduce((acc, item) => {
+        acc[item.serviceType] = {
+          count: item.count,
+          totalSpent: item.totalSpent || 0,
+        }
+        return acc
+      }, {} as Record<string, any>),
+      recentBookings,
+      monthlySpending: monthlySpending.reduce((acc, item) => {
+        acc[item.month] = {
+          total: item.total || 0,
+          count: item.count,
+        }
+        return acc
+      }, {} as Record<string, any>),
+    }
+
+    return NextResponse.json(stats)
   } catch (error) {
-    console.error("Error fetching user booking stats:", error)
+    console.error('Error fetching booking stats:', error)
     return NextResponse.json(
-      { error: "Failed to fetch statistics" },
+      { error: 'Failed to fetch booking stats' },
       { status: 500 }
     )
   }

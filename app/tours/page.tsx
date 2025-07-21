@@ -403,11 +403,10 @@ export default function Tours() {
   }
 
   const handleSpecialTourRequest = async () => {
-    // Check if user is signed in
     if (!user) {
       toast({
         title: tr.authenticationRequired,
-        description: tr.pleaseSignIn,
+        description: tr.pleaseSignInToRequest,
         variant: "destructive",
       })
       return
@@ -416,24 +415,56 @@ export default function Tours() {
     // Check if user is a customer
     if (user.role !== 'CUSTOMER') {
       toast({
-        title: tr.requestNotAllowed,
+        title: tr.serviceProvidersNotAllowed,
         description: tr.serviceProvidersNotAllowed,
         variant: "destructive",
       })
       return
     }
 
-    // Validate required fields
-    if (!specialTourForm.customerName || !specialTourForm.customerEmail || !specialTourForm.tourType) {
+    // Validate required fields with better error messages
+    if (!specialTourForm.tourType || specialTourForm.tourType.trim() === '') {
       toast({
         title: tr.missingInformation,
-        description: tr.fillRequiredFields,
+        description: "Please select a tour type",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!specialTourForm.preferredDates || specialTourForm.preferredDates.trim() === '') {
+      toast({
+        title: tr.missingInformation,
+        description: "Please select preferred dates",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!specialTourForm.groupSize || specialTourForm.groupSize < 1) {
+      toast({
+        title: tr.missingInformation,
+        description: "Please specify the number of guests (minimum 1)",
         variant: "destructive",
       })
       return
     }
 
     try {
+      // Validate and parse the preferred dates
+      const startDate = new Date(specialTourForm.preferredDates)
+      if (isNaN(startDate.getTime())) {
+        toast({
+          title: tr.error,
+          description: "Invalid date format. Please select a valid date.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Calculate end date (7 days after start date)
+      const endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+
       const response = await fetch('/api/tours/special-request', {
         method: 'POST',
         headers: {
@@ -441,10 +472,16 @@ export default function Tours() {
           'Authorization': `Bearer ${user.id}`,
         },
         body: JSON.stringify({
-          ...specialTourForm,
-          customerName: user.name || specialTourForm.customerName,
-          customerEmail: user.email || specialTourForm.customerEmail,
-          customerPhone: user.phone || specialTourForm.customerPhone,
+          title: specialTourForm.tourType,
+          description: specialTourForm.message || specialTourForm.tourType,
+          duration: 1,
+          maxCapacity: specialTourForm.groupSize,
+          budget: specialTourForm.budget || 0,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          location: "Syria",
+          specialRequirements: specialTourForm.specialRequirements || null,
+          guideId: specialTourForm.guideId || null,
         }),
       })
 

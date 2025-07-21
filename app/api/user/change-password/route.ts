@@ -1,99 +1,81 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@/lib/generated/prisma';
-import bcrypt from 'bcryptjs';
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { users } from '@/drizzle/schema'
+import { eq } from 'drizzle-orm'
+import { z } from 'zod'
+import bcrypt from 'bcryptjs'
 
-const prisma = new PrismaClient();
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(8, 'New password must be at least 8 characters'),
+  confirmPassword: z.string().min(1, 'Password confirmation is required'),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+})
 
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { currentPassword, newPassword } = body;
-
-    // Get user from localStorage (this is a simplified approach)
-    // In production, you'd use proper session management
-    const userEmail = request.headers.get('x-user-email');
-    if (!userEmail) {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'User email required' },
-        { status: 400 }
-      );
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    // Validation
-    if (!currentPassword || !newPassword) {
-      return NextResponse.json(
-        { error: 'Current password and new password are required' },
-        { status: 400 }
-      );
-    }
+    const body = await request.json()
+    const validatedData = changePasswordSchema.parse(body)
 
-    if (newPassword.length < 6) {
-      return NextResponse.json(
-        { error: 'New password must be at least 6 characters long' },
-        { status: 400 }
-      );
-    }
+    // Get current user with password
+    const [currentUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, parseInt(session.user.id)))
 
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email: userEmail },
-    });
-
-    if (!user) {
+    if (!currentUser) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
-      );
+      )
     }
 
     // Verify current password
-    if (!user.password) {
-      return NextResponse.json(
-        { error: 'Invalid current password' },
-        { status: 401 }
-      );
-    }
+    const isCurrentPasswordValid = await bcrypt.compare(
+      validatedData.currentPassword,
+      currentUser.password
+    )
 
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
     if (!isCurrentPasswordValid) {
       return NextResponse.json(
         { error: 'Current password is incorrect' },
-        { status: 401 }
-      );
+        { status: 400 }
+      )
     }
 
     // Hash new password
-    const hashedNewPassword = await bcrypt.hash(newPassword, 12);
+    const hashedNewPassword = await bcrypt.hash(validatedData.newPassword, 12)
 
     // Update password
-    const updatedUser = await prisma.user.update({
-      where: { email: userEmail },
-      data: {
+    await db
+      .update(users)
+      .set({
         password: hashedNewPassword,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        status: true,
-        preferredLang: true,
-        phone: true,
-        image: true,
-        createdAt: true,
-        lastLoginAt: true,
-      },
-    });
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.id, parseInt(session.user.id)))
 
     return NextResponse.json({
-      message: 'Password changed successfully',
-      user: updatedUser,
-    });
+      message: 'Password changed successfully'
+    })
   } catch (error) {
-    console.error('Change password error:', error);
+    console.error('Error changing password:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to change password' },
       { status: 500 }
-    );
+    )
   }
 } 

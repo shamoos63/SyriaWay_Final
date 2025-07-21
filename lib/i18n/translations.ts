@@ -285,6 +285,100 @@ export interface Translations {
     receiveMarketing: string
     receiveOffers: string
     customizeExperience: string
+    // New translations for posts and settings
+    myBlogPosts: string
+    noBlogPostsYet: string
+    startSharingExperiences: string
+    createFirstPost: string
+    loadingBlogPosts: string
+    blogPostDeleted: string
+    blogPostUpdated: string
+    blogPostCreated: string
+    deleteBlogPost: string
+    deleteBlogPostConfirm: string
+    deleteBlogPostDescription: string
+    profile: string
+    security: string
+    preferences: string
+    role: string
+    accountStatus: string
+    memberSince: string
+    emailNotifications: string
+    smsNotifications: string
+    marketingEmails: string
+    language: string
+    theme: string
+    currency: string
+    darkMode: string
+    lightMode: string
+    systemDefault: string
+    saveChanges: string
+    saving: string
+    profileUpdated: string
+    passwordChanged: string
+    settingsSaved: string
+    currentPassword: string
+    newPassword: string
+    confirmPassword: string
+    showPassword: string
+    hidePassword: string
+    passwordMismatch: string
+    passwordTooShort: string
+    passwordChangedSuccess: string
+    passwordChangeError: string
+    unknown: string
+    // Sidebar translations
+    myBookings: string
+    settings: string
+    goToHomepage: string
+    user: string
+    member: string
+    active: string
+    // Settings page translations
+    personalInformation: string
+    updatePersonalInfoDescription: string
+    fullName: string
+    email: string
+    phone: string
+    managePasswordDescription: string
+    changePassword: string
+    changingPassword: string
+    passwordChangedSuccess: string
+    notifications: string
+    manageNotificationsDescription: string
+    receiveNotificationsViaEmail: string
+    receiveNotificationsViaSMS: string
+    receiveMarketingEmails: string
+    customizeAccountPreferences: string
+    choosePreferredLanguage: string
+    currentAccountStatus: string
+    whenYouJoinedSyriaWay: string
+    saving: string
+    settingsSavedSuccess: string
+    profileUpdatedSuccess: string
+    // Notifications page translations
+    unreadNotifications: string
+    markAllAsRead: string
+    filters: string
+    searchNotifications: string
+    category: string
+    status: string
+    loadingNotifications: string
+    noNotificationsFound: string
+    tryAdjustingFilters: string
+    allCaughtUp: string
+    markAsRead: string
+    archive: string
+    urgent: string
+    justNow: string
+    ago: string
+    minutes: string
+    hours: string
+    // Notification bell translations
+    markAllRead: string
+    noNotifications: string
+    markRead: string
+    viewAllNotifications: string
   }
   userDropdown?: {
     profile: string
@@ -669,6 +763,95 @@ export const translations: Record<Language, Translations> = {
       receiveMarketing: "Receive marketing emails and promotions.",
       receiveOffers: "Receive alerts about new offers and deals.",
       customizeExperience: "Customize your experience.",
+      myBlogPosts: "My Blog Posts",
+      noBlogPostsYet: "No blog posts yet",
+      startSharingExperiences: "Start sharing experiences",
+      createFirstPost: "Create your first post",
+      loadingBlogPosts: "Loading blog posts...",
+      blogPostDeleted: "Blog post deleted",
+      blogPostUpdated: "Blog post updated",
+      blogPostCreated: "Blog post created",
+      deleteBlogPost: "Delete blog post",
+      deleteBlogPostConfirm: "Are you sure you want to delete this blog post?",
+      deleteBlogPostDescription: "This action cannot be undone.",
+      profile: "Profile",
+      security: "Security",
+      preferences: "Preferences",
+      role: "Role",
+      accountStatus: "Account Status",
+      memberSince: "Member Since",
+      emailNotifications: "Email Notifications",
+      smsNotifications: "SMS Notifications",
+      marketingEmails: "Marketing Emails",
+      language: "Language",
+      theme: "Theme",
+      currency: "Currency",
+      darkMode: "Dark Mode",
+      lightMode: "Light Mode",
+      systemDefault: "System Default",
+      saveChanges: "Save Changes",
+      saving: "Saving...",
+      profileUpdated: "Profile updated successfully!",
+      passwordChanged: "Password changed successfully!",
+      settingsSaved: "Settings saved successfully!",
+      currentPassword: "Current Password",
+      newPassword: "New Password",
+      confirmPassword: "Confirm Password",
+      showPassword: "Show Password",
+      hidePassword: "Hide Password",
+      passwordMismatch: "Password mismatch",
+      passwordTooShort: "Password too short",
+      passwordChangedSuccess: "Password changed successfully!",
+      passwordChangeError: "Password change error",
+      unknown: "Unknown",
+      myBookings: "My Bookings",
+      settings: "Settings",
+      goToHomepage: "Go to Homepage",
+      user: "User",
+      member: "Member",
+      active: "Active",
+      personalInformation: "Personal Information",
+      updatePersonalInfoDescription: "Update your personal information and contact details.",
+      fullName: "Full Name",
+      email: "Email",
+      phone: "Phone",
+      managePasswordDescription: "Manage your password and security settings.",
+      changePassword: "Change Password",
+      changingPassword: "Changing Password",
+      passwordChangedSuccess: "Password changed successfully!",
+      notifications: "Notifications",
+      manageNotificationsDescription: "Manage how you receive notifications.",
+      receiveNotificationsViaEmail: "Receive notifications via email.",
+      receiveNotificationsViaSMS: "Receive notifications via SMS.",
+      receiveMarketingEmails: "Receive marketing emails and promotions.",
+      customizeAccountPreferences: "Customize your account preferences.",
+      choosePreferredLanguage: "Choose Preferred Language",
+      currentAccountStatus: "Current Account Status",
+      whenYouJoinedSyriaWay: "When you joined Syria Way",
+      saving: "Saving...",
+      settingsSavedSuccess: "Settings saved successfully!",
+      profileUpdatedSuccess: "Profile updated successfully!",
+      unreadNotifications: "Unread Notifications",
+      markAllAsRead: "Mark All as Read",
+      filters: "Filters",
+      searchNotifications: "Search Notifications",
+      category: "Category",
+      status: "Status",
+      loadingNotifications: "Loading Notifications",
+      noNotificationsFound: "No Notifications Found",
+      tryAdjustingFilters: "Try Adjusting Filters",
+      allCaughtUp: "All Caught Up",
+      markAsRead: "Mark as Read",
+      archive: "Archive",
+      urgent: "Urgent",
+      justNow: "Just Now",
+      ago: "Ago",
+      minutes: "Minutes",
+      hours: "Hours",
+      markAllRead: "Mark All as Read",
+      noNotifications: "No Notifications",
+      markRead: "Mark as Read",
+      viewAllNotifications: "View All Notifications",
     },
     userDropdown: {
       profile: "Profile",
@@ -1050,6 +1233,95 @@ export const translations: Record<Language, Translations> = {
       receiveMarketing: "تلقي رسائل البريد الإلكتروني التسويقية والعروض الترويجية.",
       receiveOffers: "تلقي تنبيهات حول العروض والصفقات الجديدة.",
       customizeExperience: "تخصيص تجربتك.",
+      myBlogPosts: "منشوراتي في المدونة",
+      noBlogPostsYet: "لا توجد منشورات في المدونة بعد",
+      startSharingExperiences: "ابدأ مشاركة التجربة",
+      createFirstPost: "أنشأ منشورًا جديدًا",
+      loadingBlogPosts: "جاري تحميل المنشورات...",
+      blogPostDeleted: "تم حذف المنشور",
+      blogPostUpdated: "تم تحديث المنشور",
+      blogPostCreated: "تم إنشاء منشور جديد",
+      deleteBlogPost: "حذف المنشور",
+      deleteBlogPostConfirm: "هل أنت متأكد؟",
+      deleteBlogPostDescription: "هذا العمل غير قابل للتراجع.",
+      profile: "الملف الشخصي",
+      security: "الأمان",
+      preferences: "التفضيلات",
+      role: "الدور",
+      accountStatus: "حالة الحساب",
+      memberSince: "منذ",
+      emailNotifications: "إشعارات البريد الإلكتروني",
+      smsNotifications: "إشعارات الرسائل النصية",
+      marketingEmails: "رسائل تسويقية",
+      language: "اللغة",
+      theme: "المظهر",
+      currency: "العملة",
+      darkMode: "الوضع الداكن",
+      lightMode: "الوضع الفاتح",
+      systemDefault: "إعدادات النظام",
+      saveChanges: "حفظ التغييرات",
+      saving: "جاري الحفظ...",
+      profileUpdated: "تم تحديث الملف الشخصي بنجاح!",
+      passwordChanged: "تم تغيير كلمة المرور بنجاح!",
+      settingsSaved: "تم حفظ الإعدادات بنجاح!",
+      currentPassword: "كلمة المرور الحالية",
+      newPassword: "كلمة المرور الجديدة",
+      confirmPassword: "تأكيد كلمة المرور",
+      showPassword: "إظهار كلمة المرور",
+      hidePassword: "إخفاء كلمة المرور",
+      passwordMismatch: "كلمة المرور غير متطابقة",
+      passwordTooShort: "كلمة المرور قصيرة جدًا",
+      passwordChangedSuccess: "تم تغيير كلمة المرور بنجاح!",
+      passwordChangeError: "خطأ في تغيير كلمة المرور",
+      unknown: "مجهول",
+      myBookings: "حجوزاتي",
+      settings: "الإعدادات",
+      goToHomepage: "العودة للرئيسية",
+      user: "المستخدم",
+      member: "الأعضاء",
+      active: "الحالي",
+      personalInformation: "المعلومات الشخصية",
+      updatePersonalInfoDescription: "تحديث معلوماتك الشخصية وتفاصيل الاتصال.",
+      fullName: "الاسم الكامل",
+      email: "البريد الإلكتروني",
+      phone: "رقم الهاتف",
+      managePasswordDescription: "إدارة كلمة المرور وإعدادات الأمان.",
+      changePassword: "تغيير كلمة المرور",
+      changingPassword: "تغيير كلمة المرور",
+      passwordChangedSuccess: "تم تغيير كلمة المرور بنجاح!",
+      notifications: "الإشعارات",
+      manageNotificationsDescription: "إدارة كيفية تلقي الإشعارات.",
+      receiveNotificationsViaEmail: "تلقي الإشعارات عبر البريد الإلكتروني.",
+      receiveNotificationsViaSMS: "تلقي الإشعارات عبر الرسائل القصيرة.",
+      receiveMarketingEmails: "تلقي رسائل البريد الإلكتروني التسويقية والعروض الترويجية.",
+      customizeAccountPreferences: "تخصيص تفضيلات الحساب.",
+      choosePreferredLanguage: "اختيار اللغة المفضلة",
+      currentAccountStatus: "حالة الحساب الحالية",
+      whenYouJoinedSyriaWay: "متى ستضيف سوريا وايز",
+      saving: "جاري الحفظ...",
+      settingsSavedSuccess: "تم حفظ الإعدادات بنجاح!",
+      profileUpdatedSuccess: "تم تحديث الملف الشخصي بنجاح!",
+      unreadNotifications: "إشعارات غير مقروءة",
+      markAllAsRead: "إشعارات جميع المقروءة",
+      filters: "المرشحات",
+      searchNotifications: "بحث عن الإشعارات",
+      category: "الفئة",
+      status: "الحالة",
+      loadingNotifications: "جاري تحميل الإشعارات",
+      noNotificationsFound: "لم يتم العثور على إشعارات",
+      tryAdjustingFilters: "حاول تعديل المرشحات",
+      allCaughtUp: "جميع الإشعارات مقروءة",
+      markAsRead: "إشعارات جديدة",
+      archive: "أرشيف",
+      urgent: "مهم",
+      justNow: "منذ لحظات",
+      ago: "منذ",
+      minutes: "دقائق",
+      hours: "ساعات",
+      markAllRead: "إشعارات جميع المقروءة",
+      noNotifications: "لا توجد إشعارات",
+      markRead: "إشعارات جديدة",
+      viewAllNotifications: "عرض جميع الإشعارات",
     },
     userDropdown: {
       profile: "الملف الشخصي",
@@ -1432,6 +1704,95 @@ export const translations: Record<Language, Translations> = {
       receiveMarketing: "Recevoir des emails marketing et des promotions.",
       receiveOffers: "Recevoir des alertes sur les nouvelles offres et promotions.",
       customizeExperience: "Personnalisez votre expérience.",
+      myBlogPosts: "Mes articles sur le blog",
+      noBlogPostsYet: "Aucun article sur le blog pour le moment",
+      startSharingExperiences: "Commencer à partager des expériences",
+      createFirstPost: "Créer votre premier article",
+      loadingBlogPosts: "Chargement des articles du blog...",
+      blogPostDeleted: "Article du blog supprimé",
+      blogPostUpdated: "Article du blog mis à jour",
+      blogPostCreated: "Article du blog créé",
+      deleteBlogPost: "Supprimer l'article",
+      deleteBlogPostConfirm: "Êtes-vous sûr de vouloir supprimer cet article?",
+      deleteBlogPostDescription: "Cette action est irréversible.",
+      profile: "Profil",
+      security: "Sécurité",
+      preferences: "Préférences",
+      role: "Rôle",
+      accountStatus: "Statut du compte",
+      memberSince: "Membre depuis",
+      emailNotifications: "Notifications par email",
+      smsNotifications: "Notifications par SMS",
+      marketingEmails: "Emails marketing",
+      language: "Langue",
+      theme: "Thème",
+      currency: "Devise",
+      darkMode: "Mode sombre",
+      lightMode: "Mode clair",
+      systemDefault: "Paramètres système",
+      saveChanges: "Enregistrer les modifications",
+      saving: "Sauvegarde en cours...",
+      profileUpdated: "Profil mis à jour avec succès!",
+      passwordChanged: "Mot de passe modifié avec succès!",
+      settingsSaved: "Paramètres enregistrés avec succès!",
+      currentPassword: "Mot de passe actuel",
+      newPassword: "Nouveau mot de passe",
+      confirmPassword: "Confirmer le mot de passe",
+      showPassword: "Afficher le mot de passe",
+      hidePassword: "Masquer le mot de passe",
+      passwordMismatch: "Mot de passe non conforme",
+      passwordTooShort: "Mot de passe trop court",
+      passwordChangedSuccess: "Mot de passe changé avec succès!",
+      passwordChangeError: "Erreur lors du changement de mot de passe",
+      unknown: "Inconnu",
+      myBookings: "Mes réservations",
+      settings: "Paramètres",
+      goToHomepage: "Retour à l'accueil",
+      user: "Utilisateur",
+      member: "Membre",
+      active: "Actif",
+      personalInformation: "Informations personnelles",
+      updatePersonalInfoDescription: "Mettre à jour vos informations personnelles et coordonnées.",
+      fullName: "Nom complet",
+      email: "Email",
+      phone: "Téléphone",
+      managePasswordDescription: "Gérer votre mot de passe et vos paramètres de sécurité.",
+      changePassword: "Changer le mot de passe",
+      changingPassword: "Changement de mot de passe",
+      passwordChangedSuccess: "Mot de passe changé avec succès!",
+      notifications: "Notifications",
+      manageNotificationsDescription: "Gérer la façon dont vous recevez les notifications.",
+      receiveNotificationsViaEmail: "Recevoir des notifications par email.",
+      receiveNotificationsViaSMS: "Recevoir des notifications par SMS.",
+      receiveMarketingEmails: "Recevoir des emails marketing et des promotions.",
+      customizeAccountPreferences: "Personnaliser les préférences de votre compte.",
+      choosePreferredLanguage: "Choisir la langue préférée",
+      currentAccountStatus: "Statut du compte actuel",
+      whenYouJoinedSyriaWay: "Quand vous avez rejoint Syria Way",
+      saving: "Sauvegarde en cours...",
+      settingsSavedSuccess: "Paramètres enregistrés avec succès!",
+      profileUpdatedSuccess: "Profil mis à jour avec succès!",
+      unreadNotifications: "Notifications non lues",
+      markAllAsRead: "Marquer toutes comme lues",
+      filters: "Filtres",
+      searchNotifications: "Rechercher dans les notifications",
+      category: "Catégorie",
+      status: "Statut",
+      loadingNotifications: "Chargement des notifications",
+      noNotificationsFound: "Aucune notification trouvée",
+      tryAdjustingFilters: "Essayez de réajuster les filtres",
+      allCaughtUp: "Toutes les notifications lues",
+      markAsRead: "Marquer comme lue",
+      archive: "Archiver",
+      urgent: "Urgent",
+      justNow: "Il y a quelques secondes",
+      ago: "Il y a",
+      minutes: "minutes",
+      hours: "heures",
+      markAllRead: "Mark All as Read",
+      noNotifications: "No Notifications",
+      markRead: "Mark as Read",
+      viewAllNotifications: "View All Notifications",
     },
     userDropdown: {
       profile: "Profil",

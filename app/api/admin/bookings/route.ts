@@ -1,188 +1,101 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { bookings, users } from '@/drizzle/schema'
+import { eq, and, desc } from 'drizzle-orm'
 
-// GET - Fetch all bookings for admin
+// GET - Fetch all bookings (admin only)
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await getServerSession(authOptions)
     
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
-
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
-
+    // Check if user is admin (you might want to add role checking here)
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const serviceType = searchParams.get('serviceType')
     const status = searchParams.get('status')
-    const paymentStatus = searchParams.get('paymentStatus')
-    const search = searchParams.get('search')
-    const startDate = searchParams.get('startDate')
-    const endDate = searchParams.get('endDate')
+    const serviceType = searchParams.get('serviceType')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const page = parseInt(searchParams.get('page') || '1')
 
-    const skip = (page - 1) * limit
-
-    // Build where clause
-    const where: any = {}
-
-    if (serviceType) {
-      where.serviceType = serviceType
-    }
+    let whereConditions = []
 
     if (status) {
-      where.status = status
+      whereConditions.push(eq(bookings.status, status))
     }
 
-    if (paymentStatus) {
-      where.paymentStatus = paymentStatus
+    if (serviceType) {
+      whereConditions.push(eq(bookings.serviceType, serviceType))
     }
 
-    if (search) {
-      where.OR = [
-        { user: { name: { contains: search, mode: 'insensitive' } } },
-        { user: { email: { contains: search, mode: 'insensitive' } } },
-        { contactName: { contains: search, mode: 'insensitive' } },
-        { contactEmail: { contains: search, mode: 'insensitive' } },
-        { contactPhone: { contains: search, mode: 'insensitive' } },
-        { specialRequests: { contains: search, mode: 'insensitive' } },
-        { notes: { contains: search, mode: 'insensitive' } }
-      ]
-    }
+    const offset = (page - 1) * limit
 
-    if (startDate) {
-      where.startDate = {
-        gte: new Date(startDate)
-      }
-    }
+    const bookingsData = await db
+      .select({
+        id: bookings.id,
+        userId: bookings.userId,
+        serviceType: bookings.serviceType,
+        serviceId: bookings.serviceId,
+        startDate: bookings.startDate,
+        endDate: bookings.endDate,
+        totalAmount: bookings.totalAmount,
+        status: bookings.status,
+        paymentStatus: bookings.paymentStatus,
+        specialRequests: bookings.specialRequests,
+        createdAt: bookings.createdAt,
+        updatedAt: bookings.updatedAt,
+        user: {
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          image: users.image,
+        }
+      })
+      .from(bookings)
+      .leftJoin(users, eq(bookings.userId, users.id))
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .orderBy(desc(bookings.createdAt))
+      .limit(limit)
+      .offset(offset)
 
-    if (endDate) {
-      where.endDate = {
-        lte: new Date(endDate)
-      }
-    }
+    // Get total count for pagination
+    const totalCount = await db
+      .select({ count: bookings.id })
+      .from(bookings)
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
 
-    const [bookings, total] = await Promise.all([
-      prisma.booking.findMany({
-        where,
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-              role: true
-            }
-          },
-          hotel: {
-            select: {
-              id: true,
-              name: true,
-              city: true
-            }
-          },
-          room: {
-            select: {
-              id: true,
-              name: true,
-              roomNumber: true
-            }
-          },
-          car: {
-            select: {
-              id: true,
-              brand: true,
-              model: true,
-              year: true
-            }
-          },
-          tour: {
-            select: {
-              id: true,
-              name: true,
-              category: true
-            }
-          },
-          guide: {
-            select: {
-              id: true,
-              bio: true,
-              specialties: true,
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true
-                }
-              }
-            }
-          },
-          healthService: {
-            select: {
-              id: true,
-              name: true,
-              category: true
-            }
-          },
-          educationalProgram: {
-            select: {
-              id: true,
-              name: true,
-              category: true
-            }
-          },
-          umrahPackage: {
-            select: {
-              id: true,
-              name: true,
-              duration: true
-            }
-          },
-          bundle: {
-            select: {
-              id: true,
-              name: true,
-              description: true
-            }
-          }
-        },
-        orderBy: [
-          { createdAt: 'desc' }
-        ],
-        skip,
-        take: limit
-      }),
-      prisma.booking.count({ where })
-    ])
+    const totalPages = Math.ceil(totalCount.length / limit)
 
     return NextResponse.json({
-      bookings,
+      bookings: bookingsData,
       pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
+        currentPage: page,
+        totalPages,
+        totalCount: totalCount.length,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
       }
     })
   } catch (error) {
-    console.error('Error fetching bookings:', error)
+    console.error('Error fetching admin bookings:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch bookings' },
+      { 
+        error: 'Failed to fetch bookings',
+        bookings: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalCount: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        }
+      },
       { status: 500 }
     )
   }

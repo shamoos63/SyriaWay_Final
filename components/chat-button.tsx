@@ -27,6 +27,27 @@ export function ChatButton() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { t, language } = useLanguage()
 
+  // Helper function to get service names in different languages
+  const getServiceName = (serviceType: string, lang: string) => {
+    if (lang === 'ar') {
+      switch (serviceType) {
+        case 'cars': return 'تأجير السيارات'
+        case 'hotels': return 'حجز الفنادق'
+        case 'tours': return 'الجولات السياحية'
+        case 'sites': return 'المواقع السياحية'
+        default: return 'الخدمة المطلوبة'
+      }
+    } else {
+      switch (serviceType) {
+        case 'cars': return 'car rental'
+        case 'hotels': return 'hotel booking'
+        case 'tours': return 'tours'
+        case 'sites': return 'tourism sites'
+        default: return 'requested service'
+      }
+    }
+  }
+
   // Load chat history from localStorage on mount
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('reem-chat-history') : null
@@ -85,16 +106,29 @@ export function ChatButton() {
         ...prev,
         {
           role: "assistant",
-          content: data.message,
+          content: data.response || data.message || "I'm sorry, I couldn't process your request.",
         },
       ])
 
       // Handle redirect if provided
       if (data.redirectUrl) {
-        // Add a small delay to show the message before redirecting
+        // Add a redirect message
         setTimeout(() => {
-          window.location.href = data.redirectUrl
-        }, 2000)
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: language === 'ar' 
+                ? `سأقوم بتوجيهك إلى صفحة ${getServiceName(data.serviceType, language)} للاطلاع على الخيارات المتاحة.`
+                : `I'll redirect you to the ${getServiceName(data.serviceType, language)} page to see available options.`,
+            },
+          ])
+          
+          // Add another delay before actual redirect
+          setTimeout(() => {
+            window.location.href = data.redirectUrl
+          }, 2000)
+        }, 1000)
       }
     } catch (error) {
       console.error("Error sending message:", error)
@@ -120,13 +154,15 @@ export function ChatButton() {
     <>
       <Button
         onClick={toggleChat}
-        className="fixed bottom-6 right-6 rounded-full w-14 h-14 bg-syria-gold hover:bg-syria-dark-gold shadow-lg z-40 flex items-center justify-center"
+        className="fixed bottom-6 rounded-full w-14 h-14 bg-syria-gold hover:bg-syria-dark-gold shadow-lg z-50 flex items-center justify-center
+          right-6 rtl:right-auto rtl:left-6"
       >
         {isOpen ? <X size={24} /> : <MessageCircle size={24} />}
       </Button>
 
       {isOpen && (
-        <div className="fixed bottom-24 right-6 w-80 md:w-96 bg-white dark:bg-[#4a4a4a] rounded-lg shadow-xl z-40 flex flex-col overflow-hidden border border-syria-gold">
+        <div className="fixed bottom-24 w-80 md:w-96 bg-white dark:bg-[#4a4a4a] rounded-lg shadow-xl z-50 flex flex-col overflow-hidden border border-syria-gold
+          right-6 rtl:right-auto rtl:left-6">
           <div className="bg-syria-gold p-3 text-white font-semibold flex justify-between items-center">
             <div className="flex items-center gap-2">
               <div className="relative w-8 h-8 rounded-full overflow-hidden">

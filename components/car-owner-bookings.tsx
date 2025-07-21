@@ -30,19 +30,18 @@ interface Booking {
   id: string
   startDate: string
   endDate: string
-  guests: number
+  numberOfPeople: number
   totalPrice: number
   currency: string
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "CANCELLATION_REQUESTED"
   paymentStatus: "PENDING" | "PAID" | "REFUNDED"
   specialRequests?: string
-  contactName: string
-  contactPhone: string
-  contactEmail: string
+  contactPhone?: string
+  contactEmail?: string
   createdAt: string
-  car: {
+  car?: {
     id: string
-    brand: string
+    make: string
     model: string
     year: number
     color: string
@@ -54,7 +53,7 @@ interface Booking {
     id: string
     name: string
     email: string
-    phone?: string
+    image?: string
   }
 }
 
@@ -453,7 +452,7 @@ export function CarOwnerBookings() {
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h4 className="font-semibold mb-2">Booking Details</h4>
                 <div className="text-sm space-y-1">
-                  <p><strong>Car:</strong> {actionDialog.booking.car.brand} {actionDialog.booking.car.model} ({actionDialog.booking.car.year})</p>
+                  <p><strong>Car:</strong> {actionDialog.booking.car ? `${actionDialog.booking.car.make} ${actionDialog.booking.car.model} (${actionDialog.booking.car.year})` : 'Car Details Unavailable'}</p>
                   <p><strong>Customer:</strong> {actionDialog.booking.user.name}</p>
                   <p><strong>Dates:</strong> {format(new Date(actionDialog.booking.startDate), "MMM dd")} - {format(new Date(actionDialog.booking.endDate), "MMM dd, yyyy")}</p>
                   <p><strong>Total:</strong> {actionDialog.booking.totalPrice} {actionDialog.booking.currency}</p>
@@ -525,11 +524,13 @@ function BookingCard({ booking, onApprove, onDecline, onCancel, showActions, cal
           <div>
             <CardTitle className="flex items-center gap-2">
               <Car className="h-5 w-5" />
-              {booking.car.brand} {booking.car.model} ({booking.car.year})
+              {booking.car ? `${booking.car.make} ${booking.car.model} (${booking.car.year})` : 'Car Details Unavailable'}
             </CardTitle>
-            <p className="text-sm text-gray-600 capitalize">
-              Color: {booking.car.color} • Plate: {booking.car.licensePlate}
-            </p>
+            {booking.car && (
+              <p className="text-sm text-gray-600 capitalize">
+                Color: {booking.car.color} • Plate: {booking.car.licensePlate}
+              </p>
+            )}
           </div>
           <div className="flex flex-col items-end gap-2">
             {getStatusBadge(booking.status)}
@@ -554,15 +555,15 @@ function BookingCard({ booking, onApprove, onDecline, onCancel, showActions, cal
               <Mail className="h-3 w-3 text-gray-500" />
               <span>{booking.user.email}</span>
             </div>
-            {booking.user.phone && (
+            {booking.contactPhone && (
               <div className="flex items-center gap-2">
                 <Phone className="h-3 w-3 text-gray-500" />
-                <span>{booking.user.phone}</span>
+                <span>{booking.contactPhone}</span>
               </div>
             )}
             <div className="flex items-center gap-2">
               <Calendar className="h-3 w-3 text-gray-500" />
-              <span>{booking.guests} guest{booking.guests > 1 ? 's' : ''}</span>
+              <span>{booking.numberOfPeople} guest{booking.numberOfPeople > 1 ? 's' : ''}</span>
             </div>
           </div>
         </div>

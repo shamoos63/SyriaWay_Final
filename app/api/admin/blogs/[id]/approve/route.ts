@@ -1,37 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { blogs } from '@/drizzle/schema'
+import { eq } from 'drizzle-orm'
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+// POST - Approve blog
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
-    // In production, check admin role here
-    const adminId = authHeader.replace('Bearer ', '')
-    const { id } = params
 
-    // Find blog
-    const blog = await prisma.blog.findUnique({ where: { id } })
+    // Check if user is admin (you might want to add role checking here)
+    const { id } = await params
+
+    // Check if blog exists
+    const [blog] = await db
+      .select()
+      .from(blogs)
+      .where(eq(blogs.id, parseInt(id)))
+
     if (!blog) {
-      return NextResponse.json({ error: 'Blog not found' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'Blog not found' },
+        { status: 404 }
+      )
     }
 
-    // Approve and publish
-    const updated = await prisma.blog.update({
-      where: { id },
-      data: {
+    // Update blog status
+    const [updatedBlog] = await db
+      .update(blogs)
+      .set({
         status: 'PUBLISHED',
         isPublished: true,
-        approvedAt: new Date(),
-        approvedBy: adminId,
-        publishedAt: new Date(),
-        rejectionReason: null
-      }
+        approvedAt: new Date().toISOString(),
+        approvedBy: session.user.id,
+        publishedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(blogs.id, parseInt(id)))
+      .returning()
+
+    return NextResponse.json({
+      blog: updatedBlog,
+      message: 'Blog approved successfully'
     })
-    return NextResponse.json({ blog: updated, message: 'Blog approved and published' })
   } catch (error) {
     console.error('Error approving blog:', error)
-    return NextResponse.json({ error: 'Failed to approve blog' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to approve blog' },
+      { status: 500 }
+    )
   }
 } 

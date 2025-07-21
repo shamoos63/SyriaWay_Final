@@ -32,7 +32,7 @@ export default function UserSidebar() {
       // Admin and Super Admin only see settings
       return [
         {
-          name: "Settings",
+          name: t.userDashboard?.settings || "Settings",
           href: "/user-dashboard/settings",
           icon: <Settings className="h-5 w-5" />,
         },
@@ -46,7 +46,7 @@ export default function UserSidebar() {
           icon: <LayoutDashboard className="h-5 w-5" />,
         },
         {
-          name: "My Bookings",
+          name: t.userDashboard?.myBookings || "My Bookings",
           href: "/user-dashboard/bookings",
           icon: <Calendar className="h-5 w-5" />,
         },
@@ -56,7 +56,7 @@ export default function UserSidebar() {
           icon: <FileText className="h-5 w-5" />,
         },
         {
-          name: "Settings",
+          name: t.userDashboard?.settings || "Settings",
           href: "/user-dashboard/settings",
           icon: <Settings className="h-5 w-5" />,
         },
@@ -89,8 +89,8 @@ export default function UserSidebar() {
         <AvatarImage >{getUserInitial(user?.name)}</AvatarImage> 
           <AvatarFallback>{getUserInitial(user?.name)}</AvatarFallback>
         </Avatar>
-        <h2 className="mt-3 text-lg font-bold">{user?.name || "User"}</h2>
-        <p className="text-xs text-muted-foreground">{user?.role?.replace('_', ' ') || "Member"}</p>
+        <h2 className="mt-3 text-lg font-bold">{user?.name || t.userDashboard?.user || "User"}</h2>
+        <p className="text-xs text-muted-foreground">{user?.role?.replace('_', ' ') || t.userDashboard?.member || "Member"}</p>
       </div>
 
       <nav className="flex-1 space-y-1">
@@ -117,13 +117,13 @@ export default function UserSidebar() {
         <div className="rounded-lg bg-muted p-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium">Member Since</p>
+              <p className="text-xs font-medium">{t.userDashboard?.memberSince || "Member Since"}</p>
               <p className="text-xs text-muted-foreground">
-                {user?.createdAt ? formatDate(user.createdAt) : "Unknown"}
+                {user?.createdAt ? formatDate(user.createdAt) : t.userDashboard?.unknown || "Unknown"}
               </p>
             </div>
             <div className="rounded-full bg-primary px-2 py-1 text-xs font-medium text-primary-foreground">
-              {user?.status || "Active"}
+              {user?.status || t.userDashboard?.active || "Active"}
             </div>
           </div>
         </div>
@@ -134,7 +134,7 @@ export default function UserSidebar() {
           className="flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           <Home className="mr-3 h-5 w-5" />
-          Go to Homepage
+          {t.userDashboard?.goToHomepage || "Go to Homepage"}
         </Link>
       </div>
     </div>

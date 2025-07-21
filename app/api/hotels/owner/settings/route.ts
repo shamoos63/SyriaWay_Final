@@ -1,205 +1,114 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@/lib/generated/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { hotels } from '@/drizzle/schema'
+import { eq, and } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
+// GET - Fetch hotel settings
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    const ownerId = authHeader.replace('Bearer ', '')
-
-    // Get user profile
-    const user = await prisma.user.findUnique({
-      where: { id: ownerId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        image: true,
-        role: true,
-        status: true,
-        preferredLang: true,
-        createdAt: true,
-        lastLoginAt: true
-      }
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    // Get hotel settings
-    const hotels = await prisma.hotel.findMany({
-      where: { ownerId },
-      select: {
-        id: true,
-        name: true,
-        address: true,
-        city: true,
-        phone: true,
-        email: true,
-        website: true,
-        description: true,
-        starRating: true,
-        amenities: true,
-        images: true,
-        isActive: true,
-        isVerified: true,
-        checkInTime: true,
-        checkOutTime: true,
-        googleMapLink: true
-      }
-    })
+    const { searchParams } = new URL(request.url)
+    const hotelId = searchParams.get('hotelId')
 
-    // Get or create hotel settings
-    let hotelSettings = await prisma.hotelSettings.findUnique({
-      where: { ownerId }
-    })
-
-    if (!hotelSettings) {
-      // Create default settings if they don't exist
-      hotelSettings = await prisma.hotelSettings.create({
-        data: {
-          ownerId,
-          autoApproveBookings: false,
-          maintenanceMode: false,
-          requirePasswordChange: false,
-          sessionTimeout: 30
-        }
-      })
+    if (!hotelId) {
+      return NextResponse.json(
+        { error: 'Hotel ID is required' },
+        { status: 400 }
+      )
     }
 
-    return NextResponse.json({
-      profile: user,
-      hotels: hotels,
-      settings: {
-        autoApproveBookings: hotelSettings.autoApproveBookings,
-        maintenanceMode: hotelSettings.maintenanceMode,
-        requirePasswordChange: hotelSettings.requirePasswordChange,
-        sessionTimeout: hotelSettings.sessionTimeout
-      }
-    })
+    // Check if hotel belongs to user
+    const [hotel] = await db
+      .select()
+      .from(hotels)
+      .where(and(
+        eq(hotels.id, parseInt(hotelId)),
+        eq(hotels.ownerId, parseInt(session.user.id))
+      ))
+
+    if (!hotel) {
+      return NextResponse.json(
+        { error: 'Hotel not found' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({ hotel })
   } catch (error) {
-    console.error('Error fetching hotel owner settings:', error)
+    console.error('Error fetching hotel settings:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch settings' },
+      { error: 'Failed to fetch hotel settings' },
       { status: 500 }
     )
   }
 }
 
+// PUT - Update hotel settings
 export async function PUT(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
-    const ownerId = authHeader.replace('Bearer ', '')
 
     const body = await request.json()
-    const { type, data } = body
+    const { hotelId, ...updateData } = body
 
-    if (type === 'profile') {
-      // Update user profile
-      const updatedUser = await prisma.user.update({
-        where: { id: ownerId },
-        data: {
-          name: data.name,
-          phone: data.phone,
-          preferredLang: data.preferredLang
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          phone: true,
-          image: true,
-          role: true,
-          status: true,
-          preferredLang: true,
-          createdAt: true,
-          lastLoginAt: true
-        }
-      })
-
-      return NextResponse.json({
-        message: 'Profile updated successfully',
-        profile: updatedUser
-      })
+    if (!hotelId) {
+      return NextResponse.json(
+        { error: 'Hotel ID is required' },
+        { status: 400 }
+      )
     }
 
-    if (type === 'hotel') {
-      // Update hotel information
-      const { hotelId, ...hotelData } = data
-      
-      const updatedHotel = await prisma.hotel.update({
-        where: { 
-          id: hotelId,
-          ownerId: ownerId // Ensure the hotel belongs to this owner
-        },
-        data: {
-          name: hotelData.name,
-          address: hotelData.address,
-          city: hotelData.city,
-          phone: hotelData.phone,
-          email: hotelData.email,
-          website: hotelData.website,
-          description: hotelData.description,
-          starRating: hotelData.starRating ? parseInt(hotelData.starRating) : null,
-          amenities: hotelData.amenities,
-          images: hotelData.images,
-          checkInTime: hotelData.checkInTime,
-          checkOutTime: hotelData.checkOutTime,
-          googleMapLink: hotelData.googleMapLink
-        }
-      })
+    // Check if hotel belongs to user
+    const [existingHotel] = await db
+      .select()
+      .from(hotels)
+      .where(and(
+        eq(hotels.id, parseInt(hotelId)),
+        eq(hotels.ownerId, parseInt(session.user.id))
+      ))
 
-      return NextResponse.json({
-        message: 'Hotel updated successfully',
-        hotel: updatedHotel
-      })
+    if (!existingHotel) {
+      return NextResponse.json(
+        { error: 'Hotel not found' },
+        { status: 404 }
+      )
     }
 
-    if (type === 'settings') {
-      // Update hotel settings
-      const updatedSettings = await prisma.hotelSettings.upsert({
-        where: { ownerId },
-        update: {
-          autoApproveBookings: data.autoApproveBookings,
-          maintenanceMode: data.maintenanceMode,
-          requirePasswordChange: data.requirePasswordChange,
-          sessionTimeout: data.sessionTimeout
-        },
-        create: {
-          ownerId,
-          autoApproveBookings: data.autoApproveBookings,
-          maintenanceMode: data.maintenanceMode,
-          requirePasswordChange: data.requirePasswordChange,
-          sessionTimeout: data.sessionTimeout
-        }
+    // Update hotel settings
+    const [updatedHotel] = await db
+      .update(hotels)
+      .set({
+        ...updateData,
+        updatedAt: new Date().toISOString(),
       })
+      .where(eq(hotels.id, parseInt(hotelId)))
+      .returning()
 
-      return NextResponse.json({
-        message: 'Settings updated successfully',
-        settings: {
-          autoApproveBookings: updatedSettings.autoApproveBookings,
-          maintenanceMode: updatedSettings.maintenanceMode,
-          requirePasswordChange: updatedSettings.requirePasswordChange,
-          sessionTimeout: updatedSettings.sessionTimeout
-        }
-      })
-    }
-
-    return NextResponse.json({ error: 'Invalid update type' }, { status: 400 })
-
+    return NextResponse.json({
+      hotel: updatedHotel,
+      message: 'Hotel settings updated successfully'
+    })
   } catch (error) {
-    console.error('Error updating hotel owner settings:', error)
+    console.error('Error updating hotel settings:', error)
     return NextResponse.json(
-      { error: 'Failed to update settings' },
+      { error: 'Failed to update hotel settings' },
       { status: 500 }
     )
   }

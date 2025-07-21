@@ -1,158 +1,76 @@
-import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@/lib/generated/prisma"
-import { createBookingStatusNotification } from "@/lib/notifications"
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { bookings, cars } from '@/drizzle/schema'
+import { eq, and } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
-// POST /api/cars/owner/bookings/[id]/decline - Decline a booking (car owner only)
+// POST - Decline car booking
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get user from authorization header
-    const authHeader = request.headers.get("authorization")
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    const token = authHeader.split(" ")[1]
-    const userId = token // This should be decoded from JWT
+    const { id } = await params
+    const body = await request.json()
+    const { reason } = body
 
-    // Find the booking and verify car ownership
-    const booking = await prisma.booking.findUnique({
-      where: { id: params.id },
-      include: {
-        car: {
-          select: {
-            id: true,
-            brand: true,
-            model: true,
-            ownerId: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    })
+    // Get the booking
+    const [booking] = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, parseInt(id)))
 
     if (!booking) {
       return NextResponse.json(
-        { error: "Booking not found" },
+        { error: 'Booking not found' },
         { status: 404 }
       )
     }
 
-    // Verify that the current user owns the car
-    if (booking.car?.ownerId !== userId) {
+    // Check if the car belongs to the user
+    const [car] = await db
+      .select()
+      .from(cars)
+      .where(and(
+        eq(cars.id, booking.serviceId),
+        eq(cars.ownerId, parseInt(session.user.id))
+      ))
+
+    if (!car) {
       return NextResponse.json(
-        { error: "You can only decline bookings for your own cars" },
+        { error: 'Unauthorized to modify this booking' },
         { status: 403 }
       )
     }
 
-    // Check if booking can be declined
-    if (booking.status !== "PENDING") {
-      return NextResponse.json(
-        { error: "Only pending bookings can be declined" },
-        { status: 400 }
-      )
-    }
-
-    // Update booking status to cancelled
-    const updatedBooking = await prisma.booking.update({
-      where: { id: params.id },
-      data: {
-        status: "CANCELLED",
-        updatedAt: new Date(),
-      },
-      include: {
-        car: {
-          select: {
-            id: true,
-            brand: true,
-            model: true,
-            owner: {
-              select: {
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
-        user: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-      },
-    })
-
-    // Check if car has any other active bookings
-    const activeBookings = await prisma.booking.findMany({
-      where: {
-        carId: booking.car.id,
-        status: {
-          in: ["PENDING", "CONFIRMED", "CANCELLATION_REQUESTED"]
-        },
-        id: {
-          not: booking.id // Exclude the current booking that was just declined
-        }
-      }
-    })
-
-    // If no other active bookings, make car available
-    if (activeBookings.length === 0) {
-      await prisma.car.update({
-        where: { id: booking.car.id },
-        data: { isAvailable: true }
+    // Update booking status
+    const [updatedBooking] = await db
+      .update(bookings)
+      .set({
+        status: 'DECLINED',
+        updatedAt: new Date().toISOString(),
       })
-    }
+      .where(eq(bookings.id, parseInt(id)))
+      .returning()
 
-    // Create notifications for both customer and service provider
-    const serviceName = `${booking.car.brand} ${booking.car.model}`
-    await createBookingStatusNotification(
-      booking.id,
-      booking.userId,
-      booking.car.ownerId,
-      "CANCELLED",
-      serviceName,
-      "CAR",
-      "Your car rental booking has been declined."
-    )
-
-    // Create notification for service provider about their action
-    await prisma.notification.create({
-      data: {
-        userId: booking.car.ownerId,
-        title: "Booking Declined",
-        message: `You have declined the booking request for ${serviceName} from ${booking.user.name}.`,
-        type: "BOOKING_CANCELLED",
-        category: "BOOKING",
-        priority: "NORMAL",
-        isRead: false,
-        relatedId: booking.id,
-        relatedType: "BOOKING",
-      },
-    })
-
-    return NextResponse.json({ 
+    return NextResponse.json({
       booking: updatedBooking,
-      message: "Booking declined successfully" 
+      message: 'Booking declined successfully'
     })
   } catch (error) {
-    console.error("Error declining booking:", error)
+    console.error('Error declining car booking:', error)
     return NextResponse.json(
-      { error: "Failed to decline booking" },
+      { error: 'Failed to decline booking' },
       { status: 500 }
     )
   }

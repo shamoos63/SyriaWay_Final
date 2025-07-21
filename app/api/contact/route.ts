@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@/lib/generated/prisma"
+import { db } from "@/lib/db"
+import { contactForms } from "@/drizzle/schema"
 import { z } from "zod"
-
-const prisma = new PrismaClient()
 
 // Validation schema for contact form submission
 const contactFormSchema = z.object({
@@ -31,19 +30,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the contact form submission
-    const contactForm = await prisma.contactForm.create({
-      data: {
-        name: validatedData.name,
-        email: validatedData.email,
-        phone: validatedData.phone,
-        subject: validatedData.subject || "Educational inquiry",
-        message: validatedData.message,
-        category: category,
-        userId: validatedData.userId,
-        status: "New",
-        priority: "Normal",
-      },
-    })
+    const [contactForm] = await db.insert(contactForms).values({
+      name: validatedData.name,
+      email: validatedData.email,
+      phone: validatedData.phone,
+      subject: validatedData.subject || "Educational inquiry",
+      message: validatedData.message,
+      category: category,
+      userId: validatedData.userId,
+      status: "New",
+      priority: "Normal",
+    }).returning()
 
     return NextResponse.json({ 
       success: true, 
@@ -51,14 +48,15 @@ export async function POST(request: NextRequest) {
       contactForm 
     }, { status: 201 })
   } catch (error) {
+    console.error("Contact form submission error:", error)
+    
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Validation error", details: error.errors },
         { status: 400 }
       )
     }
-
-    console.error("Error submitting contact form:", error)
+    
     return NextResponse.json(
       { error: "Failed to submit contact form" },
       { status: 500 }

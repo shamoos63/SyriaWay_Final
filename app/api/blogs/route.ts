@@ -1,120 +1,127 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { db } from '@/lib/db'
+import { blogs, users } from '@/drizzle/schema'
+import { eq, and, like, desc, asc } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 
-// GET - Fetch published blogs
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const category = searchParams.get('category')
     const search = searchParams.get('search')
-    const featured = searchParams.get('featured') === 'true'
-    const authorId = searchParams.get('authorId')
-    const status = searchParams.get('status')
-    const languageParam = searchParams.get('language') || 'en'
-    
-    // Convert language parameter to Prisma enum value
-    const languageMap: { [key: string]: 'ENGLISH' | 'ARABIC' | 'FRENCH' } = {
-      'en': 'ENGLISH',
-      'ar': 'ARABIC', 
-      'fr': 'FRENCH'
-    }
-    const language = languageMap[languageParam] || 'ENGLISH'
+    const category = searchParams.get('category')
+    const status = searchParams.get('status') || 'PUBLISHED'
+    const featured = searchParams.get('featured')
+    const language = searchParams.get('language') || 'ENGLISH'
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const page = parseInt(searchParams.get('page') || '1')
 
-    const skip = (page - 1) * limit
+    let whereConditions = []
 
-    // Build where clause
-    const where: any = {}
-
-    // If authorId is provided, fetch blogs by that author (for user dashboard)
-    if (authorId) {
-      if (authorId === 'all') {
-        // For admin: fetch all blogs regardless of status
-        // No additional where conditions needed
-      } else {
-        // For user dashboard: fetch all blogs by specific author
-        where.authorId = authorId
-      }
-    } else {
-      // For public blog page: only fetch published blogs
-      where.status = 'PUBLISHED'
-      where.isPublished = true
-    }
-
-    if (category) {
-      where.category = category
-    }
-
-    if (status) {
-      where.status = status
+    // Only show published blogs for public access
+    if (status === 'PUBLISHED') {
+      whereConditions.push(eq(blogs.status, 'PUBLISHED'))
+    } else if (status) {
+      whereConditions.push(eq(blogs.status, status))
     }
 
     if (search) {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { excerpt: { contains: search, mode: 'insensitive' } },
-        { content: { contains: search, mode: 'insensitive' } },
-        { translations: { some: { title: { contains: search, mode: 'insensitive' } } } },
-        { translations: { some: { excerpt: { contains: search, mode: 'insensitive' } } } },
-        { translations: { some: { content: { contains: search, mode: 'insensitive' } } } }
-      ]
+      whereConditions.push(
+        like(blogs.title, `%${search}%`)
+      )
     }
 
-    if (featured && !authorId) {
-      where.isFeatured = true
+    if (category) {
+      whereConditions.push(eq(blogs.category, category))
     }
 
-    const [blogs, total] = await Promise.all([
-      prisma.blog.findMany({
-        where,
-        include: {
-          author: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true
-            }
-          },
-          translations: true
-        },
-        orderBy: [
-          { isFeatured: 'desc' },
-          { publishedAt: 'desc' },
-          { createdAt: 'desc' }
-        ],
-        skip,
-        take: limit
-      }),
-      prisma.blog.count({ where })
-    ])
+    if (featured === 'true') {
+      whereConditions.push(eq(blogs.isFeatured, true))
+    }
+
+    const offset = (page - 1) * limit
+
+    const blogsData = await db
+      .select({
+        id: blogs.id,
+        title: blogs.title,
+        content: blogs.content,
+        excerpt: blogs.excerpt,
+        authorId: blogs.authorId,
+        status: blogs.status,
+        publishedAt: blogs.publishedAt,
+        featuredImage: blogs.featuredImage,
+        tags: blogs.tags,
+        category: blogs.category,
+        viewCount: blogs.viewCount,
+        likeCount: blogs.likeCount,
+        commentCount: blogs.commentCount,
+        isFeatured: blogs.isFeatured,
+        seoTitle: blogs.seoTitle,
+        seoDescription: blogs.seoDescription,
+        seoKeywords: blogs.seoKeywords,
+        slug: blogs.slug,
+        createdAt: blogs.createdAt,
+        updatedAt: blogs.updatedAt,
+        author: {
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          image: users.image,
+        }
+      })
+      .from(blogs)
+      .leftJoin(users, eq(blogs.authorId, users.id))
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .orderBy(desc(blogs.publishedAt))
+      .limit(limit)
+      .offset(offset)
+
+    // Ensure blogsData is an array
+    if (!blogsData || !Array.isArray(blogsData)) {
+      return NextResponse.json({
+        blogs: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 0,
+          totalCount: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        }
+      })
+    }
+
+    // Get total count for pagination
+    const totalCount = await db
+      .select({ count: sql`count(*)` })
+      .from(blogs)
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+
+    const totalPages = Math.ceil(totalCount[0].count / limit)
 
     return NextResponse.json({
-      blogs: blogs.map(blog => {
-        // Find translation for the requested language
-        const translation = blog.translations.find(t => t.language === language)
-        return {
-          ...blog,
-          title: translation?.title || blog.title,
-          excerpt: translation?.excerpt || blog.excerpt,
-          content: translation?.content || blog.content,
-          translations: blog.translations,
-          likes: blog.likes || 0,
-          dislikes: blog.dislikes || 0
-        }
-      }),
+      blogs: blogsData,
       pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
+        currentPage: page,
+        totalPages,
+        totalCount: totalCount[0].count,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
       }
     })
   } catch (error) {
     console.error('Error fetching blogs:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch blogs' },
+      { 
+        error: 'Failed to fetch blogs',
+        blogs: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalCount: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        }
+      },
       { status: 500 }
     )
   }
@@ -165,11 +172,12 @@ export async function POST(request: NextRequest) {
       .substring(0, 50)
 
     // Check if slug already exists
-    const existingBlog = await prisma.blog.findUnique({
-      where: { slug }
-    })
+    const existingBlog = await db
+      .select()
+      .from(blogs)
+      .where(eq(blogs.slug, slug))
 
-    if (existingBlog) {
+    if (existingBlog.length > 0) {
       return NextResponse.json(
         { error: 'A blog with this title already exists' },
         { status: 400 }
@@ -177,8 +185,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Create blog (store English as main fields)
-    const blog = await prisma.blog.create({
-      data: {
+    const blog = await db
+      .insert(blogs)
+      .values({
         authorId: userId,
         title: title.en,
         slug,
@@ -226,22 +235,11 @@ export async function POST(request: NextRequest) {
             }
           ]
         }
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true
-          }
-        },
-        translations: true
-      }
-    })
+      })
+      .returning()
 
     return NextResponse.json({
-      blog,
+      blog: blog[0],
       message: 'Blog created successfully'
     }, { status: 201 })
   } catch (error) {

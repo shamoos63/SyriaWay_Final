@@ -1,135 +1,98 @@
-import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@/lib/generated/prisma"
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { bookings } from '@/drizzle/schema'
+import { eq, and, gte, lte } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
-// GET /api/user/bookings - Get user's bookings
 export async function GET(request: NextRequest) {
   try {
-    // Get user from authorization header
-    const authHeader = request.headers.get("authorization")
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "Authentication required. Please sign in to view your bookings." },
+        { error: 'Unauthorized' },
         { status: 401 }
-      )
-    }
-
-    const token = authHeader.split(" ")[1]
-    const userId = token // In this implementation, the token is the user ID
-
-    // Validate that the user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, role: true, status: true }
-    })
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found. Please sign in again." },
-        { status: 401 }
-      )
-    }
-
-    // Check if user is active
-    if (user.status !== 'ACTIVE') {
-      return NextResponse.json(
-        { error: "Your account is not active. Please contact support." },
-        { status: 403 }
       )
     }
 
     const { searchParams } = new URL(request.url)
-    const status = searchParams.get("status")
-    const serviceType = searchParams.get("serviceType")
+    const status = searchParams.get('status')
+    const serviceType = searchParams.get('serviceType')
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const page = parseInt(searchParams.get('page') || '1')
 
-    const where: any = {
-      userId: userId,
-    }
+    let whereConditions = [eq(bookings.userId, parseInt(session.user.id))]
 
     if (status) {
-      where.status = status
+      whereConditions.push(eq(bookings.status, status))
     }
 
     if (serviceType) {
-      where.serviceType = serviceType
+      whereConditions.push(eq(bookings.serviceType, serviceType))
     }
 
-    const bookings = await prisma.booking.findMany({
-      where: {
-        userId: userId,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        hotel: {
-          select: {
-            id: true,
-            name: true,
-            address: true,
-            city: true,
-            starRating: true,
-            ownerId: true
-          }
-        },
-        room: {
-          select: {
-            id: true,
-            name: true,
-            roomType: true,
-            roomNumber: true
-          }
-        },
-        car: {
-          select: {
-            id: true,
-            brand: true,
-            model: true,
-            year: true,
-            color: true,
-            licensePlate: true,
-            ownerId: true
-          }
-        },
-        tour: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            category: true,
-            guideId: true
-          }
-        },
-        guide: {
-          select: {
-            id: true,
-            bio: true,
-            experience: true,
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
+    if (startDate) {
+      whereConditions.push(gte(bookings.startDate, startDate))
+    }
+
+    if (endDate) {
+      whereConditions.push(lte(bookings.endDate, endDate))
+    }
+
+    const offset = (page - 1) * limit
+
+    const userBookings = await db
+      .select({
+        id: bookings.id,
+        serviceType: bookings.serviceType,
+        serviceId: bookings.serviceId,
+        startDate: bookings.startDate,
+        endDate: bookings.endDate,
+        totalPrice: bookings.totalPrice,
+        currency: bookings.currency,
+        status: bookings.status,
+        paymentStatus: bookings.paymentStatus,
+        specialRequests: bookings.specialRequests,
+        numberOfPeople: bookings.numberOfPeople,
+        contactPhone: bookings.contactPhone,
+        contactEmail: bookings.contactEmail,
+        cancellationReason: bookings.cancellationReason,
+        refundAmount: bookings.refundAmount,
+        createdAt: bookings.createdAt,
+        updatedAt: bookings.updatedAt,
+      })
+      .from(bookings)
+      .where(and(...whereConditions))
+      .orderBy(bookings.createdAt)
+      .limit(limit)
+      .offset(offset)
+
+    // Get total count for pagination
+    const totalCount = await db
+      .select({ count: sql`count(*)` })
+      .from(bookings)
+      .where(and(...whereConditions))
+
+    const totalPages = Math.ceil(totalCount[0].count / limit)
+
+    return NextResponse.json({
+      bookings: userBookings,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount: totalCount[0].count,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
       }
     })
-
-    return NextResponse.json({ bookings })
   } catch (error) {
-    console.error("Error fetching user bookings:", error)
+    console.error('Error fetching user bookings:', error)
     return NextResponse.json(
-      { error: "Failed to fetch bookings" },
+      { error: 'Failed to fetch bookings' },
       { status: 500 }
     )
   }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { db } from '@/lib/db'
+import { tours, tourGuides, users, reviews } from '@/drizzle/schema'
+import { eq, and, or, like, gte, lte } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,79 +12,121 @@ export async function GET(request: NextRequest) {
     const maxPrice = searchParams.get('maxPrice')
     const location = searchParams.get('location')
 
-    // Build where clause
-    const where: any = {
-      isActive: true,
-    }
+    // Build where conditions
+    let whereConditions = [eq(tours.isActive, true)]
 
     if (category && category !== 'all') {
-      where.category = category.toUpperCase()
+      whereConditions.push(eq(tours.category, category.toUpperCase()))
     }
 
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { startLocation: { contains: search, mode: 'insensitive' } },
-        { endLocation: { contains: search, mode: 'insensitive' } },
-      ]
+      whereConditions.push(
+        or(
+          like(tours.name, `%${search}%`),
+          like(tours.description, `%${search}%`),
+          like(tours.startLocation, `%${search}%`),
+          like(tours.endLocation, `%${search}%`)
+        )
+      )
     }
 
     if (minPrice || maxPrice) {
-      where.price = {}
-      if (minPrice) where.price.gte = parseFloat(minPrice)
-      if (maxPrice) where.price.lte = parseFloat(maxPrice)
+      if (minPrice) whereConditions.push(gte(tours.price, parseFloat(minPrice)))
+      if (maxPrice) whereConditions.push(lte(tours.price, parseFloat(maxPrice)))
     }
 
     if (location) {
-      where.OR = [
-        { startLocation: { contains: location, mode: 'insensitive' } },
-        { endLocation: { contains: location, mode: 'insensitive' } },
-      ]
+      whereConditions.push(
+        or(
+          like(tours.startLocation, `%${location}%`),
+          like(tours.endLocation, `%${location}%`)
+        )
+      )
     }
 
-    const tours = await prisma.tour.findMany({
-      where,
-      include: {
+    const toursData = await db
+      .select({
+        id: tours.id,
+        name: tours.name,
+        description: tours.description,
+        category: tours.category,
+        duration: tours.duration,
+        maxGroupSize: tours.maxGroupSize,
+        price: tours.price,
+        currency: tours.currency,
+        guideId: tours.guideId,
+        startLocation: tours.startLocation,
+        endLocation: tours.endLocation,
+        itinerary: tours.itinerary,
+        included: tours.included,
+        notIncluded: tours.notIncluded,
+        requirements: tours.requirements,
+        images: tours.images,
+        isActive: tours.isActive,
+        isVerified: tours.isVerified,
+        isSpecialOffer: tours.isSpecialOffer,
+        rating: tours.rating,
+        reviewCount: tours.reviewCount,
+        startDate: tours.startDate,
+        endDate: tours.endDate,
+        capacity: tours.capacity,
+        createdAt: tours.createdAt,
+        updatedAt: tours.updatedAt,
         guide: {
-          include: {
-            user: {
-              select: {
-                name: true,
-                email: true,
-              }
-            }
-          }
-        },
-        reviews: {
-          where: {
-            isApproved: true,
-          },
-          select: {
-            rating: true,
+          id: tourGuides.id,
+          bio: tourGuides.bio,
+          experience: tourGuides.experience,
+          languages: tourGuides.languages,
+          specialties: tourGuides.specialties,
+          baseLocation: tourGuides.baseLocation,
+          serviceAreas: tourGuides.serviceAreas,
+          isAvailable: tourGuides.isAvailable,
+          isVerified: tourGuides.isVerified,
+          hourlyRate: tourGuides.hourlyRate,
+          dailyRate: tourGuides.dailyRate,
+          currency: tourGuides.currency,
+          profileImage: tourGuides.profileImage,
+          certifications: tourGuides.certifications,
+          user: {
+            id: users.id,
+            name: users.name,
+            email: users.email,
           }
         }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
+      })
+      .from(tours)
+      .leftJoin(tourGuides, eq(tours.guideId, tourGuides.id))
+      .leftJoin(users, eq(tourGuides.userId, users.id))
+      .where(and(...whereConditions))
+      .orderBy(tours.createdAt)
 
-    // Calculate average rating for each tour
-    const toursWithRating = tours.map(tour => {
-      const totalRating = tour.reviews.reduce((sum, review) => sum + review.rating, 0)
-      const averageRating = tour.reviews.length > 0 ? totalRating / tour.reviews.length : 0
-      
-      return {
-        ...tour,
-        averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
-        reviewCount: tour.reviews.length,
-        guideName: tour.guide?.user?.name || 'Unknown Guide',
-        guideEmail: tour.guide?.user?.email || '',
-      }
-    })
+    // Get reviews for each tour
+    const toursWithReviews = await Promise.all(
+      toursData.map(async (tour) => {
+        const tourReviews = await db
+          .select({
+            rating: reviews.rating,
+          })
+          .from(reviews)
+          .where(and(
+            eq(reviews.serviceType, 'TOUR'),
+            eq(reviews.serviceId, tour.id)
+          ))
 
-    return NextResponse.json({ tours: toursWithRating })
+        const averageRating = tourReviews.length > 0
+          ? tourReviews.reduce((sum, review) => sum + review.rating, 0) / tourReviews.length
+          : 0
+
+        return {
+          ...tour,
+          reviews: tourReviews,
+          averageRating,
+          reviewCount: tourReviews.length,
+        }
+      })
+    )
+
+    return NextResponse.json({ tours: toursWithReviews })
   } catch (error) {
     console.error('Error fetching tours:', error)
     return NextResponse.json(

@@ -1,210 +1,123 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { tours, bookings, users } from '@/drizzle/schema'
+import { eq, and, desc } from 'drizzle-orm'
 
-// Helper function to get guide ID from user ID
-async function getGuideIdFromUserId(userId: string) {
-  const tourGuide = await prisma.tourGuide.findFirst({
-    where: { userId: userId }
-  })
-  return tourGuide?.id
-}
-
+// GET - Fetch bookings for tours created by the authenticated guide
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    const userId = authHeader.replace('Bearer ', '')
+    const session = await getServerSession(authOptions)
     
-    // Get guide ID from user ID
-    const guideId = await getGuideIdFromUserId(userId)
-    if (!guideId) {
-      return NextResponse.json({ error: 'Guide not found' }, { status: 404 })
-    }
-
-    // Find all bookings for this guide
-    const bookings = await prisma.booking.findMany({
-      where: {
-        guideId: guideId,
-        serviceType: 'TOUR'
-      },
-      include: {
-        user: true,
-        tour: true
-      },
-      orderBy: { createdAt: 'desc' }
-    })
-
-    // Format bookings for the frontend - using the field names the frontend expects
-    const formatted = bookings.map(b => ({
-      id: b.id,
-      tourId: b.tourId,
-      tourName: b.tour?.name || 'Custom Tour',
-      tourCategory: b.tour?.category,
-      customerId: b.userId,
-      customerName: b.user?.name || b.contactName || 'Unknown Customer',
-      customerEmail: b.user?.email || b.contactEmail,
-      customerPhone: b.user?.phone || b.contactPhone,
-      startDate: b.startDate,
-      endDate: b.endDate,
-      guests: b.guests, // Frontend expects 'guests' not 'numberOfGuests'
-      totalPrice: b.totalPrice, // Frontend expects 'totalPrice' not 'totalAmount'
-      status: b.status,
-      specialRequests: b.specialRequests,
-      notes: b.notes,
-      contactName: b.contactName,
-      contactPhone: b.contactPhone,
-      contactEmail: b.contactEmail,
-      createdAt: b.createdAt,
-      updatedAt: b.updatedAt,
-    }))
-
-    return NextResponse.json({
-      bookings: formatted,
-      total: formatted.length
-    })
-  } catch (error) {
-    console.error('Error fetching tour guide bookings:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch bookings' },
-      { status: 500 }
-    )
-  }
-}
-
-// Add PUT method for updating booking status
-export async function PUT(request: NextRequest) {
-  try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    const userId = authHeader.replace('Bearer ', '')
-    
-    // Get guide ID from user ID
-    const guideId = await getGuideIdFromUserId(userId)
-    if (!guideId) {
-      return NextResponse.json({ error: 'Guide not found' }, { status: 404 })
-    }
-
-    const body = await request.json()
-    const { bookingId, status, notes } = body
-
-    // Validate status
-    const validStatuses = ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED']
-    if (!validStatuses.includes(status)) {
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Invalid status' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
 
-    // Find the booking and verify it belongs to this guide
-    const booking = await prisma.booking.findFirst({
-      where: { 
-        id: bookingId,
-        guideId: guideId,
-        serviceType: 'TOUR'
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        tour: {
-          select: {
-            id: true,
-            name: true,
-            description: true
-          }
-        },
-        guide: {
-          select: {
-            id: true,
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
-        }
-      }
-    })
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const page = parseInt(searchParams.get('page') || '1')
 
-    if (!booking) {
-      return NextResponse.json(
-        { error: 'Booking not found or access denied' },
-        { status: 404 }
-      )
+    const userId = parseInt(session.user.id)
+
+    // Get user's tours
+    const userTours = await db
+      .select({ id: tours.id })
+      .from(tours)
+      .where(eq(tours.guideId, userId))
+
+    const tourIds = userTours.map(tour => tour.id)
+
+    if (tourIds.length === 0) {
+      return NextResponse.json({
+        bookings: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 0,
+          totalCount: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        }
+      })
     }
 
-    // Update the booking
-    const updateData: any = { status }
-    if (notes) updateData.notes = notes
+    let whereConditions = [eq(bookings.serviceType, 'TOUR')]
 
-    const updatedBooking = await prisma.booking.update({
-      where: { id: bookingId },
-      data: updateData,
-      include: {
+    if (status) {
+      whereConditions.push(eq(bookings.status, status))
+    }
+
+    const offset = (page - 1) * limit
+
+    const bookingsData = await db
+      .select({
+        id: bookings.id,
+        userId: bookings.userId,
+        serviceType: bookings.serviceType,
+        serviceId: bookings.serviceId,
+        startDate: bookings.startDate,
+        endDate: bookings.endDate,
+        totalAmount: bookings.totalAmount,
+        status: bookings.status,
+        paymentStatus: bookings.paymentStatus,
+        specialRequests: bookings.specialRequests,
+        createdAt: bookings.createdAt,
+        updatedAt: bookings.updatedAt,
         user: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        tour: {
-          select: {
-            id: true,
-            name: true,
-            description: true
-          }
-        },
-        guide: {
-          select: {
-            id: true,
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          image: users.image,
         }
-      }
-    })
+      })
+      .from(bookings)
+      .leftJoin(users, eq(bookings.userId, users.id))
+      .where(and(...whereConditions))
+      .orderBy(desc(bookings.createdAt))
+      .limit(limit)
+      .offset(offset)
 
-    // Create notifications for both customer and service provider
-    const serviceName = booking.tour?.name || 'Tour'
-    const guideUserId = booking.guide?.user?.id
-    await createBookingStatusNotification(
-      booking.id,
-      booking.userId,
-      guideUserId || null,
-      status,
-      serviceName,
-      "TOUR",
-      status === "CONFIRMED" ? "Your tour booking has been confirmed!" : 
-      status === "CANCELLED" ? "Your tour booking has been cancelled." :
-      status === "COMPLETED" ? "Your tour has been completed." : ""
+    // Filter bookings for user's tours
+    const filteredBookings = bookingsData.filter(booking => 
+      tourIds.includes(booking.serviceId)
     )
 
-    return NextResponse.json({
-      booking: updatedBooking,
-      message: 'Booking status updated successfully'
-    })
+    // Get total count for pagination
+    const totalCount = await db
+      .select({ count: bookings.id })
+      .from(bookings)
+      .where(and(...whereConditions))
 
+    const totalPages = Math.ceil(totalCount.length / limit)
+
+    return NextResponse.json({
+      bookings: filteredBookings,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount: totalCount.length,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      }
+    })
   } catch (error) {
-    console.error('Error updating booking status:', error)
+    console.error('Error fetching tour bookings:', error)
     return NextResponse.json(
-      { error: 'Failed to update booking status' },
+      { 
+        error: 'Failed to fetch bookings',
+        bookings: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalCount: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        }
+      },
       { status: 500 }
     )
   }

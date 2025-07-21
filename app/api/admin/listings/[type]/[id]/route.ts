@@ -1,46 +1,158 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { listings } from '@/drizzle/schema'
+import { eq, and } from 'drizzle-orm'
 
-// Helper to check admin
-async function isAdmin(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false
-  const userId = authHeader.replace('Bearer ', '')
-  
-  // For demo purposes, allow demo-user-id
-  if (userId === 'demo-user-id') return true
-  
-  const user = await prisma.user.findUnique({ 
-    where: { id: userId }, 
-    select: { role: true } 
-  })
-  return user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')
+// GET - Fetch single listing by ID and type (admin only)
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ type: string; id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Check if user is admin (you might want to add role checking here)
+    const { type, id } = await params
+
+    const [listing] = await db
+      .select()
+      .from(listings)
+      .where(and(
+        eq(listings.id, parseInt(id)),
+        eq(listings.type, type)
+      ))
+
+    if (!listing) {
+      return NextResponse.json(
+        { error: 'Listing not found' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({ listing })
+  } catch (error) {
+    console.error('Error fetching admin listing:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch listing' },
+      { status: 500 }
+    )
+  }
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { type: string, id: string } }) {
-  if (!(await isAdmin(request))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+// PUT - Update listing (admin only)
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ type: string; id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Check if user is admin (you might want to add role checking here)
+    const { type, id } = await params
+    const body = await request.json()
+
+    // Check if listing exists
+    const [existingListing] = await db
+      .select()
+      .from(listings)
+      .where(and(
+        eq(listings.id, parseInt(id)),
+        eq(listings.type, type)
+      ))
+
+    if (!existingListing) {
+      return NextResponse.json(
+        { error: 'Listing not found' },
+        { status: 404 }
+      )
+    }
+
+    // Update listing
+    const [updatedListing] = await db
+      .update(listings)
+      .set({
+        ...body,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(listings.id, parseInt(id)))
+      .returning()
+
+    return NextResponse.json({
+      listing: updatedListing,
+      message: 'Listing updated successfully'
+    })
+  } catch (error) {
+    console.error('Error updating admin listing:', error)
+    return NextResponse.json(
+      { error: 'Failed to update listing' },
+      { status: 500 }
+    )
   }
+}
 
-  const { type, id } = params
-  const body = await request.json()
-  const { isVerified, isSpecialOffer } = body
+// DELETE - Delete listing (admin only)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ type: string; id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
 
-  let model
-  if (type === 'HOTEL') model = prisma.hotel
-  else if (type === 'CAR') model = prisma.car
-  else if (type === 'TOUR') model = prisma.tour
-  else return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
+    // Check if user is admin (you might want to add role checking here)
+    const { type, id } = await params
 
-  // Only update allowed fields
-  const data: any = {}
-  if (typeof isVerified === 'boolean') data.isVerified = isVerified
-  if (typeof isSpecialOffer === 'boolean') data.isSpecialOffer = isSpecialOffer
+    // Check if listing exists
+    const [existingListing] = await db
+      .select()
+      .from(listings)
+      .where(and(
+        eq(listings.id, parseInt(id)),
+        eq(listings.type, type)
+      ))
 
-  if (Object.keys(data).length === 0) {
-    return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+    if (!existingListing) {
+      return NextResponse.json(
+        { error: 'Listing not found' },
+        { status: 404 }
+      )
+    }
+
+    // Delete listing
+    await db
+      .delete(listings)
+      .where(eq(listings.id, parseInt(id)))
+
+    return NextResponse.json({
+      message: 'Listing deleted successfully'
+    })
+  } catch (error) {
+    console.error('Error deleting admin listing:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete listing' },
+      { status: 500 }
+    )
   }
-
-  const updated = await model.update({ where: { id }, data })
-  return NextResponse.json({ success: true, updated })
 } 

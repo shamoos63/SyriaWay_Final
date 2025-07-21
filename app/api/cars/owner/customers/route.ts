@@ -1,136 +1,110 @@
-import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@/lib/generated/prisma"
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { cars, bookings, users } from '@/drizzle/schema'
+import { eq, and, desc, sql } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
+// GET - Fetch customers for cars owned by the authenticated user
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization")
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    const ownerId = authHeader.replace("Bearer ", "")
-    
-    // Find all cars owned by this user
-    const cars = await prisma.car.findMany({
-      where: { ownerId },
-      select: { id: true }
-    })
-    
-    const carIds = cars.map(c => c.id)
-    
+    const { searchParams } = new URL(request.url)
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const page = parseInt(searchParams.get('page') || '1')
+
+    const userId = parseInt(session.user.id)
+
+    // Get user's cars
+    const userCars = await db
+      .select({ id: cars.id })
+      .from(cars)
+      .where(eq(cars.ownerId, userId))
+
+    const carIds = userCars.map(car => car.id)
+
     if (carIds.length === 0) {
-      return NextResponse.json({ customers: [], total: 0 })
+      return NextResponse.json({
+        customers: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 0,
+          totalCount: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        }
+      })
     }
 
-    // Find all bookings for these cars and group by customer
-    const bookings = await prisma.booking.findMany({
-      where: {
-        carId: { in: carIds },
-        serviceType: 'CAR',
-      },
-      include: {
-        user: true,
-        car: true,
-      },
-      orderBy: { createdAt: 'desc' }
-    })
+    const offset = (page - 1) * limit
 
-    // Group bookings by customer and calculate statistics
-    const customerMap = new Map()
-    
-    bookings.forEach(booking => {
-      const userId = booking.userId
-      if (!customerMap.has(userId)) {
-        customerMap.set(userId, {
-          id: userId,
-          name: booking.user?.name || 'Unknown Customer',
-          email: booking.user?.email || '',
-          phone: booking.user?.phone || '',
-          totalBookings: 0,
-          totalSpent: 0,
-          lastBookingDate: null,
-          currentCar: null,
-          bookings: [],
-          favoriteCarModel: null,
-          averageRentalDuration: 0,
-          totalDays: 0
-        })
-      }
-      
-      const customer = customerMap.get(userId)
-      customer.totalBookings += 1
-      customer.totalSpent += booking.totalPrice || 0
-      customer.bookings.push({
-        id: booking.id,
-        carMake: booking.car?.make,
-        carModel: booking.car?.model,
-        carYear: booking.car?.year,
-        carPlate: booking.car?.licensePlate,
-        startDate: booking.startDate,
-        endDate: booking.endDate,
-        totalAmount: booking.totalPrice,
-        status: booking.status,
-        guests: booking.guests,
-        createdAt: booking.createdAt
+    // Get unique customers with their booking stats
+    const customersData = await db
+      .select({
+        userId: users.id,
+        name: users.name,
+        email: users.email,
+        image: users.image,
+        totalBookings: sql`count(bookings.id)`,
+        totalSpent: sql`sum(bookings.totalPrice)`,
+        lastBooking: sql`max(bookings.createdAt)`,
       })
-      
-      // Calculate rental duration
-      const start = new Date(booking.startDate)
-      const end = new Date(booking.endDate)
-      const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-      customer.totalDays += days
-      
-      // Check if this is the current booking (active)
-      if (booking.status === 'CONFIRMED' && 
-          new Date(booking.startDate) <= new Date() && 
-          new Date(booking.endDate) >= new Date()) {
-        customer.currentCar = {
-          carMake: booking.car?.make,
-          carModel: booking.car?.model,
-          carYear: booking.car?.year,
-          carPlate: booking.car?.licensePlate,
-          startDate: booking.startDate,
-          endDate: booking.endDate,
-          guests: booking.guests
-        }
-      }
-      
-      if (!customer.lastBookingDate || new Date(booking.createdAt) > new Date(customer.lastBookingDate)) {
-        customer.lastBookingDate = booking.createdAt
-      }
-    })
+      .from(users)
+      .leftJoin(bookings, eq(users.id, bookings.userId))
+      .where(and(
+        eq(bookings.serviceType, 'CAR'),
+        sql`${bookings.serviceId} IN (${carIds.join(',')})`
+      ))
+      .groupBy(users.id, users.name, users.email, users.image)
+      .orderBy(desc(sql`sum(bookings.totalPrice)`))
+      .limit(limit)
+      .offset(offset)
 
-    // Calculate additional statistics for each customer
-    customerMap.forEach(customer => {
-      if (customer.totalBookings > 0) {
-        customer.averageRentalDuration = Math.round(customer.totalDays / customer.totalBookings)
-      }
-      // Find favorite car model
-      const carModelCounts = {}
-      customer.bookings.forEach(booking => {
-        if (booking.carModel) {
-          carModelCounts[booking.carModel] = (carModelCounts[booking.carModel] || 0) + 1
-        }
-      })
-      const favoriteCarModel = Object.entries(carModelCounts)
-        .sort(([,a], [,b]) => b - a)[0]
-      customer.favoriteCarModel = favoriteCarModel ? favoriteCarModel[0] : null
-    })
+    // Get total count for pagination
+    const totalCountResult = await db
+      .select({ count: sql`count(distinct users.id)` })
+      .from(users)
+      .leftJoin(bookings, eq(users.id, bookings.userId))
+      .where(and(
+        eq(bookings.serviceType, 'CAR'),
+        sql`${bookings.serviceId} IN (${carIds.join(',')})`
+      ))
 
-    // Convert map to array and sort by total spent
-    const customers = Array.from(customerMap.values())
-      .sort((a, b) => b.totalSpent - a.totalSpent)
+    const totalCount = totalCountResult[0].count
+    const totalPages = Math.ceil(totalCount / limit)
 
     return NextResponse.json({
-      customers,
-      total: customers.length
+      customers: customersData,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      }
     })
   } catch (error) {
-    console.error("Error fetching car owner customers:", error)
+    console.error('Error fetching car customers:', error)
     return NextResponse.json(
-      { error: "Failed to fetch customers" },
+      { 
+        error: 'Failed to fetch customers',
+        customers: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalCount: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        }
+      },
       { status: 500 }
     )
   }

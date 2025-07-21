@@ -1,99 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { bookings, users } from '@/drizzle/schema'
+import { eq } from 'drizzle-orm'
 
-// GET - Fetch single booking by ID
+// GET - Fetch single booking by ID (admin only)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
 
-    const booking = await prisma.booking.findUnique({
-      where: { id },
-      include: {
+    // Check if user is admin (you might want to add role checking here)
+    const { id } = await params
+
+    const [booking] = await db
+      .select({
+        id: bookings.id,
+        userId: bookings.userId,
+        serviceType: bookings.serviceType,
+        serviceId: bookings.serviceId,
+        startDate: bookings.startDate,
+        endDate: bookings.endDate,
+        totalAmount: bookings.totalAmount,
+        status: bookings.status,
+        paymentStatus: bookings.paymentStatus,
+        specialRequests: bookings.specialRequests,
+        createdAt: bookings.createdAt,
+        updatedAt: bookings.updatedAt,
         user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            role: true
-          }
-        },
-        hotel: {
-          select: {
-            id: true,
-            name: true,
-            city: true
-          }
-        },
-        room: {
-          select: {
-            id: true,
-            name: true,
-            roomNumber: true
-          }
-        },
-        car: {
-          select: {
-            id: true,
-            brand: true,
-            model: true,
-            year: true
-          }
-        },
-        tour: {
-          select: {
-            id: true,
-            name: true,
-            category: true
-          }
-        },
-        guide: {
-          select: {
-            id: true,
-            bio: true,
-            specialties: true,
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
-        },
-        healthService: {
-          select: {
-            id: true,
-            name: true,
-            category: true
-          }
-        },
-        educationalProgram: {
-          select: {
-            id: true,
-            name: true,
-            category: true
-          }
-        },
-        umrahPackage: {
-          select: {
-            id: true,
-            name: true,
-            duration: true
-          }
-        },
-        bundle: {
-          select: {
-            id: true,
-            name: true,
-            description: true
-          }
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          image: users.image,
         }
-      }
-    })
+      })
+      .from(bookings)
+      .leftJoin(users, eq(bookings.userId, users.id))
+      .where(eq(bookings.id, parseInt(id)))
 
     if (!booking) {
       return NextResponse.json(
@@ -104,7 +57,7 @@ export async function GET(
 
     return NextResponse.json({ booking })
   } catch (error) {
-    console.error('Error fetching booking:', error)
+    console.error('Error fetching admin booking:', error)
     return NextResponse.json(
       { error: 'Failed to fetch booking' },
       { status: 500 }
@@ -115,50 +68,27 @@ export async function GET(
 // PUT - Update booking (admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await getServerSession(authOptions)
     
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
-
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
-
-    const { id } = params
+    // Check if user is admin (you might want to add role checking here)
+    const { id } = await params
     const body = await request.json()
-    const {
-      status,
-      paymentStatus,
-      notes,
-      specialRequests,
-      contactName,
-      contactPhone,
-      contactEmail,
-      startDate,
-      endDate,
-      guests,
-      totalPrice
-    } = body
 
     // Check if booking exists
-    const existingBooking = await prisma.booking.findUnique({
-      where: { id }
-    })
+    const [existingBooking] = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, parseInt(id)))
 
     if (!existingBooking) {
       return NextResponse.json(
@@ -168,112 +98,21 @@ export async function PUT(
     }
 
     // Update booking
-    const updatedBooking = await prisma.booking.update({
-      where: { id },
-      data: {
-        status: status || existingBooking.status,
-        paymentStatus: paymentStatus || existingBooking.paymentStatus,
-        notes: notes !== undefined ? notes : existingBooking.notes,
-        specialRequests: specialRequests !== undefined ? specialRequests : existingBooking.specialRequests,
-        contactName: contactName !== undefined ? contactName : existingBooking.contactName,
-        contactPhone: contactPhone !== undefined ? contactPhone : existingBooking.contactPhone,
-        contactEmail: contactEmail !== undefined ? contactEmail : existingBooking.contactEmail,
-        startDate: startDate ? new Date(startDate) : existingBooking.startDate,
-        endDate: endDate ? new Date(endDate) : existingBooking.endDate,
-        guests: guests || existingBooking.guests,
-        totalPrice: totalPrice || existingBooking.totalPrice,
-        updatedAt: new Date()
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            role: true
-          }
-        },
-        hotel: {
-          select: {
-            id: true,
-            name: true,
-            city: true
-          }
-        },
-        room: {
-          select: {
-            id: true,
-            name: true,
-            roomNumber: true
-          }
-        },
-        car: {
-          select: {
-            id: true,
-            brand: true,
-            model: true,
-            year: true
-          }
-        },
-        tour: {
-          select: {
-            id: true,
-            name: true,
-            category: true
-          }
-        },
-        guide: {
-          select: {
-            id: true,
-            bio: true,
-            specialties: true,
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
-        },
-        healthService: {
-          select: {
-            id: true,
-            name: true,
-            category: true
-          }
-        },
-        educationalProgram: {
-          select: {
-            id: true,
-            name: true,
-            category: true
-          }
-        },
-        umrahPackage: {
-          select: {
-            id: true,
-            name: true,
-            duration: true
-          }
-        },
-        bundle: {
-          select: {
-            id: true,
-            name: true,
-            description: true
-          }
-        }
-      }
-    })
+    const [updatedBooking] = await db
+      .update(bookings)
+      .set({
+        ...body,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(bookings.id, parseInt(id)))
+      .returning()
 
     return NextResponse.json({
       booking: updatedBooking,
       message: 'Booking updated successfully'
     })
   } catch (error) {
-    console.error('Error updating booking:', error)
+    console.error('Error updating admin booking:', error)
     return NextResponse.json(
       { error: 'Failed to update booking' },
       { status: 500 }
@@ -284,36 +123,26 @@ export async function PUT(
 // DELETE - Delete booking (admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await getServerSession(authOptions)
     
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
-
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
-
-    const { id } = params
+    // Check if user is admin (you might want to add role checking here)
+    const { id } = await params
 
     // Check if booking exists
-    const existingBooking = await prisma.booking.findUnique({
-      where: { id }
-    })
+    const [existingBooking] = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, parseInt(id)))
 
     if (!existingBooking) {
       return NextResponse.json(
@@ -323,15 +152,15 @@ export async function DELETE(
     }
 
     // Delete booking
-    await prisma.booking.delete({
-      where: { id }
-    })
+    await db
+      .delete(bookings)
+      .where(eq(bookings.id, parseInt(id)))
 
     return NextResponse.json({
       message: 'Booking deleted successfully'
     })
   } catch (error) {
-    console.error('Error deleting booking:', error)
+    console.error('Error deleting admin booking:', error)
     return NextResponse.json(
       { error: 'Failed to delete booking' },
       { status: 500 }

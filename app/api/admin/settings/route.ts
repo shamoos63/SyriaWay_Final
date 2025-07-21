@@ -1,192 +1,166 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
+import { db } from '@/lib/db'
+import { websiteSettings, systemSettings, users } from '@/drizzle/schema'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
-// Validation schema for website settings
-const websiteSettingsSchema = z.object({
-  // Website Information
-  siteName: z.string().min(1, "Site name is required"),
-  siteDescription: z.string().nullable().optional(),
-  logoUrl: z.string().nullable().optional(),
-  faviconUrl: z.string().nullable().optional(),
-  
-  // Contact Information
-  contactEmail: z.string().email().nullable().optional().or(z.literal("")),
-  contactPhone: z.string().nullable().optional(),
-  contactAddress: z.string().nullable().optional(),
-  googleMapsEmbed: z.string().nullable().optional(),
-  
-  // Social Media Links
-  facebookUrl: z.string().url().nullable().optional().or(z.literal("")),
-  instagramUrl: z.string().url().nullable().optional().or(z.literal("")),
-  twitterUrl: z.string().url().nullable().optional().or(z.literal("")),
-  websiteUrl: z.string().url().nullable().optional().or(z.literal("")),
-  youtubeUrl: z.string().url().nullable().optional().or(z.literal("")),
-  linkedinUrl: z.string().url().nullable().optional().or(z.literal("")),
-  
-  // Contact Form Settings
-  enableContactForm: z.boolean().optional(),
-  recipientEmail: z.string().email().nullable().optional().or(z.literal("")),
-  autoReplyMessage: z.string().nullable().optional(),
-  enableRecaptcha: z.boolean().optional(),
-  
-  // Social Sharing Settings
-  enableSocialSharing: z.boolean().optional(),
-  shareFacebook: z.boolean().optional(),
-  shareTwitter: z.boolean().optional(),
-  shareInstagram: z.boolean().optional(),
-  shareWhatsapp: z.boolean().optional(),
-  
-  // SEO Settings
-  metaTitle: z.string().nullable().optional(),
-  metaDescription: z.string().nullable().optional(),
-  keywords: z.string().nullable().optional(),
-  generateSitemap: z.boolean().optional(),
-  enableRobotsTxt: z.boolean().optional(),
-  
-  // Analytics
-  googleAnalyticsId: z.string().nullable().optional(),
-  enableAnalytics: z.boolean().optional(),
-  enableCookieConsent: z.boolean().optional(),
-  
-  // Localization
+const updateWebsiteSettingsSchema = z.object({
+  siteName: z.string().min(1, 'Site name is required'),
+  siteDescription: z.string().optional(),
+  siteKeywords: z.string().optional(),
+  siteLogo: z.string().optional(),
+  siteFavicon: z.string().optional(),
+  contactEmail: z.string().email().optional(),
+  contactPhone: z.string().optional(),
+  contactAddress: z.string().optional(),
+  socialFacebook: z.string().optional(),
+  socialTwitter: z.string().optional(),
+  socialInstagram: z.string().optional(),
+  socialLinkedin: z.string().optional(),
+  socialYoutube: z.string().optional(),
+  googleAnalyticsId: z.string().optional(),
+  googleMapsApiKey: z.string().optional(),
+  stripePublicKey: z.string().optional(),
+  stripeSecretKey: z.string().optional(),
+  paypalClientId: z.string().optional(),
+  paypalSecret: z.string().optional(),
+  smtpHost: z.string().optional(),
+  smtpPort: z.string().optional(),
+  smtpUser: z.string().optional(),
+  smtpPass: z.string().optional(),
   defaultLanguage: z.string().optional(),
-  timezone: z.string().optional(),
-  dateFormat: z.string().optional(),
-  currency: z.string().optional(),
+  supportedLanguages: z.string().optional(),
+  maintenanceMode: z.boolean().optional(),
+  maintenanceMessage: z.string().optional(),
 })
 
-// GET - Fetch website settings
+const updateSystemSettingSchema = z.object({
+  key: z.string().min(1, 'Key is required'),
+  value: z.string().min(1, 'Value is required'),
+  description: z.string().optional(),
+  type: z.enum(['STRING', 'NUMBER', 'BOOLEAN', 'JSON']).optional(),
+  isPublic: z.boolean().optional(),
+})
+
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
-    
-    // Get the first (and only) settings record
-    let settings = await prisma.websiteSettings.findFirst()
-    
-    // If no settings exist, create default settings
-    if (!settings) {
-      settings = await prisma.websiteSettings.create({
-        data: {
-          siteName: "Syria Ways",
-          siteDescription: "Syria Ways is a comprehensive tourism platform for exploring Syria's rich cultural heritage, historical sites, and natural beauty.",
-          contactEmail: "info@syriaways.com",
-          contactPhone: "+963 11 123 4567",
-          contactAddress: "Damascus, Syria",
-          facebookUrl: "https://facebook.com/syriaways",
-          instagramUrl: "https://instagram.com/syriaways",
-          twitterUrl: "https://twitter.com/syriaways",
-          websiteUrl: "https://syriaways.com",
-          metaTitle: "Syria Ways - Discover the Beauty of Syria",
-          metaDescription: "Explore Syria's rich cultural heritage, historical sites, and natural beauty with Syria Ways. Book tours, hotels, and more.",
-          keywords: "Syria tourism, Syria travel, Syria hotels, Syria tours, Damascus, Aleppo, Palmyra, Syrian history",
-          autoReplyMessage: "Thank you for contacting Syria Ways. We have received your message and will get back to you as soon as possible.",
-        }
-      })
+
+    // Check if user is admin
+    const [currentUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, parseInt(session.user.id)))
+
+    if (!currentUser || !['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role)) {
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
+      )
     }
-    
-    return NextResponse.json({ settings })
+
+    // Get website settings
+    const [websiteSettingsData] = await db
+      .select()
+      .from(websiteSettings)
+      .limit(1)
+
+    // Get all system settings
+    const systemSettingsData = await db
+      .select()
+      .from(systemSettings)
+      .orderBy(systemSettings.key)
+
+    return NextResponse.json({
+      website: websiteSettingsData || {},
+      system: systemSettingsData,
+    })
   } catch (error) {
-    console.error('Error fetching website settings:', error)
+    console.error('Error fetching settings:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch website settings' },
+      { error: 'Failed to fetch settings' },
       { status: 500 }
     )
   }
 }
 
-// PUT - Update website settings
 export async function PUT(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await getServerSession(authOptions)
     
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Check if user is admin
+    const [currentUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, parseInt(session.user.id)))
+
+    if (!currentUser || !['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role)) {
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
-    
-    // Log the incoming data for debugging
-    console.log('Incoming settings data:', JSON.stringify(body, null, 2))
-    
-    // Clean the data before validation
-    const cleanedData = {
-      siteName: body.siteName || "Syria Ways",
-      siteDescription: body.siteDescription || null,
-      logoUrl: body.logoUrl || null,
-      faviconUrl: body.faviconUrl || null,
-      contactEmail: body.contactEmail || null,
-      contactPhone: body.contactPhone || null,
-      contactAddress: body.contactAddress || null,
-      googleMapsEmbed: body.googleMapsEmbed || null,
-      facebookUrl: body.facebookUrl || null,
-      instagramUrl: body.instagramUrl || null,
-      twitterUrl: body.twitterUrl || null,
-      websiteUrl: body.websiteUrl || null,
-      youtubeUrl: body.youtubeUrl || null,
-      linkedinUrl: body.linkedinUrl || null,
-      enableContactForm: body.enableContactForm ?? true,
-      recipientEmail: body.recipientEmail || null,
-      autoReplyMessage: body.autoReplyMessage || null,
-      enableRecaptcha: body.enableRecaptcha ?? true,
-      enableSocialSharing: body.enableSocialSharing ?? true,
-      shareFacebook: body.shareFacebook ?? true,
-      shareTwitter: body.shareTwitter ?? true,
-      shareInstagram: body.shareInstagram ?? false,
-      shareWhatsapp: body.shareWhatsapp ?? true,
-      metaTitle: body.metaTitle || null,
-      metaDescription: body.metaDescription || null,
-      keywords: body.keywords || null,
-      generateSitemap: body.generateSitemap ?? true,
-      enableRobotsTxt: body.enableRobotsTxt ?? true,
-      googleAnalyticsId: body.googleAnalyticsId || null,
-      enableAnalytics: body.enableAnalytics ?? true,
-      enableCookieConsent: body.enableCookieConsent ?? true,
-      defaultLanguage: body.defaultLanguage || "ENGLISH",
-      timezone: body.timezone || "Asia/Damascus",
-      dateFormat: body.dateFormat || "DD/MM/YYYY",
-      currency: body.currency || "USD",
-    }
-    
-    console.log('Cleaned data:', JSON.stringify(cleanedData, null, 2))
-    
-    // Validate the request body
-    const validatedData = websiteSettingsSchema.parse(cleanedData)
-    
-    // Get existing settings or create new ones
-    let settings = await prisma.websiteSettings.findFirst()
-    
-    if (settings) {
-      // Update existing settings
-      settings = await prisma.websiteSettings.update({
-        where: { id: settings.id },
-        data: validatedData
+    const { type, data } = body
+
+    if (type === 'website') {
+      const validatedData = updateWebsiteSettingsSchema.parse(data)
+      
+      const [updatedSettings] = await db
+        .update(websiteSettings)
+        .set({
+          ...validatedData,
+          updatedAt: new Date().toISOString(),
+        })
+        .returning()
+
+      return NextResponse.json({
+        message: 'Website settings updated successfully',
+        settings: updatedSettings,
+      })
+    } else if (type === 'system') {
+      const validatedData = updateSystemSettingSchema.parse(data)
+      
+      const [updatedSetting] = await db
+        .update(systemSettings)
+        .set({
+          ...validatedData,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(systemSettings.key, validatedData.key))
+        .returning()
+
+      return NextResponse.json({
+        message: 'System setting updated successfully',
+        setting: updatedSetting,
       })
     } else {
-      // Create new settings
-      settings = await prisma.websiteSettings.create({
-        data: validatedData
-      })
-    }
-    
-    return NextResponse.json({
-      settings,
-      message: 'Website settings updated successfully'
-    })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      console.error('Validation error details:', error.errors)
       return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
+        { error: 'Invalid settings type' },
         { status: 400 }
       )
     }
-    
-    console.error('Error updating website settings:', error)
+  } catch (error) {
+    console.error('Error updating settings:', error)
     return NextResponse.json(
-      { error: 'Failed to update website settings' },
+      { error: 'Failed to update settings' },
       { status: 500 }
     )
   }

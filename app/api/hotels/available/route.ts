@@ -1,146 +1,143 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@/lib/generated/prisma'
+import { db } from '@/lib/db'
+import { hotels, rooms } from '@/drizzle/schema'
+import { eq } from 'drizzle-orm'
 
-const prisma = new PrismaClient()
-
+// GET - Fetch available hotels with rooms (safe version)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const location = searchParams.get('location')
-    const minPrice = searchParams.get('minPrice')
-    const maxPrice = searchParams.get('maxPrice')
-    const roomType = searchParams.get('roomType')
-    const guests = searchParams.get('guests')
-    const startDate = searchParams.get('startDate')
-    const endDate = searchParams.get('endDate')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const page = parseInt(searchParams.get('page') || '1')
 
-    // Build where clause for rooms
-    const roomWhere: any = {
-      isAvailable: true,
-      hotel: {
-        isActive: true,
-        isVerified: true
-      }
+    const offset = (page - 1) * limit
+
+    // Simple query without complex conditions
+    let hotelsData = []
+    try {
+      hotelsData = await db
+        .select()
+        .from(hotels)
+        .limit(limit)
+        .offset(offset)
+    } catch (error) {
+      console.error('Error fetching hotels:', error)
+      hotelsData = []
     }
 
-    // Filter by location (hotel city)
-    if (location && location !== 'all') {
-      roomWhere.hotel.city = {
-        contains: location,
-        mode: 'insensitive'
-      }
+    // Ensure hotelsData is an array
+    if (!hotelsData || !Array.isArray(hotelsData)) {
+      return NextResponse.json({
+        hotels: [],
+        rooms: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 0,
+          totalCount: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        }
+      })
     }
 
-    // Filter by price range
-    if (minPrice || maxPrice) {
-      roomWhere.pricePerNight = {}
-      if (minPrice) roomWhere.pricePerNight.gte = parseFloat(minPrice)
-      if (maxPrice) roomWhere.pricePerNight.lte = parseFloat(maxPrice)
-    }
+    // Get rooms for each hotel
+    const allRooms = []
+    const hotelsWithRooms = await Promise.all(
+      hotelsData.map(async (hotel) => {
+        try {
+          const hotelRooms = await db
+            .select()
+            .from(rooms)
+            .where(eq(rooms.hotelId, hotel.id))
+            .limit(10) // Limit rooms per hotel
 
-    // Filter by room type
-    if (roomType && roomType !== 'all') {
-      roomWhere.roomType = roomType
-    }
-
-    // Filter by capacity (guests)
-    if (guests) {
-      roomWhere.capacity = {
-        gte: parseInt(guests)
-      }
-    }
-
-    // Fetch available rooms with hotel information
-    const rooms = await prisma.room.findMany({
-      where: roomWhere,
-      include: {
-        hotel: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            address: true,
-            city: true,
-            starRating: true,
-            amenities: true,
-            images: true,
-            checkInTime: true,
-            checkOutTime: true,
-            googleMapLink: true
-          }
-        },
-        bookings: {
-          where: {
-            status: {
-              in: ['PENDING', 'CONFIRMED']
+          // Add hotel info to each room for the booking page
+          const roomsWithHotel = hotelRooms.map(room => ({
+            ...room,
+            hotel: {
+              id: hotel.id,
+              name: hotel.name,
+              description: hotel.description,
+              address: hotel.address,
+              city: hotel.city,
+              country: hotel.country,
+              phone: hotel.phone,
+              email: hotel.email,
+              website: hotel.website,
+              starRating: hotel.starRating,
+              checkInTime: hotel.checkInTime,
+              checkOutTime: hotel.checkOutTime,
+              amenities: hotel.amenities,
+              images: hotel.images,
+              latitude: hotel.latitude,
+              longitude: hotel.longitude,
+              googleMapLink: hotel.googleMapLink,
+              isActive: hotel.isActive,
+              isVerified: hotel.isVerified,
+              isSpecialOffer: hotel.isSpecialOffer,
             }
+          }))
+
+          // Add rooms to the flattened array
+          allRooms.push(...roomsWithHotel)
+
+          return {
+            ...hotel,
+            rooms: hotelRooms || []
+          }
+        } catch (error) {
+          console.error(`Error fetching rooms for hotel ${hotel.id}:`, error)
+          // Return hotel without rooms if there's an error
+          return {
+            ...hotel,
+            rooms: []
           }
         }
-      },
-      orderBy: [
-        { hotel: { starRating: 'desc' } },
-        { pricePerNight: 'asc' }
-      ]
-    })
-
-    // Filter out rooms that have conflicting bookings for the selected dates
-    const availableRooms = rooms.filter(room => {
-      if (!startDate || !endDate) {
-        // If no dates specified, only exclude rooms with current bookings
-        return room.bookings.every(booking => 
-          new Date(booking.endDate) < new Date() || new Date(booking.startDate) > new Date()
-        )
-      }
-
-      const requestedStart = new Date(startDate)
-      const requestedEnd = new Date(endDate)
-
-      return room.bookings.every(booking => {
-        const bookingStart = new Date(booking.startDate)
-        const bookingEnd = new Date(booking.endDate)
-        
-        // Check if there's any overlap
-        return bookingEnd <= requestedStart || bookingStart >= requestedEnd
       })
-    })
+    )
 
-    // Format the response
-    const formattedRooms = availableRooms.map(room => ({
-      id: room.id,
-      name: room.name,
-      roomNumber: room.roomNumber,
-      roomType: room.roomType,
-      capacity: room.capacity,
-      pricePerNight: room.pricePerNight,
-      price: room.pricePerNight,
-      bedType: room.bedType,
-      amenities: room.amenities,
-      images: room.images,
-      description: room.description,
-      size: room.size,
-      hotel: {
-        id: room.hotel.id,
-        name: room.hotel.name,
-        description: room.hotel.description,
-        address: room.hotel.address,
-        city: room.hotel.city,
-        starRating: room.hotel.starRating,
-        amenities: room.hotel.amenities,
-        images: room.hotel.images,
-        checkInTime: room.hotel.checkInTime,
-        checkOutTime: room.hotel.checkOutTime,
-        googleMapLink: room.hotel.googleMapLink
-      }
-    }))
+    // Get total count safely
+    let totalCount = 0
+    try {
+      const totalCountResult = await db
+        .select()
+        .from(hotels)
+        .limit(1)
+
+      totalCount = totalCountResult.length
+    } catch (error) {
+      console.error('Error getting total count:', error)
+      totalCount = 0
+    }
+
+    const totalPages = Math.ceil(totalCount / limit)
 
     return NextResponse.json({
-      rooms: formattedRooms,
-      total: formattedRooms.length
+      hotels: hotelsWithRooms,
+      rooms: allRooms,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      }
     })
   } catch (error) {
-    console.error('Error fetching available rooms:', error)
+    console.error('Error in hotels available route:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch available rooms' },
+      { 
+        error: 'Failed to fetch available hotels',
+        hotels: [],
+        rooms: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalCount: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        }
+      },
       { status: 500 }
     )
   }

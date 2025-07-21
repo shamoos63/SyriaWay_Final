@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { db } from '@/lib/db'
+import { tourGuides, users } from '@/drizzle/schema'
+import { eq, and } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,41 +9,53 @@ export async function GET(request: NextRequest) {
     const available = searchParams.get('available')
     const verified = searchParams.get('verified')
 
-    const where: any = {}
+    let whereConditions = []
 
     if (available === 'true') {
-      where.isAvailable = true
+      whereConditions.push(eq(tourGuides.isAvailable, true))
     }
 
     if (verified === 'true') {
-      where.isVerified = true
+      whereConditions.push(eq(tourGuides.isVerified, true))
     }
 
-    const guides = await prisma.tourGuide.findMany({
-      where,
-      include: {
+    const guidesData = await db
+      .select({
+        id: tourGuides.id,
+        userId: tourGuides.userId,
+        bio: tourGuides.bio,
+        experience: tourGuides.experience,
+        languages: tourGuides.languages,
+        specialties: tourGuides.specialties,
+        baseLocation: tourGuides.baseLocation,
+        serviceAreas: tourGuides.serviceAreas,
+        isAvailable: tourGuides.isAvailable,
+        isVerified: tourGuides.isVerified,
+        hourlyRate: tourGuides.hourlyRate,
+        dailyRate: tourGuides.dailyRate,
+        currency: tourGuides.currency,
+        profileImage: tourGuides.profileImage,
+        certifications: tourGuides.certifications,
+        createdAt: tourGuides.createdAt,
+        updatedAt: tourGuides.updatedAt,
         user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true
-          }
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          phone: users.phone,
         }
-      },
-      orderBy: {
-        user: {
-          name: 'asc'
-        }
-      }
-    })
+      })
+      .from(tourGuides)
+      .leftJoin(users, eq(tourGuides.userId, users.id))
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .orderBy(users.name)
 
     // Format the response to include guide name from user
-    const formattedGuides = guides.map(guide => ({
+    const formattedGuides = guidesData.map(guide => ({
       id: guide.id,
-      name: guide.user.name || 'Unknown Guide',
-      email: guide.user.email,
-      phone: guide.user.phone,
+      name: guide.user?.name || 'Unknown Guide',
+      email: guide.user?.email,
+      phone: guide.user?.phone,
       bio: guide.bio,
       experience: guide.experience,
       specialties: guide.specialties,

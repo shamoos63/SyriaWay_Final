@@ -327,7 +327,7 @@ export default function UserPosts() {
                             {blog.category}
                           </Badge>
                         )}
-                        {blog.tags?.map((tag, index) => (
+                        {Array.isArray(blog.tags) && blog.tags.map((tag, index) => (
                           <Badge key={index} variant="outline" className="text-xs">
                             {tag}
                           </Badge>
