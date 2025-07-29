@@ -107,7 +107,7 @@ export default function Offers() {
             <div className="text-lg font-medium dark:text-dark-text">{offer.title}</div>
             <div className="flex flex-wrap gap-1">
               <Button variant="outline" size="sm" className="text-xs h-7 dark:border-gray-700 dark:text-gray-300">
-                {t.dashboard?.edit || "Edit"}
+                {"Edit"}
               </Button>
               <Button
                 variant="outline"
@@ -115,7 +115,7 @@ export default function Offers() {
                 className="text-xs h-7 dark:border-gray-700 dark:text-gray-300"
                 onClick={() => deleteOffer(offer.id)}
               >
-                {t.dashboard?.delete || "Delete"}
+                {"Delete"}
               </Button>
               {offer.enabled && (
                 <Button
@@ -124,7 +124,7 @@ export default function Offers() {
                   className="text-xs h-7 dark:border-gray-700 dark:text-gray-300"
                   onClick={() => toggleOfferState(offer.id)}
                 >
-                  {t.dashboard?.disable || "Disable"}
+                  {"Disable"}
                 </Button>
               )}
               {!offer.enabled && (
@@ -134,7 +134,7 @@ export default function Offers() {
                   className="text-xs h-7 dark:border-gray-700 dark:text-gray-300"
                   onClick={() => toggleOfferState(offer.id)}
                 >
-                  {t.dashboard?.enable || "Enable"}
+                  {"Enable"}
                 </Button>
               )}
             </div>
@@ -144,15 +144,13 @@ export default function Offers() {
             <div className="flex-1">
               <p className="text-muted-foreground dark:text-dark-text/80">{offer.description}</p>
               <p className="text-sm mt-2 text-syria-gold dark:text-gold-accent">
-                {offer.enabled
-                  ? t.dashboard?.statusEnabled || "Status: Enabled"
-                  : t.dashboard?.statusDisabled || "Status: Disabled"}
+                {offer.enabled ? "Status: Enabled" : "Status: Disabled"}
               </p>
             </div>
             <div className="w-full sm:w-32 h-32 bg-syria-gold/20 dark:bg-gold-accent/20 rounded-lg flex items-center justify-center text-syria-gold dark:text-gold-accent font-bold">
-              {t.dashboard?.offerImage || "OFFER"}
+              {"OFFER"}
               <br />
-              {t.dashboard?.image || "IMAGE"}
+              {"IMAGE"}
             </div>
           </div>
         </div>

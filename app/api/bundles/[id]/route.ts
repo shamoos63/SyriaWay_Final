@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { bundles } from '@/drizzle/schema'
+import { bundles, bundleTranslations } from '@/drizzle/schema'
 import { eq } from 'drizzle-orm'
+
+// Helper function to convert frontend language codes to database language codes
+function getDatabaseLanguageCode(frontendLanguage: string): string {
+  const languageMap: Record<string, string> = {
+    'en': 'ENGLISH',
+    'ar': 'ARABIC',
+    'fr': 'FRENCH'
+  }
+  return languageMap[frontendLanguage] || 'ENGLISH'
+}
 
 // GET - Fetch single bundle by ID
 export async function GET(
@@ -10,6 +20,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const { searchParams } = new URL(request.url)
+    const language = searchParams.get('language') || 'ENGLISH'
 
     const [bundle] = await db
       .select()
@@ -23,7 +35,25 @@ export async function GET(
       )
     }
 
-    return NextResponse.json({ bundle })
+    // Get translations for the bundle
+    const translations = await db
+      .select()
+      .from(bundleTranslations)
+      .where(eq(bundleTranslations.bundleId, bundle.id))
+
+    // Get the translation for the requested language
+    const databaseLanguage = getDatabaseLanguageCode(language)
+    const translation = translations.find(t => t.language === databaseLanguage)
+
+    const bundleWithTranslations = {
+      ...bundle,
+      // Override with translation if available
+      name: translation?.name || bundle.name,
+      description: translation?.description || bundle.description,
+      translations: translations || []
+    }
+
+    return NextResponse.json({ bundle: bundleWithTranslations })
   } catch (error) {
     console.error('Error fetching bundle:', error)
     return NextResponse.json(
@@ -55,15 +85,36 @@ export async function PUT(
       )
     }
 
+    // Extract translation data from body
+    const { translations, ...bundleData } = body
+
     // Update bundle
     const [updatedBundle] = await db
       .update(bundles)
       .set({
-        ...body,
+        ...bundleData,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(bundles.id, parseInt(id)))
       .returning()
+
+    // Handle translations if provided
+    if (translations && Array.isArray(translations)) {
+      // Delete existing translations
+      await db
+        .delete(bundleTranslations)
+        .where(eq(bundleTranslations.bundleId, parseInt(id)))
+
+      // Insert new translations
+      if (translations.length > 0) {
+        await db
+          .insert(bundleTranslations)
+          .values(translations.map(t => ({
+            ...t,
+            bundleId: parseInt(id)
+          })))
+      }
+    }
 
     return NextResponse.json({
       bundle: updatedBundle,
@@ -98,6 +149,11 @@ export async function DELETE(
         { status: 404 }
       )
     }
+
+    // Delete bundle translations first
+    await db
+      .delete(bundleTranslations)
+      .where(eq(bundleTranslations.bundleId, parseInt(id)))
 
     // Delete bundle
     await db

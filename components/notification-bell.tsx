@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Bell, X, Check, Trash2, Clock } from 'lucide-react'
+import { Bell, X, Check, Trash2, Clock, ChevronDown, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useNotifications } from '@/lib/notification-context'
@@ -13,8 +13,14 @@ export default function NotificationBell() {
   const { t, language } = useLanguage()
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom')
-  const [dropdownAlignment, setDropdownAlignment] = useState<'left' | 'right'>('right')
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const [dropdownPosition, setDropdownPosition] = useState({
+    top: 'auto',
+    bottom: 'auto',
+    left: 'auto',
+    right: 'auto',
+    transform: 'none'
+  })
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -28,37 +34,125 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Calculate dropdown position based on viewport
+  // Calculate optimal dropdown position
   useEffect(() => {
-    if (isOpen && dropdownRef.current) {
-      const rect = dropdownRef.current.getBoundingClientRect()
-      const viewportHeight = window.innerHeight
+    if (isOpen && buttonRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect()
       const viewportWidth = window.innerWidth
-      const dropdownHeight = 400 // Approximate height of dropdown
-      const dropdownWidth = 320 // Approximate width of dropdown
+      const viewportHeight = window.innerHeight
+      const isMobile = viewportWidth < 768
+      const isRTL = language === 'ar'
       
-      // Check vertical positioning
-      if (rect.bottom + dropdownHeight > viewportHeight) {
-        setDropdownPosition('top')
-      } else {
-        setDropdownPosition('bottom')
+      // Dropdown dimensions
+      const dropdownWidth = isMobile ? Math.min(viewportWidth - 32, 400) : 384
+      const dropdownHeight = Math.min(400, viewportHeight - 200)
+      
+      let newPosition = {
+        top: 'auto',
+        bottom: 'auto',
+        left: 'auto',
+        right: 'auto',
+        transform: 'none'
       }
-      
-      // Check horizontal positioning for mobile/RTL
-      if (language === 'ar') {
-        // For Arabic, prefer left alignment
-        setDropdownAlignment('left')
-      } else if (viewportWidth < 768) {
-        // For mobile, check if dropdown would go off-screen
-        if (rect.right + dropdownWidth > viewportWidth) {
-          setDropdownAlignment('left')
-        } else {
-          setDropdownAlignment('right')
+
+      if (isMobile) {
+        // Mobile: Center horizontally, position below navbar with margin
+        const centerX = (viewportWidth - dropdownWidth) / 2
+        newPosition = {
+          top: `${buttonRect.bottom + 8}px`,
+          left: `${centerX}px`,
+          right: 'auto',
+          bottom: 'auto',
+          transform: 'none'
+        }
+        
+        // Check if dropdown goes below viewport
+        if (buttonRect.bottom + dropdownHeight + 8 > viewportHeight) {
+          newPosition.top = 'auto'
+          newPosition.bottom = `${viewportHeight - buttonRect.top + 8}px`
         }
       } else {
-        // For desktop, prefer right alignment
-        setDropdownAlignment('right')
+        // Desktop: Position relative to button with smart alignment
+        const margin = 16 // Margin from viewport edges
+        
+        if (isRTL) {
+          // RTL: Prefer right alignment, fallback to left
+          const rightSpace = buttonRect.left - margin
+          const leftSpace = viewportWidth - buttonRect.right - margin
+          
+          if (rightSpace >= dropdownWidth) {
+            // Enough space on the right
+            newPosition = {
+              top: `${buttonRect.bottom + 8}px`,
+              right: `${viewportWidth - buttonRect.left}px`,
+              left: 'auto',
+              bottom: 'auto',
+              transform: 'none'
+            }
+          } else if (leftSpace >= dropdownWidth) {
+            // Enough space on the left
+            newPosition = {
+              top: `${buttonRect.bottom + 8}px`,
+              left: `${buttonRect.right}px`,
+              right: 'auto',
+              bottom: 'auto',
+              transform: 'none'
+            }
+          } else {
+            // Center horizontally with margins
+            const centerX = (viewportWidth - dropdownWidth) / 2
+            newPosition = {
+              top: `${buttonRect.bottom + 8}px`,
+              left: `${Math.max(margin, centerX)}px`,
+              right: 'auto',
+              bottom: 'auto',
+              transform: 'none'
+            }
+          }
+        } else {
+          // LTR: Prefer left alignment, fallback to right
+          const leftSpace = viewportWidth - buttonRect.left - margin
+          const rightSpace = buttonRect.right - margin
+          
+          if (leftSpace >= dropdownWidth) {
+            // Enough space on the left
+            newPosition = {
+              top: `${buttonRect.bottom + 8}px`,
+              left: `${buttonRect.left}px`,
+              right: 'auto',
+              bottom: 'auto',
+              transform: 'none'
+            }
+          } else if (rightSpace >= dropdownWidth) {
+            // Enough space on the right
+            newPosition = {
+              top: `${buttonRect.bottom + 8}px`,
+              right: `${viewportWidth - buttonRect.right}px`,
+              left: 'auto',
+              bottom: 'auto',
+              transform: 'none'
+            }
+          } else {
+            // Center horizontally with margins
+            const centerX = (viewportWidth - dropdownWidth) / 2
+            newPosition = {
+              top: `${buttonRect.bottom + 8}px`,
+              left: `${Math.max(margin, centerX)}px`,
+              right: 'auto',
+              bottom: 'auto',
+              transform: 'none'
+            }
+          }
+        }
+        
+        // Check if dropdown goes below viewport
+        if (buttonRect.bottom + dropdownHeight + 8 > viewportHeight) {
+          newPosition.top = 'auto'
+          newPosition.bottom = `${viewportHeight - buttonRect.top + 8}px`
+        }
       }
+      
+      setDropdownPosition(newPosition)
     }
   }, [isOpen, language])
 
@@ -75,11 +169,11 @@ export default function NotificationBell() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'URGENT': return 'bg-red-500'
-      case 'HIGH': return 'bg-orange-500'
-      case 'NORMAL': return 'bg-blue-500'
-      case 'LOW': return 'bg-gray-500'
-      default: return 'bg-blue-500'
+      case 'URGENT': return 'bg-gradient-to-r from-red-500 to-red-600'
+      case 'HIGH': return 'bg-gradient-to-r from-orange-500 to-orange-600'
+      case 'NORMAL': return 'bg-gradient-to-r from-blue-500 to-blue-600'
+      case 'LOW': return 'bg-gradient-to-r from-gray-500 to-gray-600'
+      default: return 'bg-gradient-to-r from-blue-500 to-blue-600'
     }
   }
 
@@ -99,72 +193,73 @@ export default function NotificationBell() {
     <div className="relative" ref={dropdownRef}>
       {/* Notification Bell Button */}
       <Button
+        ref={buttonRef}
         variant="ghost"
         size="sm"
         className={cn(
-          "relative p-2 text-white hover:text-syria-cream hover:bg-white/10 transition-all duration-200 rounded-full",
-          unreadCount > 0 && "animate-bounce"
+          "relative p-2.5 text-white hover:text-syria-cream hover:bg-white/10 transition-all duration-300 rounded-xl group",
+          unreadCount > 0 && "animate-pulse"
         )}
         onClick={() => setIsOpen(!isOpen)}
       >
         <Bell className={cn(
-          "h-5 w-5 transition-all duration-200",
+          "h-5 w-5 transition-all duration-300 group-hover:scale-110",
           unreadCount > 0 && "text-syria-cream"
         )} />
         {unreadCount > 0 && (
           <Badge 
             className={cn(
-              "absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 text-xs font-bold bg-gradient-to-r from-red-500 to-red-600 text-white border-2 border-white shadow-lg animate-pulse",
-              unreadCount > 9 ? "min-w-[24px]" : "min-w-[22px]",
+              "absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs font-bold bg-gradient-to-r from-red-500 to-red-600 text-white border-2 border-white shadow-lg",
+              unreadCount > 9 ? "min-w-[20px]" : "min-w-[18px]",
               unreadCount > 99 ? "text-[10px]" : "text-xs"
             )}
           >
             {unreadCount > 99 ? '99+' : unreadCount}
           </Badge>
         )}
+        <ChevronDown className={cn(
+          "h-3 w-3 ml-1 transition-transform duration-300",
+          isOpen && "rotate-180"
+        )} />
       </Button>
 
       {/* Notification Dropdown */}
       {isOpen && (
         <div 
           className={cn(
-            "absolute w-80 max-h-96 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800 z-[70] backdrop-blur-sm",
-            "max-w-[calc(100vw-2rem)] sm:max-w-80",
-            "transform transition-all duration-200 ease-in-out",
-            // Mobile and RTL-aware positioning
-            dropdownAlignment === 'left' 
-              ? "right-0 rtl:left-0 rtl:right-auto" 
-              : "left-0 rtl:right-0 rtl:left-auto",
-            dropdownPosition === 'bottom' 
-              ? "top-full mt-3" 
-              : "bottom-full mb-3"
+            // Base styles
+            "fixed w-80 max-h-96 overflow-hidden rounded-2xl border-0 bg-white/95 backdrop-blur-xl shadow-2xl dark:bg-gray-900/95 z-[70]",
+            "transform transition-all duration-300 ease-out",
+            // Responsive width
+            "max-w-[calc(100vw-2rem)] sm:max-w-80 md:max-w-96"
           )}
           style={{
+            ...dropdownPosition,
             maxHeight: 'calc(100vh - 200px)',
-            // Ensure dropdown doesn't go off-screen on mobile
-            maxWidth: 'calc(100vw - 2rem)',
             minWidth: '280px',
-            // Mobile-specific positioning
-            ...(window.innerWidth < 768 && {
-              left: language === 'ar' ? '0' : 'auto',
-              right: language === 'ar' ? 'auto' : '0',
-              transform: 'translateX(0)'
-            })
+            width: window.innerWidth < 768 ? 'calc(100vw - 2rem)' : '384px'
           }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700">
+          <div className="flex items-center justify-between p-4 border-b border-gray-100/50 dark:border-gray-700/50 bg-gradient-to-r from-gray-50/80 to-white/80 dark:from-gray-800/80 dark:to-gray-700/80 backdrop-blur-sm">
             <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <Bell className="h-4 w-4 text-syria-gold" />
-              {t.userDashboard?.notifications || "Notifications"}
+              <div className="p-1.5 rounded-lg bg-gradient-to-r from-syria-gold to-syria-dark-gold">
+                <Bell className="h-4 w-4 text-white" />
+              </div>
+              <span className="text-sm">{t.userDashboard?.notifications || "Notifications"}</span>
+              {unreadCount > 0 && (
+                <Badge className="ml-2 h-5 px-2 text-xs bg-gradient-to-r from-red-500 to-red-600 text-white">
+                  {unreadCount}
+                </Badge>
+              )}
             </h3>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               {unreadCount > 0 && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={markAllAsRead}
-                  className="text-xs text-syria-gold hover:text-syria-dark-gold hover:bg-syria-gold/10"
+                  className="h-8 px-2 text-xs text-syria-gold hover:text-syria-dark-gold hover:bg-syria-gold/10 rounded-lg"
                 >
                   {t.userDashboard?.markAllRead || "Mark all read"}
                 </Button>
@@ -173,7 +268,7 @@ export default function NotificationBell() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsOpen(false)}
-                className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full"
+                className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -181,47 +276,54 @@ export default function NotificationBell() {
           </div>
 
           {/* Notifications List */}
-          <div className="max-h-80 overflow-y-auto">
+          <div className="max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
             {loading ? (
-              <div className="p-4 text-center text-gray-500">
-                {t.userDashboard?.loadingNotifications || "Loading notifications..."}
+              <div className="p-6 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-syria-gold mx-auto mb-2"></div>
+                <p className="text-sm text-gray-500">{t.userDashboard?.loadingNotifications || "Loading notifications..."}</p>
               </div>
             ) : notifications.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">
-                {t.userDashboard?.noNotifications || "No notifications"}
+              <div className="p-6 text-center">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                  <Bell className="h-6 w-6 text-gray-400" />
+                </div>
+                <p className="text-sm text-gray-500">{t.userDashboard?.noNotifications || "No notifications"}</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {notifications.slice(0, 10).map((notification) => (
+              <div className="divide-y divide-gray-100/50 dark:divide-gray-700/50">
+                {notifications.slice(0, 8).map((notification) => (
                   <div
                     key={notification.id}
                     className={cn(
-                      "p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 border-l-4 border-transparent",
-                      !notification.isRead && "bg-blue-50 dark:bg-blue-900/20 border-l-syria-gold"
+                      "p-4 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 transition-all duration-200 group",
+                      !notification.isRead && "bg-blue-50/50 dark:bg-blue-900/20"
                     )}
                   >
                     <div className="flex items-start gap-3">
                       {/* Priority indicator */}
                       <div className={cn(
-                        "w-2 h-2 rounded-full mt-2 flex-shrink-0",
+                        "w-2 h-2 rounded-full mt-2 flex-shrink-0 shadow-sm",
                         getPriorityColor(notification.priority)
                       )} />
                       
                       {/* Category icon */}
-                      <span className="text-lg flex-shrink-0">
-                        {getCategoryIcon(notification.category)}
-                      </span>
+                      <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm">
+                          {getCategoryIcon(notification.category)}
+                        </span>
+                      </div>
                       
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <h4 className={cn(
-                            "text-sm font-medium text-gray-900 dark:text-white truncate",
+                            "text-sm font-medium text-gray-900 dark:text-white line-clamp-1",
                             !notification.isRead && "font-semibold"
                           )}>
                             {notification.title}
                           </h4>
-                          <span className="text-xs text-gray-500 flex-shrink-0">
+                          <span className="text-xs text-gray-500 flex-shrink-0 flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
                             {formatTime(notification.createdAt)}
                           </span>
                         </div>
@@ -230,13 +332,13 @@ export default function NotificationBell() {
                         </p>
                         
                         {/* Actions */}
-                        <div className="flex items-center gap-2 mt-3">
+                        <div className="flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                           {!notification.isRead && (
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => markAsRead(notification.id)}
-                              className="h-6 px-2 text-xs text-syria-gold hover:text-syria-dark-gold hover:bg-syria-gold/10"
+                              className="h-7 px-2 text-xs text-syria-gold hover:text-syria-dark-gold hover:bg-syria-gold/10 rounded-md"
                             >
                               <Check className="h-3 w-3 mr-1" />
                               {t.userDashboard?.markRead || "Mark read"}
@@ -246,7 +348,7 @@ export default function NotificationBell() {
                             variant="ghost"
                             size="sm"
                             onClick={() => archiveNotification(notification.id)}
-                            className="h-6 px-2 text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 dark:text-gray-400"
+                            className="h-7 px-2 text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 dark:text-gray-400 rounded-md"
                           >
                             <Trash2 className="h-3 w-3 mr-1" />
                             {t.userDashboard?.archive || "Archive"}
@@ -261,18 +363,19 @@ export default function NotificationBell() {
           </div>
 
           {/* Footer */}
-          {notifications.length > 10 && (
-            <div className="p-3 border-t border-gray-100 dark:border-gray-700 text-center bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700">
+          {notifications.length > 8 && (
+            <div className="p-3 border-t border-gray-100/50 dark:border-gray-700/50 bg-gradient-to-r from-gray-50/80 to-white/80 dark:from-gray-800/80 dark:to-gray-700/80 backdrop-blur-sm">
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs text-syria-gold hover:text-syria-dark-gold hover:bg-syria-gold/10"
+                className="w-full h-9 text-xs text-syria-gold hover:text-syria-dark-gold hover:bg-syria-gold/10 rounded-lg"
                 onClick={() => {
                   setIsOpen(false)
                   // Navigate to full notifications page
                   window.location.href = '/user-dashboard/notifications'
                 }}
               >
+                <Settings className="h-3 w-3 mr-2" />
                 {t.userDashboard?.viewAllNotifications || "View all notifications"}
               </Button>
             </div>

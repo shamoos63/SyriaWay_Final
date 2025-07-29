@@ -5,6 +5,11 @@ import { db } from '@/lib/db'
 import { bookings } from '@/drizzle/schema'
 import { eq, and } from 'drizzle-orm'
 
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
+
 // POST - Cancel a booking
 export async function POST(
   request: NextRequest,
@@ -13,7 +18,8 @@ export async function POST(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -30,7 +36,7 @@ export async function POST(
       .from(bookings)
       .where(and(
         eq(bookings.id, parseInt(id)),
-        eq(bookings.userId, parseInt(session.user.id))
+        eq(bookings.userId, userId)
       ))
 
     if (!booking) {

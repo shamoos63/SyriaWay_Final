@@ -20,14 +20,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      whereConditions.push(
-        or(
-          like(tours.name, `%${search}%`),
-          like(tours.description, `%${search}%`),
-          like(tours.startLocation, `%${search}%`),
-          like(tours.endLocation, `%${search}%`)
-        )
+      const orClause = or(
+        like(tours.name, `%${search}%`),
+        like(tours.description, `%${search}%`),
+        like(tours.startLocation, `%${search}%`),
+        like(tours.endLocation, `%${search}%`)
       )
+      if (orClause) whereConditions.push(orClause)
     }
 
     if (minPrice || maxPrice) {
@@ -36,12 +35,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (location) {
-      whereConditions.push(
-        or(
-          like(tours.startLocation, `%${location}%`),
-          like(tours.endLocation, `%${location}%`)
-        )
+      const orClause = or(
+        like(tours.startLocation, `%${location}%`),
+        like(tours.endLocation, `%${location}%`)
       )
+      if (orClause) whereConditions.push(orClause)
     }
 
     const toursData = await db
@@ -87,11 +85,9 @@ export async function GET(request: NextRequest) {
           currency: tourGuides.currency,
           profileImage: tourGuides.profileImage,
           certifications: tourGuides.certifications,
-          user: {
-            id: users.id,
-            name: users.name,
-            email: users.email,
-          }
+          guideUserId: users.id,
+          guideUserName: users.name,
+          guideUserEmail: users.email,
         }
       })
       .from(tours)
@@ -110,7 +106,7 @@ export async function GET(request: NextRequest) {
           .from(reviews)
           .where(and(
             eq(reviews.serviceType, 'TOUR'),
-            eq(reviews.serviceId, tour.id)
+            eq(reviews.serviceId, Number(tour.id))
           ))
 
         const averageRating = tourReviews.length > 0

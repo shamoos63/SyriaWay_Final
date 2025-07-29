@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { toast } from "@/hooks/use-toast"
 import { Plus, Edit, Trash2, Loader2, User, Calendar } from "lucide-react"
+import dayjs from 'dayjs'
 
 interface Blog {
   id: string
@@ -41,7 +42,9 @@ export default function UserBlogsPage() {
     title: "",
     excerpt: "",
     content: "",
-    featuredImage: ""
+    featuredImage: "",
+    category: "",
+    tags: ""
   })
   const [saving, setSaving] = useState(false)
 
@@ -74,7 +77,7 @@ export default function UserBlogsPage() {
 
   const openCreateModal = () => {
     setEditingBlog(null)
-    setForm({ title: "", excerpt: "", content: "", featuredImage: "" })
+    setForm({ title: "", excerpt: "", content: "", featuredImage: "", category: "", tags: "" })
     setShowModal(true)
   }
 
@@ -84,7 +87,9 @@ export default function UserBlogsPage() {
       title: blog.title,
       excerpt: blog.excerpt || "",
       content: blog.content,
-      featuredImage: blog.featuredImage || ""
+      featuredImage: blog.featuredImage || "",
+      category: (blog as any).category || "",
+      tags: (blog as any).tags ? (Array.isArray((blog as any).tags) ? (blog as any).tags.join(", ") : (blog as any).tags) : ""
     })
     setShowModal(true)
   }
@@ -92,7 +97,7 @@ export default function UserBlogsPage() {
   const closeModal = () => {
     setShowModal(false)
     setEditingBlog(null)
-    setForm({ title: "", excerpt: "", content: "", featuredImage: "" })
+    setForm({ title: "", excerpt: "", content: "", featuredImage: "", category: "", tags: "" })
   }
 
   const handleSave = async () => {
@@ -123,7 +128,7 @@ export default function UserBlogsPage() {
           fr: form.content
         },
         category: form.category,
-        tags: form.tags ? form.tags.split(',').map(tag => tag.trim()) : [],
+        tags: form.tags ? form.tags.split(',').map((tag: string) => tag.trim()) : [],
         featuredImage: form.featuredImage
       }
 
@@ -198,8 +203,9 @@ export default function UserBlogsPage() {
   }
 
   const formatDate = (date: string) => {
-    const formattedDate = new Date(date).toLocaleDateString()
-    return formattedDate.split(',').join(' - ')
+    if (!date) return 'N/A';
+    const d = dayjs(date)
+    return d.isValid() ? d.format('YYYY-MM-DD HH:mm') : 'N/A';
   }
 
   return (
@@ -297,6 +303,18 @@ export default function UserBlogsPage() {
               placeholder="Featured Image URL (optional)"
               value={form.featuredImage}
               onChange={e => setForm(f => ({ ...f, featuredImage: e.target.value }))}
+              disabled={saving}
+            />
+            <Input
+              placeholder="Category (optional)"
+              value={form.category}
+              onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+              disabled={saving}
+            />
+            <Input
+              placeholder="Tags (comma separated, optional)"
+              value={form.tags}
+              onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
               disabled={saving}
             />
             <Textarea

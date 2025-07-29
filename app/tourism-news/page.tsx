@@ -61,7 +61,17 @@ export default function TourismNewsPage() {
         throw new Error('Failed to fetch tourism news')
       }
       const data = await response.json()
-      setNews(data.news || [])
+      // Ensure all news items have properly parsed tags
+      const processedNews = (data.news || []).map((newsItem: any) => ({
+        ...newsItem,
+        tags: Array.isArray(newsItem.tags) ? newsItem.tags : 
+              (typeof newsItem.tags === 'string' ? 
+                (() => {
+                  try { return JSON.parse(newsItem.tags) } 
+                  catch { return newsItem.tags.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag.length > 0) }
+                })() : [])
+      }))
+      setNews(processedNews)
     } catch (err: any) {
       setError(err.message || 'Failed to load tourism news')
       console.error('Error fetching tourism news:', err)
@@ -91,7 +101,17 @@ export default function TourismNewsPage() {
 
       if (response.ok) {
         const result = await response.json()
-        setNews([result.news, ...news])
+        // Ensure the newly created news has the correct format
+        const newNewsItem = {
+          ...result.news,
+          tags: Array.isArray(result.news.tags) ? result.news.tags : 
+                (typeof result.news.tags === 'string' ? 
+                  (() => {
+                    try { return JSON.parse(result.news.tags) } 
+                    catch { return result.news.tags.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag.length > 0) }
+                  })() : [])
+        }
+        setNews([newNewsItem, ...news])
         setModalOpen(false)
         toast({
           title: "Success",
@@ -119,7 +139,7 @@ export default function TourismNewsPage() {
 
   // Get unique categories from fetched news
   const categories = Array.from(
-    new Set(news.map((newsItem) => newsItem.category).filter(Boolean))
+    new Set(news.map((newsItem) => newsItem.category).filter((c): c is string => typeof c === 'string' && !!c))
   )
 
   // Filter news by category if selected
@@ -143,10 +163,20 @@ export default function TourismNewsPage() {
     setLoadingNewsId(newsItem.id)
     try {
       // Fetch full news details
-      const response = await fetch(`/api/tourism-news/${newsItem.id}`)
+      const response = await fetch(`/api/tourism-news/${newsItem.id}?language=${language}`)
       if (response.ok) {
         const data = await response.json()
-        setSelectedNews(data.news)
+        // Ensure the fetched news has properly parsed tags
+        const processedNews = {
+          ...data.news,
+          tags: Array.isArray(data.news.tags) ? data.news.tags : 
+                (typeof data.news.tags === 'string' ? 
+                  (() => {
+                    try { return JSON.parse(data.news.tags) } 
+                    catch { return data.news.tags.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag.length > 0) }
+                  })() : [])
+        }
+        setSelectedNews(processedNews)
         setShowNewsModal(true)
       } else {
         toast({
@@ -234,7 +264,7 @@ export default function TourismNewsPage() {
               {/* Badge */}
               <div className="inline-flex items-center px-4 py-2 bg-syria-gold/10 dark:bg-syria-gold/20 border border-syria-gold/30 dark:border-syria-gold/50 rounded-full mb-6">
                 <span className="text-syria-gold dark:text-syria-gold font-semibold text-sm">
-                  {language === "ar" ? "أخبار حية" : language === "fr" ? "Actualités en Direct" : "Live News"}
+                  {language === "ar" ? "أخبار سياحية" : language === "fr" ? "Actualités en Direct" : "Live News"}
                 </span>
               </div>
               
@@ -283,7 +313,7 @@ export default function TourismNewsPage() {
               <Button
                 key={category}
                 variant={selectedCategory === category ? "default" : "outline"}
-                onClick={() => setSelectedCategory(category)}
+                onClick={() => setSelectedCategory(category as string)}
                 className={selectedCategory === category ? "bg-syria-gold hover:bg-syria-dark-gold" : ""}
               >
                 {category}
@@ -350,7 +380,7 @@ export default function TourismNewsPage() {
                 </CardContent>
                 <CardFooter className="flex justify-between">
                   <div className="flex flex-wrap gap-1">
-                    {newsItem.tags?.slice(0, 2).map((tag, index) => (
+                    {Array.isArray(newsItem.tags) && newsItem.tags.slice(0, 2).map((tag, index) => (
                       <Badge key={index} variant="secondary" className="text-xs">
                         {tag}
                       </Badge>

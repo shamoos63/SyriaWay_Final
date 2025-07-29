@@ -34,12 +34,10 @@ export async function POST(request: NextRequest) {
       name: validatedData.name,
       email: validatedData.email,
       phone: validatedData.phone,
-      subject: validatedData.subject || "Educational inquiry",
+      subject: validatedData.subject || (validatedData.type === "EDUCATIONAL_INQUIRY" ? "Educational inquiry" : "General inquiry"),
       message: validatedData.message,
-      category: category,
-      userId: validatedData.userId,
-      status: "New",
-      priority: "Normal",
+      status: "PENDING",
+      priority: "NORMAL",
     }).returning()
 
     return NextResponse.json({ 

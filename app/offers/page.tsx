@@ -94,7 +94,7 @@ export default function SpecialOffersPage() {
     setFilteredOffers(filtered)
   }
 
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = (type: string | undefined) => {
     switch (type) {
       case 'HOTEL': return <Hotel className="h-4 w-4" />
       case 'CAR': return <Car className="h-4 w-4" />
@@ -103,7 +103,7 @@ export default function SpecialOffersPage() {
     }
   }
 
-  const getTypeColor = (type: string) => {
+  const getTypeColor = (type: string | undefined) => {
     switch (type) {
       case 'HOTEL': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
       case 'CAR': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
@@ -243,7 +243,7 @@ export default function SpecialOffersPage() {
                     <div className="absolute top-3 left-3">
                       <Badge className={`${getTypeColor(offer.serviceType)} flex items-center gap-1`}>
                         {getTypeIcon(offer.serviceType)}
-                        {offer.serviceType}
+                        {offer.serviceType || 'Other'}
                       </Badge>
                     </div>
                     <div className="absolute top-3 right-3">
@@ -264,7 +264,7 @@ export default function SpecialOffersPage() {
                     <div className="flex items-center gap-2 mb-2">
                       <Calendar className="h-4 w-4 text-gray-400" />
                       <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {new Date(offer.startDate).toLocaleDateString()} - {new Date(offer.endDate).toLocaleDateString()}
+                        {offer.startDate ? new Date(offer.startDate).toLocaleDateString() : 'N/A'} - {offer.endDate ? new Date(offer.endDate).toLocaleDateString() : 'N/A'}
                       </span>
                     </div>
 

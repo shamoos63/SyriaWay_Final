@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { db } from '@/lib/db'
-import { hotels, bookings, rooms } from '@/drizzle/schema'
+import { hotels, bookings, rooms, reviews } from '@/drizzle/schema'
 import { eq, and, sql } from 'drizzle-orm'
 
 // GET - Fetch hotel owner statistics
@@ -68,8 +68,11 @@ export async function GET(request: NextRequest) {
     // Get average rating
     const avgRatingResult = await db
       .select({ avgRating: sql`avg(rating)` })
-      .from(hotels)
-      .where(sql`${hotels.id} IN (${hotelIds.join(',')})`)
+      .from(reviews)
+      .where(and(
+        eq(reviews.serviceType, 'HOTEL'),
+        sql`${reviews.serviceId} IN (${hotelIds.join(',')})`
+      ))
 
     const stats = {
       totalHotels: hotelIds.length,

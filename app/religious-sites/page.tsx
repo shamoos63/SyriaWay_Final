@@ -221,14 +221,7 @@ export default function ReligiousSites() {
         <SiteDetailsModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          title={selectedSite.name[language as keyof typeof selectedSite.name] || selectedSite.name.en}
-          description={
-            selectedSite.description[language as keyof typeof selectedSite.description] || selectedSite.description.en
-          }
-          image={selectedSite.image}
-          location={selectedSite.location[language as keyof typeof selectedSite.location] || selectedSite.location.en}
-          openingHours={selectedSite.openingHours}
-          entryFee={selectedSite.entryFee}
+          site={selectedSite}
         />
       )}
       <Footer />

@@ -37,8 +37,8 @@ interface Blog {
   likes: number
   dislikes: number
   views: number
-  createdAt: Date
-  publishedAt?: Date
+  createdAt: string
+  publishedAt?: string
   author: {
     id: string
     name?: string
@@ -299,7 +299,7 @@ export default function BlogDetails() {
                   />
 
                   {/* Tags */}
-                  {blog.tags && blog.tags.length > 0 && (
+                  {blog.tags && Array.isArray(blog.tags) && blog.tags.length > 0 && (
                     <div className="mt-8 pt-6 border-t">
                       <div className="flex items-center gap-2 mb-3">
                         <Tag className="h-4 w-4 text-syria-gold" />

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { hotels, hotelRooms } from '@/drizzle/schema'
+import { hotels, rooms as dbRooms } from '@/drizzle/schema'
 import { eq } from 'drizzle-orm'
 
 // GET - Fetch single hotel by ID
@@ -25,12 +25,12 @@ export async function GET(
       )
     }
 
-    let rooms = []
+    let rooms: any[] = []
     if (includeRooms) {
       rooms = await db
         .select()
-        .from(hotelRooms)
-        .where(eq(hotelRooms.hotelId, parseInt(id)))
+        .from(dbRooms)
+        .where(eq(dbRooms.hotelId, parseInt(id)))
     }
 
     return NextResponse.json({ 

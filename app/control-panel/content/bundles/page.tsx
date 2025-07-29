@@ -6,8 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Edit, Trash2, Loader2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { PlusCircle, Edit, Trash2, Loader2, Globe } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { useLanguage } from "@/lib/i18n/language-context";
 
 interface Bundle {
   id: string;
@@ -29,9 +32,25 @@ interface Bundle {
   isFeatured: boolean;
   createdAt: string;
   updatedAt: string;
+  translations?: BundleTranslation[];
 }
 
+interface BundleTranslation {
+  id?: number;
+  bundleId: number;
+  language: string;
+  name: string;
+  description?: string;
+}
+
+const languages = [
+  { code: 'en', name: 'English', dbCode: 'ENGLISH' },
+  { code: 'ar', name: 'العربية', dbCode: 'ARABIC' },
+  { code: 'fr', name: 'Français', dbCode: 'FRENCH' }
+];
+
 export default function BundlesPage() {
+  const { language, t } = useLanguage();
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -57,6 +76,7 @@ export default function BundlesPage() {
     isActive: true,
     isFeatured: false,
   });
+  const [translations, setTranslations] = useState<Record<string, BundleTranslation>>({});
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
@@ -66,13 +86,28 @@ export default function BundlesPage() {
   const fetchBundles = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/bundles");
+      const res = await fetch(`/api/bundles?language=${language}`);
       const data = await res.json();
       setBundles(data.bundles);
     } catch (e) {
       setError("Failed to fetch bundles");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchBundleWithTranslations = async (bundleId: string) => {
+    try {
+      const response = await fetch(`/api/bundles/${bundleId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch bundle details');
+      }
+      
+      const data = await response.json();
+      return data.bundle;
+    } catch (err: any) {
+      console.error('Error fetching bundle with translations:', err);
+      return null;
     }
   };
 
@@ -96,31 +131,185 @@ export default function BundlesPage() {
       isActive: true,
       isFeatured: false,
     });
+    
+    // Initialize empty translations
+    const translationsMap: Record<string, BundleTranslation> = {};
+    languages.forEach(lang => {
+      translationsMap[lang.dbCode] = {
+        bundleId: 0,
+        language: lang.dbCode,
+        name: "",
+        description: ""
+      };
+    });
+    setTranslations(translationsMap);
+    
     setIsDialogOpen(true);
   };
 
-  const openEditDialog = (bundle: Bundle) => {
+  const openEditDialog = async (bundle: Bundle) => {
     setIsEdit(true);
     setSelectedBundle(bundle);
-    setForm({
-      name: bundle.name || "",
-      description: bundle.description || "",
-      duration: bundle.duration,
-      maxGuests: bundle.maxGuests,
-      price: bundle.price,
-      originalPrice: bundle.originalPrice || 0,
-      currency: bundle.currency,
-      includesHotel: bundle.includesHotel,
-      includesCar: bundle.includesCar,
-      includesGuide: bundle.includesGuide,
-      itinerary: bundle.itinerary || "",
-      inclusions: (bundle.inclusions || []).join(", "),
-      exclusions: (bundle.exclusions || []).join(", "),
-      images: (bundle.images || []).join(", "),
-      isActive: bundle.isActive,
-      isFeatured: bundle.isFeatured,
-    });
+    
+    // Fetch bundle with translations
+    const bundleWithTranslations = await fetchBundleWithTranslations(bundle.id);
+    
+    if (bundleWithTranslations) {
+      setForm({
+        name: bundleWithTranslations.name || bundle.name,
+        description: bundleWithTranslations.description || bundle.description || "",
+        duration: bundleWithTranslations.duration || bundle.duration || 1,
+        maxGuests: bundleWithTranslations.maxGuests || bundle.maxGuests || 2,
+        price: bundleWithTranslations.price || bundle.price || 0,
+        originalPrice: bundleWithTranslations.originalPrice || bundle.originalPrice || 0,
+        currency: bundleWithTranslations.currency || bundle.currency || "USD",
+        includesHotel: bundleWithTranslations.includesHotel || bundle.includesHotel || false,
+        includesCar: bundleWithTranslations.includesCar || bundle.includesCar || false,
+        includesGuide: bundleWithTranslations.includesGuide || bundle.includesGuide || false,
+        itinerary: bundleWithTranslations.itinerary || bundle.itinerary || "",
+        inclusions: (() => {
+          try {
+            if (Array.isArray(bundleWithTranslations.inclusions)) return bundleWithTranslations.inclusions.join(", ");
+            if (Array.isArray(bundle.inclusions)) return bundle.inclusions.join(", ");
+            if (typeof bundleWithTranslations.inclusions === 'string') return JSON.parse(bundleWithTranslations.inclusions || '[]').join(", ");
+            if (typeof bundle.inclusions === 'string') return JSON.parse(bundle.inclusions || '[]').join(", ");
+            return "";
+          } catch (error) {
+            console.error('Error parsing inclusions:', error);
+            return "";
+          }
+        })(),
+        exclusions: (() => {
+          try {
+            if (Array.isArray(bundleWithTranslations.exclusions)) return bundleWithTranslations.exclusions.join(", ");
+            if (Array.isArray(bundle.exclusions)) return bundle.exclusions.join(", ");
+            if (typeof bundleWithTranslations.exclusions === 'string') return JSON.parse(bundleWithTranslations.exclusions || '[]').join(", ");
+            if (typeof bundle.exclusions === 'string') return JSON.parse(bundle.exclusions || '[]').join(", ");
+            return "";
+          } catch (error) {
+            console.error('Error parsing exclusions:', error);
+            return "";
+          }
+        })(),
+        images: (() => {
+          try {
+            if (Array.isArray(bundleWithTranslations.images)) return bundleWithTranslations.images.join(", ");
+            if (Array.isArray(bundle.images)) return bundle.images.join(", ");
+            if (typeof bundleWithTranslations.images === 'string') return JSON.parse(bundleWithTranslations.images || '[]').join(", ");
+            if (typeof bundle.images === 'string') return JSON.parse(bundle.images || '[]').join(", ");
+            return "";
+          } catch (error) {
+            console.error('Error parsing images:', error);
+            return "";
+          }
+        })(),
+        isActive: bundleWithTranslations.isActive || bundle.isActive || true,
+        isFeatured: bundleWithTranslations.isFeatured || bundle.isFeatured || false,
+      });
+
+      // Initialize translations
+      const translationsMap: Record<string, BundleTranslation> = {};
+      
+      // Add English as main content
+      translationsMap['ENGLISH'] = {
+        bundleId: parseInt(bundle.id),
+        language: 'ENGLISH',
+        name: bundleWithTranslations.name || bundle.name,
+        description: bundleWithTranslations.description || bundle.description || ""
+      };
+
+      // Add existing translations
+      if (bundleWithTranslations.translations) {
+        bundleWithTranslations.translations.forEach((translation: BundleTranslation) => {
+          translationsMap[translation.language] = translation;
+        });
+      }
+
+      // Initialize empty translations for missing languages
+      languages.forEach(lang => {
+        if (!translationsMap[lang.dbCode]) {
+          translationsMap[lang.dbCode] = {
+            bundleId: parseInt(bundle.id),
+            language: lang.dbCode,
+            name: "",
+            description: ""
+          };
+        }
+      });
+
+      setTranslations(translationsMap);
+    } else {
+      // Fallback to original bundle data
+      setForm({
+        name: bundle.name,
+        description: bundle.description || "",
+        duration: bundle.duration || 1,
+        maxGuests: bundle.maxGuests || 2,
+        price: bundle.price || 0,
+        originalPrice: bundle.originalPrice || 0,
+        currency: bundle.currency || "USD",
+        includesHotel: bundle.includesHotel || false,
+        includesCar: bundle.includesCar || false,
+        includesGuide: bundle.includesGuide || false,
+        itinerary: bundle.itinerary || "",
+        inclusions: (() => {
+          try {
+            if (Array.isArray(bundle.inclusions)) return bundle.inclusions.join(", ");
+            if (typeof bundle.inclusions === 'string') return JSON.parse(bundle.inclusions || '[]').join(", ");
+            return "";
+          } catch (error) {
+            console.error('Error parsing inclusions:', error);
+            return "";
+          }
+        })(),
+        exclusions: (() => {
+          try {
+            if (Array.isArray(bundle.exclusions)) return bundle.exclusions.join(", ");
+            if (typeof bundle.exclusions === 'string') return JSON.parse(bundle.exclusions || '[]').join(", ");
+            return "";
+          } catch (error) {
+            console.error('Error parsing exclusions:', error);
+            return "";
+          }
+        })(),
+        images: (() => {
+          try {
+            if (Array.isArray(bundle.images)) return bundle.images.join(", ");
+            if (typeof bundle.images === 'string') return JSON.parse(bundle.images || '[]').join(", ");
+            return "";
+          } catch (error) {
+            console.error('Error parsing images:', error);
+            return "";
+          }
+        })(),
+        isActive: bundle.isActive || true,
+        isFeatured: bundle.isFeatured || false,
+      });
+      
+      // Initialize empty translations
+      const translationsMap: Record<string, BundleTranslation> = {};
+      languages.forEach(lang => {
+        translationsMap[lang.dbCode] = {
+          bundleId: parseInt(bundle.id),
+          language: lang.dbCode,
+          name: lang.dbCode === 'ENGLISH' ? bundle.name : "",
+          description: lang.dbCode === 'ENGLISH' ? (bundle.description || "") : ""
+        };
+      });
+      setTranslations(translationsMap);
+    }
+    
     setIsDialogOpen(true);
+  };
+
+  const updateTranslation = (language: string, field: keyof BundleTranslation, value: string) => {
+    setTranslations(prev => ({
+      ...prev,
+      [language]: {
+        ...prev[language],
+        [field]: value
+      }
+    }));
   };
 
   const handleDelete = async (id: string) => {
@@ -202,6 +391,16 @@ export default function BundlesPage() {
   const handleSubmit = async () => {
     setActionLoading(true);
     try {
+      // Update English translation with form data
+      const updatedTranslations = {
+        ...translations,
+        ENGLISH: {
+          ...translations.ENGLISH,
+          name: form.name,
+          description: form.description
+        }
+      };
+
       const payload = {
         ...form,
         duration: Number(form.duration),
@@ -211,7 +410,9 @@ export default function BundlesPage() {
         inclusions: form.inclusions.split(",").map((s) => s.trim()).filter(Boolean),
         exclusions: form.exclusions.split(",").map((s) => s.trim()).filter(Boolean),
         images: form.images.split(",").map((s) => s.trim()).filter(Boolean),
+        translations: Object.values(updatedTranslations).filter(t => t.name) // Only save translations with name
       };
+      
       if (isEdit && selectedBundle) {
         await fetch(`/api/bundles/${selectedBundle.id}`, {
           method: "PUT",
@@ -293,6 +494,12 @@ export default function BundlesPage() {
                 <div className="mb-2 text-xs">Active: {bundle.isActive ? "Yes" : "No"} | Featured: {bundle.isFeatured ? "Yes" : "No"}</div>
                 <div className="mb-2 text-xs">Inclusions: {(bundle.inclusions || []).join(", ")}</div>
                 <div className="mb-2 text-xs">Exclusions: {(bundle.exclusions || []).join(", ")}</div>
+                {bundle.translations && bundle.translations.length > 0 && (
+                  <div className="mb-2 text-xs">
+                    <Globe className="h-3 w-3 inline mr-1" />
+                    Languages: {bundle.translations.map(t => t.language).join(', ')}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -305,179 +512,221 @@ export default function BundlesPage() {
           <DialogHeader>
             <DialogTitle>{isEdit ? "Edit Bundle" : "Add Bundle"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-6 py-4">
-            {/* Basic Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Bundle Name *</label>
-                <Input 
-                  placeholder="Enter bundle name" 
-                  value={form.name} 
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))} 
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Currency</label>
-                <Input 
-                  placeholder="USD" 
-                  value={form.currency} 
-                  onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} 
-                />
-              </div>
-            </div>
+          <Tabs defaultValue="ENGLISH" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              {languages.map(lang => (
+                <TabsTrigger key={lang.dbCode} value={lang.dbCode}>
+                  <Globe className="h-4 w-4 mr-2" /> 
+                  {lang.name}
+                  {translations[lang.dbCode]?.name && (
+                    <Badge variant="secondary" className="ml-2 text-xs">✓</Badge>
+                  )}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            
+            <TabsContent value="ENGLISH">
+              <div className="space-y-6 py-4">
+                {/* Basic Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Bundle Name *</label>
+                    <Input 
+                      placeholder="Enter bundle name" 
+                      value={form.name} 
+                      onChange={e => setForm(f => ({ ...f, name: e.target.value }))} 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Currency</label>
+                    <Input 
+                      placeholder="USD" 
+                      value={form.currency} 
+                      onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} 
+                    />
+                  </div>
+                </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
-              <Textarea 
-                placeholder="Enter bundle description" 
-                value={form.description} 
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))} 
-                rows={3}
-              />
-            </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Description</label>
+                  <Textarea 
+                    placeholder="Enter bundle description" 
+                    value={form.description} 
+                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))} 
+                    rows={3}
+                  />
+                </div>
 
-            {/* Duration and Guests */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Duration (days) *</label>
-                <Input 
-                  type="number" 
-                  placeholder="5" 
-                  value={form.duration} 
-                  onChange={e => setForm(f => ({ ...f, duration: Number(e.target.value) }))} 
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Maximum Guests *</label>
-                <Input 
-                  type="number" 
-                  placeholder="4" 
-                  value={form.maxGuests} 
-                  onChange={e => setForm(f => ({ ...f, maxGuests: Number(e.target.value) }))} 
-                />
-              </div>
-            </div>
+                {/* Duration and Guests */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Duration (days) *</label>
+                    <Input 
+                      type="number" 
+                      placeholder="5" 
+                      value={form.duration} 
+                      onChange={e => setForm(f => ({ ...f, duration: Number(e.target.value) }))} 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Maximum Guests *</label>
+                    <Input 
+                      type="number" 
+                      placeholder="4" 
+                      value={form.maxGuests} 
+                      onChange={e => setForm(f => ({ ...f, maxGuests: Number(e.target.value) }))} 
+                    />
+                  </div>
+                </div>
 
-            {/* Pricing */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Price *</label>
-                <Input 
-                  type="number" 
-                  placeholder="299.99" 
-                  value={form.price} 
-                  onChange={e => setForm(f => ({ ...f, price: Number(e.target.value) }))} 
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Original Price (for discounts)</label>
-                <Input 
-                  type="number" 
-                  placeholder="399.99" 
-                  value={form.originalPrice} 
-                  onChange={e => setForm(f => ({ ...f, originalPrice: Number(e.target.value) }))} 
-                />
-              </div>
-            </div>
+                {/* Pricing */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Price *</label>
+                    <Input 
+                      type="number" 
+                      placeholder="299.99" 
+                      value={form.price} 
+                      onChange={e => setForm(f => ({ ...f, price: Number(e.target.value) }))} 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Original Price (for discounts)</label>
+                    <Input 
+                      type="number" 
+                      placeholder="399.99" 
+                      value={form.originalPrice} 
+                      onChange={e => setForm(f => ({ ...f, originalPrice: Number(e.target.value) }))} 
+                    />
+                  </div>
+                </div>
 
-            {/* Services Included */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Services Included</label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg">
-                <label className="flex items-center gap-2">
-                  <input 
-                    type="checkbox" 
-                    checked={form.includesHotel} 
-                    onChange={e => setForm(f => ({ ...f, includesHotel: e.target.checked }))} 
-                  /> 
-                  Hotel Accommodation
-                </label>
-                <label className="flex items-center gap-2">
-                  <input 
-                    type="checkbox" 
-                    checked={form.includesCar} 
-                    onChange={e => setForm(f => ({ ...f, includesCar: e.target.checked }))} 
-                  /> 
-                  Car Rental
-                </label>
-                <label className="flex items-center gap-2">
-                  <input 
-                    type="checkbox" 
-                    checked={form.includesGuide} 
-                    onChange={e => setForm(f => ({ ...f, includesGuide: e.target.checked }))} 
-                  /> 
-                  Tour Guide
-                </label>
-              </div>
-            </div>
+                {/* Services Included */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Services Included</label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg">
+                    <label className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        checked={form.includesHotel} 
+                        onChange={e => setForm(f => ({ ...f, includesHotel: e.target.checked }))} 
+                      /> 
+                      {t.bundles.features.hotelAccommodation}
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        checked={form.includesCar} 
+                        onChange={e => setForm(f => ({ ...f, includesCar: e.target.checked }))} 
+                      /> 
+                      {t.bundles.features.carRentalService}
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        checked={form.includesGuide} 
+                        onChange={e => setForm(f => ({ ...f, includesGuide: e.target.checked }))} 
+                      /> 
+                      {t.bundles.features.professionalTourGuide}
+                    </label>
+                  </div>
+                </div>
 
-            {/* Status */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Bundle Status</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
-                <label className="flex items-center gap-2">
-                  <input 
-                    type="checkbox" 
-                    checked={form.isActive} 
-                    onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} 
-                  /> 
-                  Active (visible to customers)
-                </label>
-                <label className="flex items-center gap-2">
-                  <input 
-                    type="checkbox" 
-                    checked={form.isFeatured} 
-                    onChange={e => setForm(f => ({ ...f, isFeatured: e.target.checked }))} 
-                  /> 
-                  Featured (highlighted on homepage)
-                </label>
-              </div>
-            </div>
+                {/* Status */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Bundle Status</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
+                    <label className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        checked={form.isActive} 
+                        onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} 
+                      /> 
+                      Active (visible to customers)
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        checked={form.isFeatured} 
+                        onChange={e => setForm(f => ({ ...f, isFeatured: e.target.checked }))} 
+                      /> 
+                      Featured (highlighted on homepage)
+                    </label>
+                  </div>
+                </div>
 
-            {/* Itinerary */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Itinerary</label>
-              <Textarea 
-                placeholder="Day 1: Arrival in Damascus, Day 2: Old City Tour..." 
-                value={form.itinerary} 
-                onChange={e => setForm(f => ({ ...f, itinerary: e.target.value }))} 
-                rows={3}
-              />
-            </div>
+                {/* Itinerary */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Itinerary</label>
+                  <Textarea 
+                    placeholder="Day 1: Arrival in Damascus, Day 2: Old City Tour..." 
+                    value={form.itinerary} 
+                    onChange={e => setForm(f => ({ ...f, itinerary: e.target.value }))} 
+                    rows={3}
+                  />
+                </div>
 
-            {/* Inclusions and Exclusions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">What's Included</label>
-                <Textarea 
-                  placeholder="Hotel accommodation, Daily breakfast, Airport transfers (comma separated)" 
-                  value={form.inclusions} 
-                  onChange={e => setForm(f => ({ ...f, inclusions: e.target.value }))} 
-                  rows={4}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">What's Not Included</label>
-                <Textarea 
-                  placeholder="International flights, Lunch and dinner, Personal expenses (comma separated)" 
-                  value={form.exclusions} 
-                  onChange={e => setForm(f => ({ ...f, exclusions: e.target.value }))} 
-                  rows={4}
-                />
-              </div>
-            </div>
+                {/* Inclusions and Exclusions */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">What's Included</label>
+                    <Textarea 
+                      placeholder={`${t.bundles.features.hotelAccommodation}, Daily breakfast, Airport transfers (comma separated)`} 
+                      value={form.inclusions} 
+                      onChange={e => setForm(f => ({ ...f, inclusions: e.target.value }))} 
+                      rows={4}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">What's Not Included</label>
+                    <Textarea 
+                      placeholder="International flights, Lunch and dinner, Personal expenses (comma separated)" 
+                      value={form.exclusions} 
+                      onChange={e => setForm(f => ({ ...f, exclusions: e.target.value }))} 
+                      rows={4}
+                    />
+                  </div>
+                </div>
 
-            {/* Images */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Image URLs</label>
-              <Textarea 
-                placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg (comma separated URLs)" 
-                value={form.images} 
-                onChange={e => setForm(f => ({ ...f, images: e.target.value }))} 
-                rows={2}
-              />
-            </div>
-          </div>
+                {/* Images */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Image URLs</label>
+                  <Textarea 
+                    placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg (comma separated URLs)" 
+                    value={form.images} 
+                    onChange={e => setForm(f => ({ ...f, images: e.target.value }))} 
+                    rows={2}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Translation Tabs */}
+            {languages.slice(1).map(lang => (
+              <TabsContent key={lang.dbCode} value={lang.dbCode}>
+                <div className="space-y-6 py-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Bundle Name</label>
+                    <Input 
+                      placeholder="Enter bundle name" 
+                      value={translations[lang.dbCode]?.name || ""} 
+                      onChange={e => updateTranslation(lang.dbCode, 'name', e.target.value)} 
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Description</label>
+                    <Textarea 
+                      placeholder="Enter bundle description" 
+                      value={translations[lang.dbCode]?.description || ""} 
+                      onChange={e => updateTranslation(lang.dbCode, 'description', e.target.value)} 
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancel

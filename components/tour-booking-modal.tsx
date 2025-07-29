@@ -147,28 +147,37 @@ export function TourBookingModal({ tour, isOpen, onClose }: TourBookingModalProp
     setLoading(true)
 
     try {
+      const bookingData = {
+        serviceType: 'TOUR',
+        serviceId: tour.id,
+        startDate: tour.startDate,
+        endDate: tour.endDate,
+        totalPrice: calculateTotalPrice(),
+        specialRequests: form.specialRequests || null,
+      }
+      
+      console.log('Sending booking data:', bookingData)
+      console.log('User ID:', user.id)
+
       const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${user.id}`
         },
-        body: JSON.stringify({
-          serviceType: 'TOUR',
-          serviceId: tour.id,
-          startDate: tour.startDate,
-          endDate: tour.endDate,
-          totalAmount: calculateTotalPrice(),
-          specialRequests: form.specialRequests || null,
-        })
+        body: JSON.stringify(bookingData)
       })
 
+      console.log('Response status:', response.status)
+      
       if (!response.ok) {
         const error = await response.json()
+        console.error('API Error:', error)
         throw new Error(error.error || 'Failed to create booking')
       }
 
       const result = await response.json()
+      console.log('Booking result:', result)
 
       toast({
         title: t.booking?.bookingSuccessful,

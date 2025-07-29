@@ -109,7 +109,7 @@ export default function DashboardLayout({
           className="fixed left-4 bottom-4 z-50 rounded-full shadow-lg bg-syria-gold text-white hover:bg-syria-gold/90 dark:bg-gold-accent dark:hover:bg-gold-accent/90 p-3 md:hidden"
           onClick={() => setSidebarOpen(!sidebarOpen)}
           aria-label={
-            sidebarOpen ? t.dashboard?.hideSidebar || "Hide Sidebar" : t.dashboard?.showSidebar || "Show Sidebar"
+            sidebarOpen ? "Hide Sidebar" : "Show Sidebar"
           }
         >
           {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

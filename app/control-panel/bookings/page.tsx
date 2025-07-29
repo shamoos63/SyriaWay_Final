@@ -32,6 +32,7 @@ import {
 } from "lucide-react"
 import { BookingModal } from "@/components/control-panel/booking-modal"
 import { DeleteConfirmationDialog } from "@/components/user-dashboard/delete-confirmation-dialog"
+import { SpecialTourRequestModal } from "@/components/control-panel/special-tour-request-modal"
 
 interface Booking {
   id: string
@@ -122,29 +123,31 @@ interface Booking {
 
 interface SpecialTourRequest {
   id: string
-  customerName: string
-  customerEmail: string
-  customerPhone?: string
-  tourType: string
+  userId: string
+  assignedGuideId?: string
+  title: string
+  description: string
   preferredDates?: string
-  groupSize?: number
-  specialRequirements?: string
+  numberOfPeople: number
   budget?: number
-  message?: string
+  currency?: string
+  destinations?: string
+  specialRequirements?: string
   status: string
+  response?: string
+  respondedAt?: string
   createdAt: string
   updatedAt: string
+  user?: {
+    id: string
+    name: string
+    email: string
+  }
   guide?: {
     id: string
     name: string
     email: string
-    bio?: string
-    experience?: number
-    specialties?: any
-    dailyRate?: number
-    currency: string
-  } | null
-  needsGuideAssignment: boolean
+  }
 }
 
 const SERVICE_TYPES = [
@@ -188,6 +191,10 @@ export default function AdminBookingsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [bookingToDelete, setBookingToDelete] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [specialRequestModalOpen, setSpecialRequestModalOpen] = useState(false)
+  const [editingSpecialRequest, setEditingSpecialRequest] = useState<SpecialTourRequest | null>(null)
+  const [viewingSpecialRequest, setViewingSpecialRequest] = useState<SpecialTourRequest | null>(null)
+  const [specialRequestSaving, setSpecialRequestSaving] = useState(false)
 
   useEffect(() => {
     if (activeTab === 'bookings') {
@@ -354,6 +361,94 @@ export default function AdminBookingsPage() {
       })
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleEditSpecialRequest = async (request: SpecialTourRequest) => {
+    setEditingSpecialRequest(request)
+    setSpecialRequestModalOpen(true)
+  }
+
+  const handleViewSpecialRequest = async (request: SpecialTourRequest) => {
+    setViewingSpecialRequest(request)
+    setSpecialRequestModalOpen(true)
+  }
+
+  const handleSaveSpecialRequest = async (formData: any) => {
+    try {
+      setSpecialRequestSaving(true)
+      
+      const response = await fetch(`/api/admin/special-tour-requests/${formData.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user?.id}`
+        },
+        body: JSON.stringify(formData)
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setSpecialRequests(specialRequests.map(request => 
+          request.id === formData.id ? { ...request, ...result.request } : request
+        ))
+        setSpecialRequestModalOpen(false)
+        setEditingSpecialRequest(null)
+        setViewingSpecialRequest(null)
+        toast({
+          title: "Success",
+          description: "Special tour request updated successfully"
+        })
+      } else {
+        const error = await response.json()
+        toast({
+          title: "Error",
+          description: error.error || "Failed to update special tour request",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error('Error updating special tour request:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update special tour request",
+        variant: "destructive"
+      })
+    } finally {
+      setSpecialRequestSaving(false)
+    }
+  }
+
+  const handleDeleteSpecialRequest = async (id: string) => {
+    try {
+      const response = await fetch(`/api/admin/special-tour-requests/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${user?.id}`
+        }
+      })
+
+      if (response.ok) {
+        setSpecialRequests(specialRequests.filter(request => request.id !== id))
+        toast({
+          title: "Success",
+          description: "Special tour request deleted successfully"
+        })
+      } else {
+        const error = await response.json()
+        toast({
+          title: "Error",
+          description: error.error || "Failed to delete special tour request",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error('Error deleting special tour request:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete special tour request",
+        variant: "destructive"
+      })
     }
   }
 
@@ -751,24 +846,19 @@ export default function AdminBookingsPage() {
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
                                   <Compass className="h-4 w-4 text-gray-500" />
-                                  <h2 className="text-xl font-bold">{request.tourType} Tour Request</h2>
+                                  <h2 className="text-xl font-bold">{request.title}</h2>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <Badge variant={request.status === 'PENDING' ? 'secondary' : request.status === 'ACCEPTED' ? 'default' : 'destructive'}>
                                     {request.status}
                                   </Badge>
-                                  {request.needsGuideAssignment && (
-                                    <Badge variant="outline" className="text-orange-600 border-orange-600">
-                                      Needs Guide
-                                    </Badge>
-                                  )}
                                 </div>
                               </div>
                               
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                                 <div className="flex items-center gap-2 text-sm">
                                   <User className="h-4 w-4 text-gray-500" />
-                                  <span><strong>Customer:</strong> {request.customerName}</span>
+                                  <span><strong>Customer:</strong> {request.user?.name || 'N/A'}</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm">
                                   <Calendar className="h-4 w-4 text-gray-500" />
@@ -776,11 +866,11 @@ export default function AdminBookingsPage() {
                                 </div>
                                 <div className="flex items-center gap-2 text-sm">
                                   <Users className="h-4 w-4 text-gray-500" />
-                                  <span><strong>Group Size:</strong> {request.groupSize || 'Not specified'}</span>
+                                  <span><strong>Group Size:</strong> {request.numberOfPeople}</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm">
                                   <DollarSign className="h-4 w-4 text-gray-500" />
-                                  <span><strong>Budget:</strong> {request.budget ? formatCurrency(request.budget, 'USD') : 'Not specified'}</span>
+                                  <span><strong>Budget:</strong> {request.budget ? formatCurrency(request.budget, request.currency || 'USD') : 'Not specified'}</span>
                                 </div>
                               </div>
                               
@@ -790,9 +880,9 @@ export default function AdminBookingsPage() {
                                 </div>
                               )}
                               
-                              {request.message && (
+                              {request.description && (
                                 <div className="text-sm text-gray-600 mb-2">
-                                  <strong>Message:</strong> {request.message}
+                                  <strong>Description:</strong> {request.description}
                                 </div>
                               )}
                               
@@ -809,7 +899,7 @@ export default function AdminBookingsPage() {
                                 </div>
                                 <div className="flex items-center">
                                   <User className="mr-1 h-4 w-4" />
-                                  {request.customerEmail}
+                                  {request.user?.email || 'N/A'}
                                 </div>
                               </div>
                             </div>
@@ -818,18 +908,21 @@ export default function AdminBookingsPage() {
                               <Button 
                                 variant="outline" 
                                 size="sm"
-                                onClick={() => {
-                                  // Implement edit functionality
-                                }}
+                                onClick={() => handleEditSpecialRequest(request)}
                               >
                                 <Edit className="mr-2 h-4 w-4" /> Edit
                               </Button>
                               <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleViewSpecialRequest(request)}
+                              >
+                                <Eye className="mr-2 h-4 w-4" /> View
+                              </Button>
+                              <Button 
                                 variant="destructive" 
                                 size="sm" 
-                                onClick={() => {
-                                  // Implement delete functionality
-                                }}
+                                onClick={() => handleDeleteSpecialRequest(request.id)}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" /> Delete
                               </Button>
@@ -862,7 +955,16 @@ export default function AdminBookingsPage() {
         onConfirm={confirmDelete}
         title="Delete Booking"
         description="Are you sure you want to delete this booking? This action cannot be undone."
-        entityType="booking"
+      />
+
+      {/* Special Tour Request Modal */}
+      <SpecialTourRequestModal
+        open={specialRequestModalOpen}
+        onOpenChange={setSpecialRequestModalOpen}
+        request={editingSpecialRequest || viewingSpecialRequest}
+        onSave={handleSaveSpecialRequest}
+        loading={specialRequestSaving}
+        mode={viewingSpecialRequest ? 'view' : 'edit'}
       />
     </div>
   )

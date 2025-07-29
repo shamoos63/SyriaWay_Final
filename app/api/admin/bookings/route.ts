@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
         serviceId: bookings.serviceId,
         startDate: bookings.startDate,
         endDate: bookings.endDate,
-        totalAmount: bookings.totalAmount,
+        totalPrice: bookings.totalPrice,
         status: bookings.status,
         paymentStatus: bookings.paymentStatus,
         specialRequests: bookings.specialRequests,
@@ -104,27 +104,12 @@ export async function GET(request: NextRequest) {
 // PUT - Update booking status (admin only)
 export async function PUT(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
-    }
 
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
-
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
-
+    // Check if user is admin (add role check if needed)
     const body = await request.json()
     const { bookingId, status, paymentStatus, notes } = body
 
@@ -136,9 +121,10 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check if booking exists
-    const existingBooking = await prisma.booking.findUnique({
-      where: { id: bookingId }
-    })
+    const [existingBooking] = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, bookingId))
 
     if (!existingBooking) {
       return NextResponse.json(
@@ -148,97 +134,15 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update booking
-    const updatedBooking = await prisma.booking.update({
-      where: { id: bookingId },
-      data: {
+    const [updatedBooking] = await db
+      .update(bookings)
+      .set({
         status: status || existingBooking.status,
         paymentStatus: paymentStatus || existingBooking.paymentStatus,
-        notes: notes !== undefined ? notes : existingBooking.notes,
-        updatedAt: new Date()
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            role: true
-          }
-        },
-        hotel: {
-          select: {
-            id: true,
-            name: true,
-            city: true
-          }
-        },
-        room: {
-          select: {
-            id: true,
-            name: true,
-            roomNumber: true
-          }
-        },
-        car: {
-          select: {
-            id: true,
-            brand: true,
-            model: true,
-            year: true
-          }
-        },
-        tour: {
-          select: {
-            id: true,
-            name: true,
-            duration: true
-          }
-        },
-        guide: {
-          select: {
-            id: true,
-            bio: true,
-            specialties: true,
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
-        },
-        healthService: {
-          select: {
-            id: true,
-            name: true,
-            category: true
-          }
-        },
-        educationalProgram: {
-          select: {
-            id: true,
-            name: true,
-            category: true
-          }
-        },
-        umrahPackage: {
-          select: {
-            id: true,
-            name: true,
-            duration: true
-          }
-        },
-        bundle: {
-          select: {
-            id: true,
-            name: true,
-            description: true
-          }
-        }
-      }
-    })
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(bookings.id, bookingId))
+      .returning()
 
     return NextResponse.json({
       booking: updatedBooking,

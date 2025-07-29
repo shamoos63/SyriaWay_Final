@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -87,7 +87,7 @@ export default function EditNewsPage() {
   })
 
   // Update formData only if newsArticle exists
-  useState(() => {
+  React.useEffect(() => {
     if (newsArticle) {
       setFormData({
         title: newsArticle.title,

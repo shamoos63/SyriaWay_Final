@@ -40,6 +40,7 @@ interface Bundle {
   isFeatured: boolean
   createdAt: string
   updatedAt: string
+  translations?: any[]
 }
 
 interface WebsiteSettings {
@@ -77,8 +78,8 @@ export default function Home() {
     const fetchBundles = async () => {
       try {
         setLoading(true)
-        // Fetch all active bundles, not just featured ones
-        const response = await fetch('/api/bundles?active=true')
+        // Fetch all active bundles with current language translations
+        const response = await fetch(`/api/bundles?active=true&language=${language}`)
         if (response.ok) {
           const data = await response.json()
           setBundles(data.bundles)
@@ -94,7 +95,7 @@ export default function Home() {
     }
 
     fetchBundles()
-  }, [])
+  }, [language])
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -144,19 +145,23 @@ export default function Home() {
     const features = []
     
     if (bundle.includesHotel) {
-      features.push("Hotel accommodation")
+      features.push(t.bundles.features.hotelAccommodation)
     }
     if (bundle.includesCar) {
-      features.push("Car rental service")
+      features.push(t.bundles.features.carRentalService)
     }
     if (bundle.includesGuide) {
-      features.push("Professional tour guide")
+      features.push(t.bundles.features.professionalTourGuide)
     }
     if (bundle.inclusions) {
       features.push(...bundle.inclusions.slice(0, 3)) // Show first 3 inclusions
     }
     
-    return features.length > 0 ? features : ["Custom itinerary", "Local support", "Flexible booking"]
+    return features.length > 0 ? features : [
+      t.bundles.features.customItinerary, 
+      t.bundles.features.localSupport, 
+      t.bundles.features.flexibleBooking
+    ]
   }
 
   // Features data

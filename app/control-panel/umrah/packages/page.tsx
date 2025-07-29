@@ -13,21 +13,32 @@ import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
 import { Plus, Edit, Trash2, Clock, Users, DollarSign } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+interface UmrahPackageTranslation {
+  id: number
+  packageId: number
+  language: string
+  name: string
+  description: string | null
+}
 
 interface UmrahPackage {
   id: string
   name: string
   description: string | null
   duration: number
-  groupSize: string
-  season: string | null
   price: number
   currency: string
-  includes: string[] | null
-  images: string[] | null
+  maxPilgrims: number | null
+  currentPilgrims: number
+  startDate: string
+  endDate: string
   isActive: boolean
+  isVerified: boolean
   createdAt: string
   updatedAt: string
+  translations: UmrahPackageTranslation[]
 }
 
 export default function UmrahPackagesPage() {
@@ -38,18 +49,24 @@ export default function UmrahPackagesPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingPackage, setEditingPackage] = useState<UmrahPackage | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [translations, setTranslations] = useState<UmrahPackageTranslation[]>([])
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     duration: "",
-    groupSize: "",
-    season: "",
     price: "",
     currency: "USD",
-    includes: [] as string[],
-    images: [] as string[],
+    maxPilgrims: "",
+    startDate: "",
+    endDate: "",
     isActive: true
   })
+
+  const languages = [
+    { code: 'ENGLISH', name: 'English' },
+    { code: 'ARABIC', name: 'العربية' },
+    { code: 'FRENCH', name: 'Français' }
+  ]
 
   useEffect(() => {
     fetchPackages()
@@ -90,14 +107,14 @@ export default function UmrahPackagesPage() {
       name: "",
       description: "",
       duration: "",
-      groupSize: "",
-      season: "",
       price: "",
       currency: "USD",
-      includes: [],
-      images: [],
+      maxPilgrims: "",
+      startDate: "",
+      endDate: "",
       isActive: true
     })
+    setTranslations([])
     setShowModal(true)
   }
 
@@ -107,19 +124,19 @@ export default function UmrahPackagesPage() {
       name: pkg.name,
       description: pkg.description || "",
       duration: pkg.duration.toString(),
-      groupSize: pkg.groupSize,
-      season: pkg.season || "",
       price: pkg.price.toString(),
       currency: pkg.currency,
-      includes: pkg.includes || [],
-      images: pkg.images || [],
+      maxPilgrims: pkg.maxPilgrims?.toString() || "",
+      startDate: pkg.startDate,
+      endDate: pkg.endDate,
       isActive: pkg.isActive
     })
+    setTranslations(pkg.translations || [])
     setShowModal(true)
   }
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.duration || !formData.groupSize || !formData.price) {
+    if (!formData.name || !formData.duration || !formData.price || !formData.startDate || !formData.endDate) {
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields",
@@ -145,7 +162,9 @@ export default function UmrahPackagesPage() {
         body: JSON.stringify({
           ...formData,
           duration: parseInt(formData.duration),
-          price: parseFloat(formData.price)
+          price: parseFloat(formData.price),
+          maxPilgrims: formData.maxPilgrims ? parseInt(formData.maxPilgrims) : null,
+          translations
         })
       })
 
@@ -205,46 +224,24 @@ export default function UmrahPackagesPage() {
     }
   }
 
-  const addIncludeItem = () => {
-    setFormData(prev => ({
-      ...prev,
-      includes: [...prev.includes, ""]
-    }))
+
+
+  const updateTranslation = (language: string, field: 'name' | 'description', value: string) => {
+    setTranslations(prev => {
+      const existing = prev.find(t => t.language === language)
+      if (existing) {
+        return prev.map(t => 
+          t.language === language ? { ...t, [field]: value } : t
+        )
+      } else {
+        return [...prev, { id: 0, packageId: 0, language, name: '', description: '', [field]: value }]
+      }
+    })
   }
 
-  const updateIncludeItem = (index: number, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      includes: prev.includes.map((item, i) => i === index ? value : item)
-    }))
-  }
-
-  const removeIncludeItem = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      includes: prev.includes.filter((_, i) => i !== index)
-    }))
-  }
-
-  const addImageUrl = () => {
-    setFormData(prev => ({
-      ...prev,
-      images: [...prev.images, ""]
-    }))
-  }
-
-  const updateImageUrl = (index: number, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.map((item, i) => i === index ? value : item)
-    }))
-  }
-
-  const removeImageUrl = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }))
+  const getTranslationValue = (language: string, field: 'name' | 'description') => {
+    const translation = translations.find(t => t.language === language)
+    return translation?.[field] || ''
   }
 
   return (
@@ -276,15 +273,11 @@ export default function UmrahPackagesPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {packages.map((pkg) => (
             <Card key={pkg.id} className="overflow-hidden">
-              <div className="relative h-48 w-full">
-                <img 
-                  src={pkg.images && pkg.images.length > 0 ? pkg.images[0] : "/the-kaaba.png"} 
-                  alt={pkg.name}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = "/the-kaaba.png"
-                  }}
-                />
+              <div className="relative h-48 w-full bg-gradient-to-br from-syria-gold/20 to-syria-dark-gold/20 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">🕋</div>
+                  <div className="text-sm text-gray-600">Umrah Package</div>
+                </div>
                 <div className="absolute top-2 right-2">
                   <Badge variant={pkg.isActive ? "default" : "secondary"}>
                     {pkg.isActive ? "Active" : "Inactive"}
@@ -294,6 +287,15 @@ export default function UmrahPackagesPage() {
               <CardHeader>
                 <CardTitle className="text-lg">{pkg.name}</CardTitle>
                 <CardDescription className="line-clamp-2">{pkg.description}</CardDescription>
+                {pkg.translations && pkg.translations.length > 0 && (
+                  <div className="flex gap-1 mt-2">
+                    {pkg.translations.map((translation) => (
+                      <Badge key={translation.language} variant="outline" className="text-xs">
+                        {translation.language}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 mb-4">
@@ -303,15 +305,17 @@ export default function UmrahPackagesPage() {
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Users className="h-4 w-4 text-syria-gold" />
-                    <span>{pkg.groupSize}</span>
+                    <span>{pkg.maxPilgrims || 'Unlimited'} pilgrims</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <DollarSign className="h-4 w-4 text-syria-gold" />
                     <span>${pkg.price} {pkg.currency}</span>
                   </div>
-                  {pkg.season && (
-                    <Badge variant="outline">{pkg.season}</Badge>
-                  )}
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-xs text-gray-500">
+                      {new Date(pkg.startDate).toLocaleDateString()} - {new Date(pkg.endDate).toLocaleDateString()}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button 
@@ -349,17 +353,54 @@ export default function UmrahPackagesPage() {
             </DialogTitle>
           </DialogHeader>
           
+          <Tabs defaultValue="ENGLISH" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              {languages.map((lang) => (
+                <TabsTrigger key={lang.code} value={lang.code}>
+                  {lang.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {languages.map((lang) => (
+              <TabsContent key={lang.code} value={lang.code} className="space-y-4">
+                <div>
+                  <Label htmlFor={`name-${lang.code}`}>Name ({lang.name}) *</Label>
+                  <Input
+                    id={`name-${lang.code}`}
+                    value={lang.code === 'ENGLISH' ? formData.name : getTranslationValue(lang.code, 'name')}
+                    onChange={(e) => {
+                      if (lang.code === 'ENGLISH') {
+                        setFormData(prev => ({ ...prev, name: e.target.value }))
+                      } else {
+                        updateTranslation(lang.code, 'name', e.target.value)
+                      }
+                    }}
+                    placeholder={`Package name in ${lang.name}`}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`description-${lang.code}`}>Description ({lang.name})</Label>
+                  <Textarea
+                    id={`description-${lang.code}`}
+                    value={lang.code === 'ENGLISH' ? formData.description : getTranslationValue(lang.code, 'description')}
+                    onChange={(e) => {
+                      if (lang.code === 'ENGLISH') {
+                        setFormData(prev => ({ ...prev, description: e.target.value }))
+                      } else {
+                        updateTranslation(lang.code, 'description', e.target.value)
+                      }
+                    }}
+                    placeholder={`Package description in ${lang.name}`}
+                    rows={3}
+                  />
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
+
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="name">Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Package name"
-                />
-              </div>
               <div>
                 <Label htmlFor="duration">Duration (days) *</Label>
                 <Input
@@ -371,37 +412,16 @@ export default function UmrahPackagesPage() {
                   placeholder="10"
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="groupSize">Group Size *</Label>
-                <Select value={formData.groupSize} onValueChange={(value) => setFormData(prev => ({ ...prev, groupSize: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select group size" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Individual">Individual</SelectItem>
-                    <SelectItem value="Family">Family</SelectItem>
-                    <SelectItem value="Group">Group</SelectItem>
-                    <SelectItem value="Up to 10 people">Up to 10 people</SelectItem>
-                    <SelectItem value="Up to 20 people">Up to 20 people</SelectItem>
-                    <SelectItem value="Up to 50 people">Up to 50 people</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="season">Season</Label>
-                <Select value={formData.season} onValueChange={(value) => setFormData(prev => ({ ...prev, season: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select season" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Regular">Regular</SelectItem>
-                    <SelectItem value="Ramadan">Ramadan</SelectItem>
-                    <SelectItem value="Hajj">Hajj</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="maxPilgrims">Maximum Pilgrims</Label>
+                <Input
+                  id="maxPilgrims"
+                  type="number"
+                  min="1"
+                  value={formData.maxPilgrims}
+                  onChange={(e) => setFormData(prev => ({ ...prev, maxPilgrims: e.target.value }))}
+                  placeholder="50"
+                />
               </div>
             </div>
 
@@ -433,68 +453,24 @@ export default function UmrahPackagesPage() {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Package description..."
-                rows={3}
-              />
-            </div>
-
-            {/* What's Included */}
-            <div>
-              <Label>What's Included</Label>
-              <div className="space-y-2">
-                {formData.includes.map((item, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      value={item}
-                      onChange={(e) => updateIncludeItem(index, e.target.value)}
-                      placeholder="e.g., Visa, Accommodation, Transport"
-                    />
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => removeIncludeItem(index)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button variant="outline" size="sm" onClick={addIncludeItem}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Item
-                </Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="startDate">Start Date *</Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                />
               </div>
-            </div>
-
-            {/* Image URLs */}
-            <div>
-              <Label>Image URLs</Label>
-              <div className="space-y-2">
-                {formData.images.map((url, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      value={url}
-                      onChange={(e) => updateImageUrl(index, e.target.value)}
-                      placeholder="https://example.com/image.jpg"
-                    />
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => removeImageUrl(index)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button variant="outline" size="sm" onClick={addImageUrl}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Image URL
-                </Button>
+              <div>
+                <Label htmlFor="endDate">End Date *</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                />
               </div>
             </div>
 

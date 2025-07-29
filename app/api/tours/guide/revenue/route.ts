@@ -5,12 +5,18 @@ import { db } from '@/lib/db'
 import { tours, bookings } from '@/drizzle/schema'
 import { eq, and, sql, gte, lte } from 'drizzle-orm'
 
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
+
 // GET - Fetch tour guide revenue data
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -21,8 +27,6 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const period = searchParams.get('period') || 'month'
-
-    const userId = parseInt(session.user.id)
 
     // Get user's tours
     const userTours = await db
@@ -101,14 +105,14 @@ export async function GET(request: NextRequest) {
     const revenueByTour = await db
       .select({
         tourId: bookings.serviceId,
-        tourTitle: tours.title,
+        tourName: tours.name,
         revenue: sql`sum(bookings.totalPrice)`,
         bookings: sql`count(*)`
       })
       .from(bookings)
       .leftJoin(tours, eq(bookings.serviceId, tours.id))
       .where(and(...whereConditions))
-      .groupBy(bookings.serviceId, tours.title)
+      .groupBy(bookings.serviceId, tours.name)
 
     const revenue = {
       total: totalRevenue,

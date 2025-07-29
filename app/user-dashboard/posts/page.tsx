@@ -340,7 +340,7 @@ export default function UserPosts() {
                             <Calendar className="mr-1 h-4 w-4" />
                             {formatDate(blog.updatedAt)}
                           </div>
-                          {blog.tags && blog.tags.length > 0 && (
+                          {blog.tags && Array.isArray(blog.tags) && blog.tags.length > 0 && (
                             <div className="flex items-center">
                               <Tag className="mr-1 h-4 w-4" />
                               {blog.tags.length} tags
@@ -379,8 +379,23 @@ export default function UserPosts() {
       <BlogModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        blog={editingBlog}
-        onSave={handleSaveBlog}
+        blog={editingBlog ? {
+          ...editingBlog,
+          title: { en: editingBlog.title, ar: editingBlog.title, fr: editingBlog.title },
+          excerpt: { en: editingBlog.excerpt || "", ar: editingBlog.excerpt || "", fr: editingBlog.excerpt || "" },
+          content: { en: editingBlog.content, ar: editingBlog.content, fr: editingBlog.content },
+        } : undefined}
+        onSave={(formData) => {
+          // Convert multilingual fields to flat strings for API
+          handleSaveBlog({
+            title: formData.title.en,
+            excerpt: formData.excerpt.en,
+            content: formData.content.en,
+            category: formData.category,
+            tags: formData.tags,
+            featuredImage: formData.featuredImage,
+          })
+        }}
         loading={saving}
       />
 

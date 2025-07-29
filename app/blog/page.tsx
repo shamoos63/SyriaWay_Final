@@ -10,7 +10,7 @@ import { useLanguage } from "@/lib/i18n/language-context"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
-import BlogModal from '@/components/blog-modal'
+import BlogViewModal from '@/components/blog-view-modal'
 import { BlogModal as CreateBlogModal } from "@/components/user-dashboard/blog-modal"
 
 interface Blog {
@@ -28,8 +28,8 @@ interface Blog {
   likes: number
   dislikes: number
   views: number
-  createdAt: Date
-  publishedAt?: Date
+  createdAt: string
+  publishedAt?: string
   author: {
     id: string
     name?: string
@@ -160,11 +160,12 @@ export default function Blog() {
 
       if (response.ok) {
         const result = await response.json()
-        setBlogs([result.blog, ...blogs])
+        // Don't add pending blogs to the public list
+        // setBlogs([result.blog, ...blogs])
         setModalOpen(false)
         toast({
           title: "Success",
-          description: "Blog post created successfully"
+          description: result.message || "Blog post submitted successfully! Your post will be reviewed by an admin before being published."
         })
       } else {
         const error = await response.json()
@@ -251,9 +252,33 @@ export default function Blog() {
     }
   }
 
+
+
   const openBlogModal = async (blog: Blog) => {
-    // Navigate to blog details page instead of opening modal
-    window.open(`/blog/${blog.id}`, '_blank')
+    setLoadingBlogId(blog.id)
+    try {
+      // Fetch fresh blog data to get updated view count
+      const response = await fetch(`/api/blogs/${blog.id}?language=${language}`)
+      if (response.ok) {
+        const data = await response.json()
+        setSelectedBlog(data.blog)
+        setShowBlogModal(true)
+        
+        // Update the blog in the list with fresh data
+        setBlogs(blogs.map(b => b.id === blog.id ? data.blog : b))
+      } else {
+        // Fallback to original blog data if API call fails
+        setSelectedBlog(blog)
+        setShowBlogModal(true)
+      }
+    } catch (error) {
+      console.error('Error fetching blog details:', error)
+      // Fallback to original blog data if API call fails
+      setSelectedBlog(blog)
+      setShowBlogModal(true)
+    } finally {
+      setLoadingBlogId(null)
+    }
   }
 
   const closeBlogModal = () => {
@@ -341,7 +366,10 @@ export default function Blog() {
                     <CardTitle className="text-xl text-syria-gold">{post.title}</CardTitle>
                     <CardDescription className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-syria-gold" />
-                      {post.publishedAt ? new Date(post.publishedAt).toLocaleDateString() : ""}
+                      {post.publishedAt 
+                        ? new Date(post.publishedAt).toLocaleDateString() 
+                        : new Date(post.createdAt).toLocaleDateString()
+                      }
                     </CardDescription>
                     <CardDescription className="flex items-center gap-2">
                       <User className="h-4 w-4 text-syria-gold" />
@@ -411,7 +439,7 @@ export default function Blog() {
       )}
 
       {showBlogModal && selectedBlog && (
-        <BlogModal
+        <BlogViewModal
           blog={selectedBlog}
           isOpen={showBlogModal}
           onClose={closeBlogModal}

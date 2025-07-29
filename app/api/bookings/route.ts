@@ -4,13 +4,20 @@ import { authOptions } from '@/lib/auth-options'
 import { db } from '@/lib/db'
 import { bookings, users, hotels, cars, tours } from '@/drizzle/schema'
 import { eq, and, desc, asc } from 'drizzle-orm'
+import { ServiceType } from '@/drizzle/schema'
+
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
 
 // GET - Fetch bookings
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -23,7 +30,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const page = parseInt(searchParams.get('page') || '1')
 
-    let whereConditions = [eq(bookings.userId, parseInt(session.user.id))]
+    let whereConditions = [eq(bookings.userId, userId)]
 
     if (status) {
       whereConditions.push(eq(bookings.status, status))
@@ -102,30 +109,93 @@ export async function GET(request: NextRequest) {
 
 // POST - Create new booking
 export async function POST(request: NextRequest) {
+  let body: any = null;
+  
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    const body = await request.json()
+    body = await request.json()
+    
     const {
       serviceType,
       serviceId,
+      hotelId,
+      roomId,
+      bundleId,
       startDate,
       endDate,
-      totalAmount, // Accept totalAmount from frontend
-      specialRequests
+      totalAmount,
+      totalPrice,
+      specialRequests,
+      guests,
+      contactPhone,
+      status
     } = body
 
-    // Validate required fields
-    if (!serviceType || !serviceId || !startDate || !totalAmount) {
+    // Validate serviceType
+    if (!serviceType || !Object.values(ServiceType).includes(serviceType)) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: `Invalid serviceType. Must be one of: ${Object.values(ServiceType).join(', ')}` },
+        { status: 400 }
+      )
+    }
+
+    // Determine the actual serviceId based on service type
+    let actualServiceId = serviceId
+    if (serviceType === 'HOTEL' && roomId) {
+      actualServiceId = roomId
+    } else if (serviceType === 'BUNDLE' && bundleId) {
+      actualServiceId = bundleId
+    }
+
+    // Determine the total price
+    const finalTotalPrice = totalAmount || totalPrice
+
+    // Validate required fields
+    if (!actualServiceId || !startDate || finalTotalPrice === undefined || finalTotalPrice === null) {
+      return NextResponse.json(
+        { error: 'Missing required fields: serviceId, startDate, and totalPrice are required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate endDate based on service type
+    // For HOTEL and CAR bookings, endDate is required
+    // For TOUR bookings, endDate should come from the tour data
+    if ((serviceType === 'HOTEL' || serviceType === 'CAR') && !endDate) {
+      return NextResponse.json(
+        { error: 'endDate is required for hotel and car bookings' },
+        { status: 400 }
+      )
+    }
+
+    // Validate numeric fields
+    if (isNaN(parseInt(actualServiceId))) {
+      return NextResponse.json(
+        { error: 'serviceId must be a valid number' },
+        { status: 400 }
+      )
+    }
+
+    if (isNaN(parseFloat(finalTotalPrice))) {
+      return NextResponse.json(
+        { error: 'totalPrice must be a valid number' },
+        { status: 400 }
+      )
+    }
+
+    // Validate that totalPrice is not negative
+    if (parseFloat(finalTotalPrice) < 0) {
+      return NextResponse.json(
+        { error: 'totalPrice cannot be negative' },
         { status: 400 }
       )
     }
@@ -134,15 +204,18 @@ export async function POST(request: NextRequest) {
     const [newBooking] = await db
       .insert(bookings)
       .values({
-        userId: parseInt(session.user.id),
+        userId,
         serviceType,
-        serviceId: parseInt(serviceId),
+        serviceId: parseInt(actualServiceId),
         startDate: new Date(startDate).toISOString(),
-        endDate: endDate ? new Date(endDate).toISOString() : null,
-        totalPrice: parseFloat(totalAmount), // Map totalAmount to totalPrice
-        status: 'PENDING',
+        endDate: endDate ? new Date(endDate).toISOString() : new Date(startDate).toISOString(), // Use startDate as fallback
+        totalPrice: parseFloat(finalTotalPrice),
+        status: status || 'PENDING',
         paymentStatus: 'PENDING',
-        specialRequests: specialRequests || null,
+        specialRequests: specialRequests ? String(specialRequests) : '',
+        numberOfPeople: guests ? parseInt(guests) : 1,
+        contactPhone: contactPhone || '',
+        contactEmail: session?.user?.email || '',
       })
       .returning()
 
@@ -152,8 +225,9 @@ export async function POST(request: NextRequest) {
     }, { status: 201 })
   } catch (error) {
     console.error('Error creating booking:', error)
+    console.error('Request body:', body)
     return NextResponse.json(
-      { error: 'Failed to create booking' },
+      { error: 'Failed to create booking', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }

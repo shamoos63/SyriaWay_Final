@@ -6,11 +6,17 @@ import { bookings } from '@/drizzle/schema'
 import { eq, and, gte, lte } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -32,7 +38,7 @@ export async function GET(request: NextRequest) {
       dateFilter = gte(bookings.createdAt, oneYearAgo.toISOString())
     }
 
-    let whereConditions = [eq(bookings.userId, parseInt(session.user.id))]
+    let whereConditions = [eq(bookings.userId, userId)]
     if (dateFilter) {
       whereConditions.push(dateFilter)
     }
@@ -109,23 +115,23 @@ export async function GET(request: NextRequest) {
       totalBookings: totalBookings[0].count,
       totalSpent: totalSpent[0].total || 0,
       bookingsByStatus: bookingsByStatus.reduce((acc, item) => {
-        acc[item.status] = item.count
-        return acc
+        acc[String(item.status)] = Number(item.count);
+        return acc;
       }, {} as Record<string, number>),
       bookingsByService: bookingsByService.reduce((acc, item) => {
-        acc[item.serviceType] = {
-          count: item.count,
-          totalSpent: item.totalSpent || 0,
-        }
-        return acc
+        acc[String(item.serviceType)] = {
+          count: Number(item.count),
+          totalSpent: Number(item.totalSpent) || 0,
+        };
+        return acc;
       }, {} as Record<string, any>),
       recentBookings,
       monthlySpending: monthlySpending.reduce((acc, item) => {
-        acc[item.month] = {
-          total: item.total || 0,
-          count: item.count,
-        }
-        return acc
+        acc[String(item.month)] = {
+          total: Number(item.total) || 0,
+          count: Number(item.count),
+        };
+        return acc;
       }, {} as Record<string, any>),
     }
 

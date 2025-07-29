@@ -13,7 +13,7 @@ export async function POST(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -43,10 +43,6 @@ export async function POST(
       .update(blogs)
       .set({
         status: 'REJECTED',
-        isPublished: false,
-        rejectedAt: new Date().toISOString(),
-        rejectedBy: session.user.id,
-        rejectionReason: rejectionReason || null,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(blogs.id, parseInt(id)))

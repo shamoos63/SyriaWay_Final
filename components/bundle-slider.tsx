@@ -26,6 +26,7 @@ interface Bundle {
   isFeatured: boolean
   createdAt: string
   updatedAt: string
+  translations?: any[]
 }
 
 interface BundleSliderProps {
@@ -34,7 +35,7 @@ interface BundleSliderProps {
 }
 
 export function BundleSlider({ bundles, getBundleFeatures }: BundleSliderProps) {
-  const { dir, t } = useLanguage()
+  const { dir, t, language } = useLanguage()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedBundle, setSelectedBundle] = useState<Bundle | null>(null)

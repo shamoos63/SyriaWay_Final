@@ -5,12 +5,18 @@ import { db } from '@/lib/db'
 import { specialTourRequests, users } from '@/drizzle/schema'
 import { eq, and, desc } from 'drizzle-orm'
 
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
+
 // GET - Fetch special tour requests for the authenticated user
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -22,7 +28,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const page = parseInt(searchParams.get('page') || '1')
 
-    let whereConditions = [eq(specialTourRequests.userId, parseInt(session.user.id))]
+    let whereConditions = [eq(specialTourRequests.userId, userId)]
 
     if (status) {
       whereConditions.push(eq(specialTourRequests.status, status))
@@ -34,17 +40,18 @@ export async function GET(request: NextRequest) {
       .select({
         id: specialTourRequests.id,
         userId: specialTourRequests.userId,
-        guideId: specialTourRequests.guideId,
+        assignedGuideId: specialTourRequests.assignedGuideId,
         title: specialTourRequests.title,
         description: specialTourRequests.description,
-        duration: specialTourRequests.duration,
-        maxCapacity: specialTourRequests.maxCapacity,
+        preferredDates: specialTourRequests.preferredDates,
+        numberOfPeople: specialTourRequests.numberOfPeople,
         budget: specialTourRequests.budget,
-        startDate: specialTourRequests.startDate,
-        endDate: specialTourRequests.endDate,
-        location: specialTourRequests.location,
+        currency: specialTourRequests.currency,
+        destinations: specialTourRequests.destinations,
         specialRequirements: specialTourRequests.specialRequirements,
         status: specialTourRequests.status,
+        response: specialTourRequests.response,
+        respondedAt: specialTourRequests.respondedAt,
         createdAt: specialTourRequests.createdAt,
         updatedAt: specialTourRequests.updatedAt,
         guide: {
@@ -55,7 +62,7 @@ export async function GET(request: NextRequest) {
         }
       })
       .from(specialTourRequests)
-      .leftJoin(users, eq(specialTourRequests.guideId, users.id))
+      .leftJoin(users, eq(specialTourRequests.assignedGuideId, users.id))
       .where(and(...whereConditions))
       .orderBy(desc(specialTourRequests.createdAt))
       .limit(limit)
@@ -103,7 +110,8 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -114,18 +122,17 @@ export async function POST(request: NextRequest) {
     const {
       title,
       description,
-      duration,
-      maxCapacity,
+      preferredDates,
+      numberOfPeople,
       budget,
-      startDate,
-      endDate,
-      location,
+      currency,
+      destinations,
       specialRequirements,
-      guideId
+      assignedGuideId
     } = body
 
     // Validate required fields
-    if (!title || !description || !duration || !startDate || !endDate) {
+    if (!title || !description || !preferredDates || !numberOfPeople) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -136,16 +143,15 @@ export async function POST(request: NextRequest) {
     const [newRequest] = await db
       .insert(specialTourRequests)
       .values({
-        userId: parseInt(session.user.id),
-        guideId: guideId ? parseInt(guideId) : null,
+        userId,
+        assignedGuideId: assignedGuideId && !isNaN(parseInt(assignedGuideId)) ? parseInt(assignedGuideId) : null,
         title,
         description,
-        duration: parseInt(duration),
-        maxCapacity: maxCapacity ? parseInt(maxCapacity) : 10,
+        preferredDates: preferredDates || null,
+        numberOfPeople: numberOfPeople ? parseInt(numberOfPeople) : 1,
         budget: budget ? parseFloat(budget) : null,
-        startDate: new Date(startDate).toISOString(),
-        endDate: new Date(endDate).toISOString(),
-        location: location || null,
+        currency: currency || null,
+        destinations: destinations || null,
         specialRequirements: specialRequirements || null,
         status: 'PENDING',
       })

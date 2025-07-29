@@ -50,13 +50,13 @@ export default function Dashboard() {
   return (
     <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl p-4 md:p-6 shadow-md">
       <h1 className="text-2xl md:text-3xl font-bold text-syria-gold mb-4 md:mb-6">
-        {t.dashboard?.dashboard || "Dashboard"}
+        {"Dashboard"}
       </h1>
 
       <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         <Card className="overflow-hidden">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base md:text-lg">{t.dashboard?.monthlyVisits || "Monthly Visits"}</CardTitle>
+            <CardTitle className="text-base md:text-lg">{"Monthly Visits"}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[180px] md:h-[200px]">
@@ -83,29 +83,29 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base md:text-lg">
-              {t.dashboard?.popularDestinations || "Popular Destinations"}
+              {"Popular Destinations"}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm md:text-base">
               <div className="flex justify-between">
-                <span>{t.dashboard?.damascus || "Damascus"}</span>
+                <span>{"Damascus"}</span>
                 <span className="font-medium">42%</span>
               </div>
               <div className="flex justify-between">
-                <span>{t.dashboard?.aleppo || "Aleppo"}</span>
+                <span>{"Aleppo"}</span>
                 <span className="font-medium">28%</span>
               </div>
               <div className="flex justify-between">
-                <span>{t.dashboard?.palmyra || "Palmyra"}</span>
+                <span>{"Palmyra"}</span>
                 <span className="font-medium">15%</span>
               </div>
               <div className="flex justify-between">
-                <span>{t.dashboard?.latakia || "Latakia"}</span>
+                <span>{"Latakia"}</span>
                 <span className="font-medium">10%</span>
               </div>
               <div className="flex justify-between">
-                <span>{t.dashboard?.other || "Other"}</span>
+                <span>{"Other"}</span>
                 <span className="font-medium">5%</span>
               </div>
             </div>
@@ -114,32 +114,32 @@ export default function Dashboard() {
 
         <Card className="md:col-span-2 lg:col-span-1">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base md:text-lg">{t.dashboard?.recentBookings || "Recent Bookings"}</CardTitle>
+            <CardTitle className="text-base md:text-lg">{"Recent Bookings"}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3 text-sm md:text-base">
               <div>
-                <div className="font-medium">{t.dashboard?.hotelAlSham || "Hotel Al-Sham"}</div>
+                <div className="font-medium">{"Hotel Al-Sham"}</div>
                 <div className="text-xs md:text-sm text-muted-foreground">
-                  {t.dashboard?.may15 || "May 15, 2023"} • $120
+                  {"May 15, 2023"} • $120
                 </div>
               </div>
               <div>
-                <div className="font-medium">{t.dashboard?.carRental || "Car Rental - SUV"}</div>
+                <div className="font-medium">{"Car Rental - SUV"}</div>
                 <div className="text-xs md:text-sm text-muted-foreground">
-                  {t.dashboard?.may14 || "May 14, 2023"} • $85
+                  {"May 14, 2023"} • $85
                 </div>
               </div>
               <div>
-                <div className="font-medium">{t.dashboard?.damascusTour || "Damascus City Tour"}</div>
+                <div className="font-medium">{"Damascus City Tour"}</div>
                 <div className="text-xs md:text-sm text-muted-foreground">
-                  {t.dashboard?.may12 || "May 12, 2023"} • $45
+                  {"May 12, 2023"} • $45
                 </div>
               </div>
               <div>
-                <div className="font-medium">{t.dashboard?.palmyraExcursion || "Palmyra Excursion"}</div>
+                <div className="font-medium">{"Palmyra Excursion"}</div>
                 <div className="text-xs md:text-sm text-muted-foreground">
-                  {t.dashboard?.may10 || "May 10, 2023"} • $75
+                  {"May 10, 2023"} • $75
                 </div>
               </div>
             </div>

@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     const [currentUser] = await db
       .select()
       .from(users)
-      .where(eq(users.id, parseInt(session.user.id)))
+      .where(eq(users.email, session.user.email))
 
     if (!currentUser || !['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role)) {
       return NextResponse.json(
@@ -97,7 +97,7 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -108,7 +108,7 @@ export async function PUT(request: NextRequest) {
     const [currentUser] = await db
       .select()
       .from(users)
-      .where(eq(users.id, parseInt(session.user.id)))
+      .where(eq(users.email, session.user.email))
 
     if (!currentUser || !['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role)) {
       return NextResponse.json(

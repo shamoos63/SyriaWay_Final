@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, real, primaryKey, unique } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 
 // ENUMS (for TypeScript type safety)
 export enum UserRole {
@@ -51,7 +52,6 @@ export enum ServiceType {
   TOUR = "TOUR",
   HEALTH = "HEALTH",
   EDUCATIONAL = "EDUCATIONAL",
-  UMRAH = "UMRAH",
   BUNDLE = "BUNDLE",
 }
 
@@ -74,8 +74,8 @@ export const users = sqliteTable("users", {
   role: text("role").notNull().default(UserRole.CUSTOMER),
   status: text("status").notNull().default(UserStatus.ACTIVE),
   preferredLang: text("preferredLang").notNull().default(Language.ENGLISH),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
   lastLoginAt: text("lastLoginAt"),
 });
 
@@ -136,8 +136,8 @@ export const hotels = sqliteTable("hotels", {
   isActive: integer("isActive", { mode: "boolean" }).default(true),
   isVerified: integer("isVerified", { mode: "boolean" }).default(false),
   isSpecialOffer: integer("isSpecialOffer", { mode: "boolean" }).default(false),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // HOTEL SETTINGS
@@ -148,8 +148,8 @@ export const hotelSettings = sqliteTable("hotel_settings", {
   maintenanceMode: integer("maintenanceMode", { mode: "boolean" }).default(false),
   requirePasswordChange: integer("requirePasswordChange", { mode: "boolean" }).default(false),
   sessionTimeout: integer("sessionTimeout").default(30),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // HOTEL TRANSLATIONS
@@ -182,8 +182,8 @@ export const rooms = sqliteTable("rooms", {
   images: text("images"), // JSON string
   isAvailable: integer("isAvailable", { mode: "boolean" }).default(true),
   maxOccupancy: integer("maxOccupancy").default(2),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => ({
   hotelId_roomNumber_unique: unique().on(table.hotelId, table.roomNumber),
 }));
@@ -224,8 +224,8 @@ export const cars = sqliteTable("cars", {
   lastServiceDate: text("lastServiceDate"),
   nextServiceDate: text("nextServiceDate"),
   mileage: integer("mileage").default(0),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // CAR TRANSLATIONS
@@ -255,8 +255,8 @@ export const tourGuides = sqliteTable("tour_guides", {
   currency: text("currency").default("USD"),
   profileImage: text("profileImage"),
   certifications: text("certifications"), // JSON string
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // TOUR GUIDE TRANSLATIONS
@@ -275,10 +275,20 @@ export const bundles = sqliteTable("bundles", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   description: text("description"),
+  duration: integer("duration").default(1),
+  maxGuests: integer("maxGuests").default(2),
   price: real("price").notNull(),
+  originalPrice: real("originalPrice"),
   currency: text("currency").default("USD"),
+  includesHotel: integer("includesHotel", { mode: "boolean" }).default(false),
+  includesCar: integer("includesCar", { mode: "boolean" }).default(false),
+  includesGuide: integer("includesGuide", { mode: "boolean" }).default(false),
+  itinerary: text("itinerary"),
+  inclusions: text("inclusions"), // JSON string
+  exclusions: text("exclusions"), // JSON string
   services: text("services").notNull(), // JSON string of service IDs
   isActive: integer("isActive", { mode: "boolean" }).default(true),
+  isFeatured: integer("isFeatured", { mode: "boolean" }).default(false),
   isSpecialOffer: integer("isSpecialOffer", { mode: "boolean" }).default(false),
   discountPercentage: integer("discountPercentage").default(0),
   startDate: text("startDate").notNull(),
@@ -286,8 +296,8 @@ export const bundles = sqliteTable("bundles", {
   maxBookings: integer("maxBookings"),
   currentBookings: integer("currentBookings").default(0),
   images: text("images"), // JSON string
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // BUNDLE TRANSLATIONS
@@ -319,8 +329,8 @@ export const bookings = sqliteTable("bookings", {
   contactEmail: text("contactEmail"),
   cancellationReason: text("cancellationReason"),
   refundAmount: real("refundAmount"),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // REVIEWS
@@ -333,8 +343,8 @@ export const reviews = sqliteTable("reviews", {
   comment: text("comment"),
   isVerified: integer("isVerified", { mode: "boolean" }).default(false),
   helpfulCount: integer("helpfulCount").default(0),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // BLOGS
@@ -357,8 +367,8 @@ export const blogs = sqliteTable("blogs", {
   seoDescription: text("seoDescription"),
   seoKeywords: text("seoKeywords"),
   slug: text("slug").unique(),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // BLOG TRANSLATIONS
@@ -382,7 +392,7 @@ export const blogReactions = sqliteTable("blog_reactions", {
   blogId: integer("blogId").notNull(),
   userId: integer("userId").notNull(),
   reactionType: text("reactionType").notNull(), // LIKE, LOVE, etc.
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => ({
   blogId_userId_unique: unique().on(table.blogId, table.userId),
 }));
@@ -400,8 +410,8 @@ export const contactForms = sqliteTable("contact_forms", {
   assignedTo: integer("assignedTo"),
   response: text("response"),
   respondedAt: text("respondedAt"),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // TOURISM SITES
@@ -425,8 +435,8 @@ export const tourismSites = sqliteTable("tourism_sites", {
   isVerified: integer("isVerified", { mode: "boolean" }).default(false),
   rating: real("rating").default(0),
   reviewCount: integer("reviewCount").default(0),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // TOURISM SITE TRANSLATIONS
@@ -466,8 +476,8 @@ export const tours = sqliteTable("tours", {
   startDate: text("startDate").notNull(),
   endDate: text("endDate").notNull(),
   capacity: integer("capacity").default(10),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // TOUR TRANSLATIONS
@@ -498,8 +508,8 @@ export const offers = sqliteTable("offers", {
   isActive: integer("isActive", { mode: "boolean" }).default(true),
   maxUses: integer("maxUses"),
   currentUses: integer("currentUses").default(0),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // OFFER TRANSLATIONS
@@ -522,7 +532,7 @@ export const notifications = sqliteTable("notifications", {
   type: text("type").notNull(), // INFO, SUCCESS, WARNING, ERROR
   isRead: integer("isRead", { mode: "boolean" }).default(false),
   data: text("data"), // JSON string for additional data
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // WEBSITE SETTINGS
@@ -555,8 +565,8 @@ export const websiteSettings = sqliteTable("website_settings", {
   supportedLanguages: text("supportedLanguages"), // JSON string
   maintenanceMode: integer("maintenanceMode", { mode: "boolean" }).default(false),
   maintenanceMessage: text("maintenanceMessage"),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // SYSTEM SETTINGS
@@ -567,8 +577,8 @@ export const systemSettings = sqliteTable("system_settings", {
   description: text("description"),
   type: text("type").default("STRING"), // STRING, NUMBER, BOOLEAN, JSON
   isPublic: integer("isPublic", { mode: "boolean" }).default(false),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // HEALTH SERVICES
@@ -583,8 +593,8 @@ export const healthServices = sqliteTable("health_services", {
   duration: integer("duration"), // in minutes
   isActive: integer("isActive", { mode: "boolean" }).default(true),
   isVerified: integer("isVerified", { mode: "boolean" }).default(false),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // HEALTH SERVICE TRANSLATIONS
@@ -614,8 +624,8 @@ export const educationalPrograms = sqliteTable("educational_programs", {
   endDate: text("endDate").notNull(),
   isActive: integer("isActive", { mode: "boolean" }).default(true),
   isVerified: integer("isVerified", { mode: "boolean" }).default(false),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // EDUCATIONAL PROGRAM TRANSLATIONS
@@ -644,8 +654,8 @@ export const umrahPackages = sqliteTable("umrah_packages", {
   endDate: text("endDate").notNull(),
   isActive: integer("isActive", { mode: "boolean" }).default(true),
   isVerified: integer("isVerified", { mode: "boolean" }).default(false),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // UMRAH REQUESTS
@@ -661,8 +671,8 @@ export const umrahRequests = sqliteTable("umrah_requests", {
   currency: text("currency").default("USD"),
   contactPhone: text("contactPhone"),
   contactEmail: text("contactEmail"),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // SPECIAL TOUR REQUESTS
@@ -681,8 +691,8 @@ export const specialTourRequests = sqliteTable("special_tour_requests", {
   assignedGuideId: integer("assignedGuideId"),
   response: text("response"),
   respondedAt: text("respondedAt"),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // TOURISM NEWS
@@ -703,8 +713,8 @@ export const tourismNews = sqliteTable("tourism_news", {
   seoDescription: text("seoDescription"),
   seoKeywords: text("seoKeywords"),
   slug: text("slug").unique(),
-  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: text("createdAt").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updatedAt").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // TOURISM NEWS TRANSLATIONS

@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PlusCircle, Search, Edit, Trash2, Shield, User, Loader2, Mail, Ban, CheckCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Textarea } from "@/components/ui/textarea"
+import dayjs from 'dayjs'
 
 interface AdminUser {
   id: string;
@@ -280,15 +281,9 @@ export default function AdminsPage() {
   )
 
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return "Never"
-    const date = new Date(dateString)
-    return new Intl.DateTimeFormat("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date)
+    if (!dateString) return 'Never';
+    const d = dayjs(dateString)
+    return d.isValid() ? d.format('YYYY-MM-DD HH:mm') : 'Never';
   }
 
   const getUserInitials = (name: string | null) => {

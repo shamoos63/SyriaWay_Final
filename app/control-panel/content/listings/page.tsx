@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth-context"
-import { Hotel, Car, Compass, User, Search, Filter, ArrowUp, ArrowDown } from "lucide-react"
+import { Hotel, Car, Compass, User, Search, Filter, ArrowUp, ArrowDown, Trash2 } from "lucide-react"
 
 const TYPE_ICONS = {
   HOTEL: Hotel,
@@ -54,9 +54,32 @@ export default function AdminListingsPage() {
       })
       if (!res.ok) throw new Error()
       toast({ title: "Success", description: `${field === "isVerified" ? "Verification" : "Special Offer"} updated.` })
+      // Optimistically update the local state
+      setListings(prev => prev.map(l =>
+        l.id === listing.id && l.type === listing.type
+          ? { ...l, [field]: value }
+          : l
+      ))
       fetchListings()
     } catch {
       toast({ title: "Error", description: `Failed to update ${field}` })
+    }
+  }
+
+  const handleDelete = async (listing: any) => {
+    if (!window.confirm(`Are you sure you want to delete the listing "${listing.name}"? This action cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/admin/listings/${listing.type}/${listing.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${user?.id}`
+        }
+      })
+      if (!res.ok) throw new Error()
+      toast({ title: "Success", description: "Listing deleted." })
+      fetchListings()
+    } catch {
+      toast({ title: "Error", description: "Failed to delete listing" })
     }
   }
 
@@ -110,6 +133,7 @@ export default function AdminListingsPage() {
                 <th className="p-2">Special Offer {renderSort("isSpecialOffer")}</th>
                 <th className="p-2">Created {renderSort("createdAt")}</th>
                 <th className="p-2">Updated {renderSort("updatedAt")}</th>
+                <th className="p-2">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -117,8 +141,8 @@ export default function AdminListingsPage() {
                 <tr><td colSpan={7} className="text-center p-8">Loading...</td></tr>
               ) : sortedListings.length === 0 ? (
                 <tr><td colSpan={7} className="text-center p-8">No listings found.</td></tr>
-              ) : sortedListings.map(listing => {
-                const Icon = TYPE_ICONS[listing.type] || User
+              ) : sortedListings.map((listing: any) => {
+                const Icon = TYPE_ICONS[listing.type as keyof typeof TYPE_ICONS] || User;
                 return (
                   <tr key={listing.type + listing.id} className="border-b">
                     <td className="p-2 font-bold flex items-center gap-2"><Icon className="w-4 h-4" />{listing.type}</td>
@@ -126,14 +150,19 @@ export default function AdminListingsPage() {
                     <td className="p-2">{listing.provider?.name || "-"} <span className="text-xs text-gray-400">{listing.provider?.email}</span></td>
                     <td className="p-2 text-center">
                       <Switch checked={!!listing.isVerified} onCheckedChange={v => handleToggle(listing, "isVerified", v)} />
-                      {listing.isVerified && <Badge className="ml-2" variant="success">Verified</Badge>}
+                      {listing.isVerified && <Badge className="ml-2 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" variant="default">Verified</Badge>}
                     </td>
                     <td className="p-2 text-center">
                       <Switch checked={!!listing.isSpecialOffer} onCheckedChange={v => handleToggle(listing, "isSpecialOffer", v)} />
-                      {listing.isSpecialOffer && <Badge className="ml-2" variant="warning">Special</Badge>}
+                      {listing.isSpecialOffer && <Badge className="ml-2 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100" variant="secondary">Special</Badge>}
                     </td>
                     <td className="p-2">{new Date(listing.createdAt).toLocaleDateString()}</td>
                     <td className="p-2">{new Date(listing.updatedAt).toLocaleDateString()}</td>
+                    <td className="p-2 text-center">
+                      <Button variant="destructive" size="icon" onClick={() => handleDelete(listing)} title="Delete Listing">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </td>
                   </tr>
                 )
               })}

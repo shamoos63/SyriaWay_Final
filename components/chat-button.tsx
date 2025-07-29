@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { MessageCircle, X, Send } from "lucide-react"
 import { useLanguage } from "@/lib/i18n/language-context"
 import Image from "next/image"
+import { usePathname } from "next/navigation"
 
 type Message = {
   role: "user" | "assistant" | "system"
@@ -14,6 +15,13 @@ type Message = {
 }
 
 export function ChatButton() {
+  const pathname = usePathname()
+  
+  // Hide chat button on control panel pages - check before other hooks
+  if (pathname?.startsWith('/control-panel')) {
+    return null
+  }
+
   const [isOpen, setIsOpen] = useState(false)
   const [message, setMessage] = useState("")
   const [messages, setMessages] = useState<Message[]>([

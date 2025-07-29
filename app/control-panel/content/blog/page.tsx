@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/hooks/use-toast"
 import { 
   Loader2, 
@@ -23,10 +24,12 @@ import {
   User,
   Tag,
   Plus,
-  RefreshCw
+  RefreshCw,
+  Globe
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useLanguage } from "@/lib/i18n/language-context"
+import dayjs from 'dayjs'
 
 interface Blog {
   id: string
@@ -43,6 +46,19 @@ interface Blog {
   category?: string
   tags?: string[]
   author: { id: string; name: string; email: string }
+  translations?: BlogTranslation[]
+}
+
+interface BlogTranslation {
+  id?: number
+  blogId: number
+  language: string
+  title: string
+  content: string
+  excerpt?: string
+  seoTitle?: string
+  seoDescription?: string
+  seoKeywords?: string
 }
 
 const statusOptions = [
@@ -66,6 +82,19 @@ const categoryOptions = [
   { value: "Other", label: "Other" },
 ]
 
+const languages = [
+  { code: 'en', name: 'English', dbCode: 'ENGLISH' },
+  { code: 'ar', name: 'العربية', dbCode: 'ARABIC' },
+  { code: 'fr', name: 'Français', dbCode: 'FRENCH' }
+]
+
+// Helper to normalize tags to string[]
+function getTagArray(tags: string[] | string | undefined | null): string[] {
+  if (Array.isArray(tags)) return tags.filter(Boolean);
+  if (typeof tags === 'string') return tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+  return [];
+}
+
 export default function AdminBlogPage() {
   const { user } = useAuth()
   const { language } = useLanguage()
@@ -87,6 +116,7 @@ export default function AdminBlogPage() {
     tags: "",
     status: ""
   })
+  const [translations, setTranslations] = useState<Record<string, BlogTranslation>>({})
   const [rejectionReason, setRejectionReason] = useState("")
   const [saving, setSaving] = useState(false)
   const [statusFilter, setStatusFilter] = useState("ALL")
@@ -124,17 +154,107 @@ export default function AdminBlogPage() {
     }
   }
 
-  const openEditModal = (blog: Blog) => {
+  const fetchBlogWithTranslations = async (blogId: string) => {
+    try {
+      const response = await fetch(`/api/blogs/${blogId}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch blog details')
+      }
+      
+      const data = await response.json()
+      return data.blog
+    } catch (err: any) {
+      console.error('Error fetching blog with translations:', err)
+      return null
+    }
+  }
+
+  const openEditModal = async (blog: Blog) => {
     setEditingBlog(blog)
-    setForm({
-      title: blog.title,
-      excerpt: blog.excerpt || "",
-      content: blog.content,
-      featuredImage: blog.featuredImage || "",
-      category: blog.category || "",
-      tags: blog.tags?.join(", ") || "",
-      status: blog.status
-    })
+    
+    // Fetch blog with translations
+    const blogWithTranslations = await fetchBlogWithTranslations(blog.id)
+    
+    if (blogWithTranslations) {
+      // Initialize form with English content (main content)
+      setForm({
+        title: blogWithTranslations.title || blog.title,
+        excerpt: blogWithTranslations.excerpt || blog.excerpt || "",
+        content: blogWithTranslations.content || blog.content,
+        featuredImage: blogWithTranslations.featuredImage || blog.featuredImage || "",
+        category: blogWithTranslations.category || blog.category || "",
+        tags: blogWithTranslations.tags?.join(", ") || blog.tags?.join(", ") || "",
+        status: blogWithTranslations.status || blog.status
+      })
+
+      // Initialize translations
+      const translationsMap: Record<string, BlogTranslation> = {}
+      
+      // Add English as main content
+      translationsMap['ENGLISH'] = {
+        blogId: parseInt(blog.id),
+        language: 'ENGLISH',
+        title: blogWithTranslations.title || blog.title,
+        content: blogWithTranslations.content || blog.content,
+        excerpt: blogWithTranslations.excerpt || blog.excerpt || "",
+        seoTitle: blogWithTranslations.seoTitle || "",
+        seoDescription: blogWithTranslations.seoDescription || "",
+        seoKeywords: blogWithTranslations.seoKeywords || ""
+      }
+
+      // Add existing translations
+      if (blogWithTranslations.translations) {
+        blogWithTranslations.translations.forEach((translation: BlogTranslation) => {
+          translationsMap[translation.language] = translation
+        })
+      }
+
+      // Initialize empty translations for missing languages
+      languages.forEach(lang => {
+        if (!translationsMap[lang.dbCode]) {
+          translationsMap[lang.dbCode] = {
+            blogId: parseInt(blog.id),
+            language: lang.dbCode,
+            title: "",
+            content: "",
+            excerpt: "",
+            seoTitle: "",
+            seoDescription: "",
+            seoKeywords: ""
+          }
+        }
+      })
+
+      setTranslations(translationsMap)
+    } else {
+      // Fallback to original blog data
+      setForm({
+        title: blog.title,
+        excerpt: blog.excerpt || "",
+        content: blog.content,
+        featuredImage: blog.featuredImage || "",
+        category: blog.category || "",
+        tags: blog.tags?.join(", ") || "",
+        status: blog.status
+      })
+      
+      // Initialize empty translations
+      const translationsMap: Record<string, BlogTranslation> = {}
+      languages.forEach(lang => {
+        translationsMap[lang.dbCode] = {
+          blogId: parseInt(blog.id),
+          language: lang.dbCode,
+          title: lang.dbCode === 'ENGLISH' ? blog.title : "",
+          content: lang.dbCode === 'ENGLISH' ? blog.content : "",
+          excerpt: lang.dbCode === 'ENGLISH' ? (blog.excerpt || "") : "",
+          seoTitle: "",
+          seoDescription: "",
+          seoKeywords: ""
+        }
+      })
+      setTranslations(translationsMap)
+    }
+    
     setShowEditModal(true)
   }
 
@@ -142,10 +262,23 @@ export default function AdminBlogPage() {
     setShowEditModal(false)
     setEditingBlog(null)
     setForm({ title: "", excerpt: "", content: "", featuredImage: "", category: "", tags: "", status: "" })
+    setTranslations({})
   }
 
-  const openViewModal = (blog: Blog) => {
-    setViewingBlog(blog)
+  const updateTranslation = (language: string, field: keyof BlogTranslation, value: string) => {
+    setTranslations(prev => ({
+      ...prev,
+      [language]: {
+        ...prev[language],
+        [field]: value
+      }
+    }))
+  }
+
+  const openViewModal = async (blog: Blog) => {
+    // Fetch blog with translations for viewing
+    const blogWithTranslations = await fetchBlogWithTranslations(blog.id)
+    setViewingBlog(blogWithTranslations || blog)
     setShowViewModal(true)
   }
 
@@ -165,11 +298,23 @@ export default function AdminBlogPage() {
     }
     setSaving(true)
     try {
+      // Update English translation with form data
+      const updatedTranslations = {
+        ...translations,
+        ENGLISH: {
+          ...translations.ENGLISH,
+          title: form.title,
+          content: form.content,
+          excerpt: form.excerpt
+        }
+      }
+
       const blogData = {
         ...form,
         tags: form.tags ? form.tags.split(',').map(tag => tag.trim()) : [],
         isPublished: form.status === 'PUBLISHED',
-        publishedAt: form.status === 'PUBLISHED' ? new Date().toISOString() : null
+        publishedAt: form.status === 'PUBLISHED' ? new Date().toISOString() : null,
+        translations: Object.values(updatedTranslations).filter(t => t.title && t.content) // Only save translations with content
       }
 
       const res = await fetch(`/api/blogs/${editingBlog?.id}`, {
@@ -327,13 +472,9 @@ export default function AdminBlogPage() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    if (!dateString) return 'N/A';
+    const d = dayjs(dateString)
+    return d.isValid() ? d.format('YYYY-MM-DD HH:mm') : 'N/A';
   }
 
   const filteredBlogs = blogs.filter(blog => {
@@ -342,8 +483,8 @@ export default function AdminBlogPage() {
       return (
         blog.title.toLowerCase().includes(query) ||
         blog.excerpt?.toLowerCase().includes(query) ||
-        blog.author.name.toLowerCase().includes(query) ||
-        blog.author.email.toLowerCase().includes(query)
+        blog.author?.name?.toLowerCase().includes(query) ||
+        blog.author?.email?.toLowerCase().includes(query)
       )
     }
     return true
@@ -456,8 +597,8 @@ export default function AdminBlogPage() {
                     <CardTitle className="text-lg font-semibold truncate" title={blog.title}>
                       {blog.title}
                     </CardTitle>
-                    <CardDescription className="mt-2">
-                      <div className="flex items-center gap-2 mb-2">
+                    <div className="mt-2 space-y-2">
+                      <div className="flex items-center gap-2">
                         {getStatusBadge(blog.status)}
                         {blog.isPublished && (
                           <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
@@ -467,13 +608,19 @@ export default function AdminBlogPage() {
                       </div>
                       <div className="flex items-center gap-1 text-xs text-gray-500">
                         <User className="h-3 w-3" />
-                        {blog.author.name}
+                        {blog.author?.name || 'Unknown'}
                       </div>
                       <div className="flex items-center gap-1 text-xs text-gray-500">
                         <Calendar className="h-3 w-3" />
                         {formatDate(blog.createdAt)}
                       </div>
-                    </CardDescription>
+                      {blog.translations && blog.translations.length > 0 && (
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <Globe className="h-3 w-3" />
+                          <span>Languages: {blog.translations.map(t => t.language).join(', ')}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardHeader>
@@ -501,7 +648,7 @@ export default function AdminBlogPage() {
                       {blog.category}
                     </Badge>
                   )}
-                  {(Array.isArray(blog.tags) ? blog.tags : typeof blog.tags === 'string' ? blog.tags.split(',') : []).slice(0, 3).map((tag, index) => (
+                  {getTagArray(blog.tags).slice(0, 3).map((tag: string, index: number) => (
                     <Badge key={index} variant="outline" className="text-xs">
                       {tag}
                     </Badge>
@@ -573,97 +720,186 @@ export default function AdminBlogPage() {
           <DialogHeader>
             <DialogTitle>Edit Blog Post</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Title *</Label>
-                <Input
-                  id="title"
-                  placeholder="Blog title"
-                  value={form.title}
-                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  disabled={saving}
-                />
+                     <Tabs defaultValue="ENGLISH" className="w-full">
+             <TabsList className="grid w-full grid-cols-3">
+               {languages.map(lang => (
+                 <TabsTrigger key={lang.dbCode} value={lang.dbCode}>
+                   <Globe className="h-4 w-4 mr-2" /> 
+                   {lang.name}
+                   {translations[lang.dbCode]?.title && translations[lang.dbCode]?.content && (
+                     <Badge variant="secondary" className="ml-2 text-xs">✓</Badge>
+                   )}
+                 </TabsTrigger>
+               ))}
+             </TabsList>
+            <TabsContent value="ENGLISH">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Title *</Label>
+                    <Input
+                      id="title"
+                      placeholder="Blog title"
+                      value={form.title}
+                      onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                      disabled={saving}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Select value={form.category} onValueChange={(value) => setForm(f => ({ ...f, category: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoryOptions.slice(1).map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="featuredImage">Featured Image URL</Label>
+                  <Input
+                    id="featuredImage"
+                    placeholder="https://example.com/image.jpg"
+                    value={form.featuredImage}
+                    onChange={e => setForm(f => ({ ...f, featuredImage: e.target.value }))}
+                    disabled={saving}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="excerpt">Excerpt</Label>
+                  <Textarea
+                    id="excerpt"
+                    placeholder="Brief description of the blog post..."
+                    value={form.excerpt}
+                    onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))}
+                    rows={3}
+                    disabled={saving}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="tags">Tags</Label>
+                  <Input
+                    id="tags"
+                    placeholder="travel, syria, culture (comma separated)"
+                    value={form.tags}
+                    onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
+                    disabled={saving}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={form.status} onValueChange={(value) => setForm(f => ({ ...f, status: value }))} disabled={saving}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="content">Content *</Label>
+                  <Textarea
+                    id="content"
+                    placeholder="Blog content..."
+                    value={form.content}
+                    onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
+                    rows={12}
+                    disabled={saving}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <Select value={form.category} onValueChange={(value) => setForm(f => ({ ...f, category: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categoryOptions.slice(1).map(option => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            </TabsContent>
+                         {languages.slice(1).map(lang => (
+               <TabsContent key={lang.dbCode} value={lang.dbCode}>
+                 <div className="space-y-4">
+                   <div className="space-y-2">
+                     <Label htmlFor={`title-${lang.dbCode}`}>Title</Label>
+                     <Input
+                       id={`title-${lang.dbCode}`}
+                       placeholder="Blog title"
+                       value={translations[lang.dbCode]?.title || ""}
+                       onChange={e => updateTranslation(lang.dbCode, 'title', e.target.value)}
+                       disabled={saving}
+                     />
+                   </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="featuredImage">Featured Image URL</Label>
-              <Input
-                id="featuredImage"
-                placeholder="https://example.com/image.jpg"
-                value={form.featuredImage}
-                onChange={e => setForm(f => ({ ...f, featuredImage: e.target.value }))}
-                disabled={saving}
-              />
-            </div>
+                   <div className="space-y-2">
+                     <Label htmlFor={`excerpt-${lang.dbCode}`}>Excerpt</Label>
+                     <Textarea
+                       id={`excerpt-${lang.dbCode}`}
+                       placeholder="Brief description of the blog post..."
+                       value={translations[lang.dbCode]?.excerpt || ""}
+                       onChange={e => updateTranslation(lang.dbCode, 'excerpt', e.target.value)}
+                       rows={3}
+                       disabled={saving}
+                     />
+                   </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="excerpt">Excerpt</Label>
-              <Textarea
-                id="excerpt"
-                placeholder="Brief description of the blog post..."
-                value={form.excerpt}
-                onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))}
-                rows={3}
-                disabled={saving}
-              />
-            </div>
+                   <div className="space-y-2">
+                     <Label htmlFor={`content-${lang.dbCode}`}>Content</Label>
+                     <Textarea
+                       id={`content-${lang.dbCode}`}
+                       placeholder="Blog content..."
+                       value={translations[lang.dbCode]?.content || ""}
+                       onChange={e => updateTranslation(lang.dbCode, 'content', e.target.value)}
+                       rows={12}
+                       disabled={saving}
+                     />
+                   </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tags">Tags</Label>
-              <Input
-                id="tags"
-                placeholder="travel, syria, culture (comma separated)"
-                value={form.tags}
-                onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
-                disabled={saving}
-              />
-            </div>
+                   <div className="space-y-2">
+                     <Label htmlFor={`seoTitle-${lang.dbCode}`}>SEO Title</Label>
+                     <Input
+                       id={`seoTitle-${lang.dbCode}`}
+                       placeholder="SEO optimized title"
+                       value={translations[lang.dbCode]?.seoTitle || ""}
+                       onChange={e => updateTranslation(lang.dbCode, 'seoTitle', e.target.value)}
+                       disabled={saving}
+                     />
+                   </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select value={form.status} onValueChange={(value) => setForm(f => ({ ...f, status: value }))} disabled={saving}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                   <div className="space-y-2">
+                     <Label htmlFor={`seoDescription-${lang.dbCode}`}>SEO Description</Label>
+                     <Textarea
+                       id={`seoDescription-${lang.dbCode}`}
+                       placeholder="SEO meta description"
+                       value={translations[lang.dbCode]?.seoDescription || ""}
+                       onChange={e => updateTranslation(lang.dbCode, 'seoDescription', e.target.value)}
+                       rows={2}
+                       disabled={saving}
+                     />
+                   </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="content">Content *</Label>
-              <Textarea
-                id="content"
-                placeholder="Blog content..."
-                value={form.content}
-                onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-                rows={12}
-                disabled={saving}
-              />
-            </div>
-          </div>
+                   <div className="space-y-2">
+                     <Label htmlFor={`seoKeywords-${lang.dbCode}`}>SEO Keywords</Label>
+                     <Input
+                       id={`seoKeywords-${lang.dbCode}`}
+                       placeholder="keyword1, keyword2, keyword3"
+                       value={translations[lang.dbCode]?.seoKeywords || ""}
+                       onChange={e => updateTranslation(lang.dbCode, 'seoKeywords', e.target.value)}
+                       disabled={saving}
+                     />
+                   </div>
+                 </div>
+               </TabsContent>
+             ))}
+          </Tabs>
           <DialogFooterUI>
             <Button onClick={handleSave} disabled={saving} className="w-full">
               {saving ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
@@ -691,9 +927,8 @@ export default function AdminBlogPage() {
               </div>
 
               <div>
-                <h2 className="text-xl font-semibold mb-2">{viewingBlog.title}</h2>
                 <div className="text-sm text-gray-500 mb-4">
-                  <p>By: {viewingBlog.author.name} ({viewingBlog.author.email})</p>
+                  <p>By: {viewingBlog.author?.name || 'Unknown'} ({viewingBlog.author?.email || 'No email'})</p>
                   <p>Created: {formatDate(viewingBlog.createdAt)}</p>
                   <p>Updated: {formatDate(viewingBlog.updatedAt)}</p>
                 </div>
@@ -709,28 +944,106 @@ export default function AdminBlogPage() {
                 </div>
               )}
 
-              {viewingBlog.excerpt && (
-                <div>
-                  <h3 className="font-semibold mb-2">Excerpt</h3>
-                  <p className="text-gray-600">{viewingBlog.excerpt}</p>
-                </div>
-              )}
-
               <div className="flex flex-wrap gap-2">
                 {viewingBlog.category && (
                   <Badge variant="outline">{viewingBlog.category}</Badge>
                 )}
-                {(Array.isArray(viewingBlog.tags) ? viewingBlog.tags : typeof viewingBlog.tags === 'string' ? viewingBlog.tags.split(',') : []).map((tag, index) => (
+                {getTagArray(viewingBlog.tags).map((tag: string, index: number) => (
                   <Badge key={index} variant="outline">{tag}</Badge>
                 ))}
               </div>
 
-              <div>
-                <h3 className="font-semibold mb-2">Content</h3>
-                <div className="prose max-w-none">
-                  <p className="whitespace-pre-wrap">{viewingBlog.content}</p>
-                </div>
-              </div>
+              {/* Language Tabs for Viewing */}
+              <Tabs defaultValue="ENGLISH" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  {languages.map(lang => (
+                    <TabsTrigger key={lang.dbCode} value={lang.dbCode}>
+                      <Globe className="h-4 w-4 mr-2" /> 
+                      {lang.name}
+                      {viewingBlog.translations?.find(t => t.language === lang.dbCode) && (
+                        <Badge variant="secondary" className="ml-2 text-xs">✓</Badge>
+                      )}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                
+                {/* English Content */}
+                <TabsContent value="ENGLISH">
+                  <div className="space-y-4">
+                    <div>
+                      <h2 className="text-xl font-semibold mb-2">{viewingBlog.title}</h2>
+                      {viewingBlog.excerpt && (
+                        <div>
+                          <h3 className="font-semibold mb-2">Excerpt</h3>
+                          <p className="text-gray-600">{viewingBlog.excerpt}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <h3 className="font-semibold mb-2">Content</h3>
+                      <div className="prose max-w-none">
+                        <p className="whitespace-pre-wrap">{viewingBlog.content}</p>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* Translation Content */}
+                {languages.slice(1).map(lang => {
+                  const translation = viewingBlog.translations?.find(t => t.language === lang.dbCode)
+                  return (
+                    <TabsContent key={lang.dbCode} value={lang.dbCode}>
+                      {translation ? (
+                        <div className="space-y-4">
+                          <div>
+                            <h2 className="text-xl font-semibold mb-2">{translation.title}</h2>
+                            {translation.excerpt && (
+                              <div>
+                                <h3 className="font-semibold mb-2">Excerpt</h3>
+                                <p className="text-gray-600">{translation.excerpt}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <h3 className="font-semibold mb-2">Content</h3>
+                            <div className="prose max-w-none">
+                              <p className="whitespace-pre-wrap">{translation.content}</p>
+                            </div>
+                          </div>
+
+                          {(translation.seoTitle || translation.seoDescription || translation.seoKeywords) && (
+                            <div>
+                              <h3 className="font-semibold mb-2">SEO Information</h3>
+                              {translation.seoTitle && (
+                                <div className="mb-2">
+                                  <strong>SEO Title:</strong> {translation.seoTitle}
+                                </div>
+                              )}
+                              {translation.seoDescription && (
+                                <div className="mb-2">
+                                  <strong>SEO Description:</strong> {translation.seoDescription}
+                                </div>
+                              )}
+                              {translation.seoKeywords && (
+                                <div>
+                                  <strong>SEO Keywords:</strong> {translation.seoKeywords}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <Globe className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>No {lang.name} translation available</p>
+                        </div>
+                      )}
+                    </TabsContent>
+                  )
+                })}
+              </Tabs>
 
               {viewingBlog.status === "REJECTED" && viewingBlog.rejectionReason && (
                 <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-md">

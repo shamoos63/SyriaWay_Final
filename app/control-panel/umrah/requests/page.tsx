@@ -11,8 +11,9 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
-import { Eye, MessageSquare, Phone, Mail, Calendar, Users, DollarSign, Clock } from "lucide-react"
+import { Eye, MessageSquare, Phone, Mail, Calendar, Users, DollarSign, Clock, Trash2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 
 interface UmrahRequest {
   id: string
@@ -55,6 +56,9 @@ export default function UmrahRequestsPage() {
   const [statusFilter, setStatusFilter] = useState("ALL")
   const [adminNotes, setAdminNotes] = useState("")
   const [newStatus, setNewStatus] = useState("")
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [requestToDelete, setRequestToDelete] = useState<UmrahRequest | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetchRequests()
@@ -94,6 +98,48 @@ export default function UmrahRequestsPage() {
     setAdminNotes(request.adminNotes || "")
     setNewStatus(request.status)
     setShowModal(true)
+  }
+
+  const handleDeleteRequest = (request: UmrahRequest) => {
+    setRequestToDelete(request)
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!requestToDelete) return
+
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/admin/umrah/requests/${requestToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${user?.id}`
+        }
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to delete request')
+      }
+
+      toast({
+        title: "Success",
+        description: "Request deleted successfully",
+        variant: "default"
+      })
+
+      setShowDeleteDialog(false)
+      setRequestToDelete(null)
+      fetchRequests()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete request",
+        variant: "destructive"
+      })
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const handleUpdateStatus = async () => {
@@ -243,14 +289,25 @@ export default function UmrahRequestsPage() {
 
                 <div className="flex justify-between items-center text-xs text-gray-500">
                   <span>Requested: {formatDate(request.createdAt)}</span>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleViewDetails(request)}
-                  >
-                    <Eye className="h-4 w-4 mr-1" />
-                    View Details
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleViewDetails(request)}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      View Details
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleDeleteRequest(request)}
+                      className="text-red-500 hover:text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -393,6 +450,15 @@ export default function UmrahRequestsPage() {
               <div className="flex justify-end gap-3 pt-4">
                 <Button 
                   variant="outline" 
+                  onClick={() => handleDeleteRequest(selectedRequest)}
+                  disabled={submitting}
+                  className="text-red-500 hover:text-red-600 border-red-500 hover:border-red-600"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete Request
+                </Button>
+                <Button 
+                  variant="outline" 
                   onClick={() => setShowModal(false)}
                   disabled={submitting}
                 >
@@ -417,6 +483,40 @@ export default function UmrahRequestsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Umrah Request</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this Umrah request? This action cannot be undone.
+              {requestToDelete && (
+                <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <p className="text-sm font-medium">{requestToDelete.customer.name}</p>
+                  <p className="text-sm text-gray-600">{requestToDelete.package.name}</p>
+                  <p className="text-sm text-gray-600">{requestToDelete.groupSize} people • ${requestToDelete.package.price} {requestToDelete.package.currency}</p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowDeleteDialog(false)} disabled={deleting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={deleting} className="bg-red-500 hover:bg-red-600">
+              {deleting ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Deleting...
+                </div>
+              ) : (
+                "Delete Request"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

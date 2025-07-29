@@ -19,6 +19,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import dayjs from 'dayjs'
 
 interface Provider {
   id: string;
@@ -337,15 +338,15 @@ export default function ProvidersManagement() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            {t.controlPanel?.serviceProviders || "Service Providers"}
+            {"Service Providers"}
           </h1>
           <p className="text-muted-foreground mt-2">
-            {t.controlPanel?.manageServiceProviders || "Manage hotel, car rental, and other service provider accounts"}
+            {"Manage hotel, car rental, and other service provider accounts"}
           </p>
         </div>
         <Button onClick={() => setIsAddProviderOpen(true)}>
           <UserPlus className="mr-2 h-4 w-4" />
-          {t.controlPanel?.addProvider || "Add Provider"}
+          {"Add Provider"}
         </Button>
       </div>
 
@@ -363,26 +364,26 @@ export default function ProvidersManagement() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t.controlPanel?.allProviders || "All Providers"}</CardTitle>
+          <CardTitle>{"All Providers"}</CardTitle>
           <CardDescription>
-            {t.controlPanel?.viewAndManageProviders || "View and manage all service provider accounts"}
+            {"View and manage all service provider accounts"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder={t.controlPanel?.searchProviders || "Search providers..."} className="pl-8" value={search} onChange={e => setSearch(e.target.value)} />
+              <Input placeholder={"Search providers..."} className="pl-8" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
             <Select value={type} onValueChange={setType}>
               <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder={t.controlPanel?.filterByType || "Filter by type"} />
+                <SelectValue placeholder={"Filter by type"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t.controlPanel?.allTypes || "All Types"}</SelectItem>
-                <SelectItem value="HOTEL_OWNER">{t.controlPanel?.hotels || "Hotels"}</SelectItem>
-                <SelectItem value="CAR_OWNER">{t.controlPanel?.carRentals || "Car Rentals"}</SelectItem>
-                <SelectItem value="TOUR_GUIDE">{t.controlPanel?.tourOperators || "Tour Operators"}</SelectItem>
+                <SelectItem value="all">{"All Types"}</SelectItem>
+                <SelectItem value="HOTEL_OWNER">{"Hotels"}</SelectItem>
+                <SelectItem value="CAR_OWNER">{"Car Rentals"}</SelectItem>
+                <SelectItem value="TOUR_GUIDE">{"Tour Operators"}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -392,14 +393,18 @@ export default function ProvidersManagement() {
               <div className="p-6 text-center">Loading...</div>
             ) : error ? (
               <div className="p-6 text-center text-red-500">{error}</div>
+            ) : providers.length === 0 ? (
+              <div className="p-6 text-center text-muted-foreground">
+                No service providers found. {search && `No results for "${search}"`}
+              </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t.controlPanel?.provider || "Provider"}</TableHead>
-                    <TableHead>{t.controlPanel?.type || "Type"}</TableHead>
-                    <TableHead>{t.controlPanel?.status || "Status"}</TableHead>
-                    <TableHead className="text-right">{t.controlPanel?.actions || "Actions"}</TableHead>
+                    <TableHead>{"Provider"}</TableHead>
+                    <TableHead>{"Type"}</TableHead>
+                    <TableHead>{"Status"}</TableHead>
+                    <TableHead className="text-right">{"Actions"}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -440,7 +445,7 @@ export default function ProvidersManagement() {
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                title={t.controlPanel?.edit || "Edit"}
+                                title={"Edit"}
                                 onClick={() => openEditDialog(provider)}
                                 disabled={actionLoading}
                               >
@@ -449,7 +454,7 @@ export default function ProvidersManagement() {
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                title={t.controlPanel?.email || "Email"}
+                                title={"Email"}
                                 onClick={() => openEmailDialog(provider)}
                                 disabled={actionLoading}
                               >
@@ -459,7 +464,7 @@ export default function ProvidersManagement() {
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
-                                  title={t.controlPanel?.suspend || "Suspend"}
+                                  title={"Suspend"}
                                   onClick={() => handleStatusChange(provider.id, "SUSPENDED")}
                                   disabled={actionLoading}
                                 >
@@ -469,7 +474,7 @@ export default function ProvidersManagement() {
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
-                                  title={t.controlPanel?.activate || "Activate"}
+                                  title={"Activate"}
                                   onClick={() => handleStatusChange(provider.id, "ACTIVE")}
                                   disabled={actionLoading}
                                 >

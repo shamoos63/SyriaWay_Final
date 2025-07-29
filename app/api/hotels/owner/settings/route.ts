@@ -2,15 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { db } from '@/lib/db'
-import { hotels } from '@/drizzle/schema'
+import { hotels, users } from '@/drizzle/schema'
 import { eq, and } from 'drizzle-orm'
+import bcrypt from 'bcryptjs'
+
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
 
 // GET - Fetch hotel settings
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -33,7 +40,7 @@ export async function GET(request: NextRequest) {
       .from(hotels)
       .where(and(
         eq(hotels.id, parseInt(hotelId)),
-        eq(hotels.ownerId, parseInt(session.user.id))
+        eq(hotels.ownerId, userId)
       ))
 
     if (!hotel) {
@@ -57,8 +64,8 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -66,8 +73,52 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { hotelId, ...updateData } = body
+    const { type, hotelId, ...updateData } = body
 
+    // Update profile (user info)
+    if (type === 'profile') {
+      const { name, phone, preferredLang } = updateData
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          ...(name && { name }),
+          ...(phone && { phone }),
+          ...(preferredLang && { preferredLang }),
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(users.id, userId))
+        .returning()
+      return NextResponse.json({
+        profile: updatedUser,
+        message: 'Profile updated successfully'
+      })
+    }
+
+    // Update password
+    if (type === 'password') {
+      const { newPassword } = updateData
+      if (!newPassword || newPassword.length < 6) {
+        return NextResponse.json(
+          { error: 'Password must be at least 6 characters' },
+          { status: 400 }
+        )
+      }
+      const hashedPassword = await bcrypt.hash(newPassword, 10)
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          password: hashedPassword,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(users.id, userId))
+        .returning()
+      return NextResponse.json({
+        profile: updatedUser,
+        message: 'Password updated successfully'
+      })
+    }
+
+    // Update hotel settings (default)
     if (!hotelId) {
       return NextResponse.json(
         { error: 'Hotel ID is required' },
@@ -81,7 +132,7 @@ export async function PUT(request: NextRequest) {
       .from(hotels)
       .where(and(
         eq(hotels.id, parseInt(hotelId)),
-        eq(hotels.ownerId, parseInt(session.user.id))
+        eq(hotels.ownerId, userId)
       ))
 
     if (!existingHotel) {

@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { db } from '@/lib/db'
-import { hotelRooms, hotels } from '@/drizzle/schema'
+import { rooms, hotels } from '@/drizzle/schema'
 import { eq, and } from 'drizzle-orm'
+
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
 
 // GET - Fetch single room
 export async function GET(
@@ -13,7 +18,8 @@ export async function GET(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -28,7 +34,7 @@ export async function GET(
       .from(hotels)
       .where(and(
         eq(hotels.id, parseInt(hotelId)),
-        eq(hotels.ownerId, parseInt(session.user.id))
+        eq(hotels.ownerId, userId)
       ))
 
     if (!hotel) {
@@ -40,8 +46,8 @@ export async function GET(
 
     const [room] = await db
       .select()
-      .from(hotelRooms)
-      .where(eq(hotelRooms.id, parseInt(roomId)))
+      .from(rooms)
+      .where(eq(rooms.id, parseInt(roomId)))
 
     if (!room) {
       return NextResponse.json(
@@ -68,7 +74,8 @@ export async function PUT(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -84,7 +91,7 @@ export async function PUT(
       .from(hotels)
       .where(and(
         eq(hotels.id, parseInt(hotelId)),
-        eq(hotels.ownerId, parseInt(session.user.id))
+        eq(hotels.ownerId, userId)
       ))
 
     if (!hotel) {
@@ -97,8 +104,8 @@ export async function PUT(
     // Check if room exists
     const [existingRoom] = await db
       .select()
-      .from(hotelRooms)
-      .where(eq(hotelRooms.id, parseInt(roomId)))
+      .from(rooms)
+      .where(eq(rooms.id, parseInt(roomId)))
 
     if (!existingRoom) {
       return NextResponse.json(
@@ -109,12 +116,12 @@ export async function PUT(
 
     // Update room
     const [updatedRoom] = await db
-      .update(hotelRooms)
+      .update(rooms)
       .set({
         ...body,
         updatedAt: new Date().toISOString(),
       })
-      .where(eq(hotelRooms.id, parseInt(roomId)))
+      .where(eq(rooms.id, parseInt(roomId)))
       .returning()
 
     return NextResponse.json({
@@ -138,7 +145,8 @@ export async function DELETE(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -153,7 +161,7 @@ export async function DELETE(
       .from(hotels)
       .where(and(
         eq(hotels.id, parseInt(hotelId)),
-        eq(hotels.ownerId, parseInt(session.user.id))
+        eq(hotels.ownerId, userId)
       ))
 
     if (!hotel) {
@@ -166,8 +174,8 @@ export async function DELETE(
     // Check if room exists
     const [existingRoom] = await db
       .select()
-      .from(hotelRooms)
-      .where(eq(hotelRooms.id, parseInt(roomId)))
+      .from(rooms)
+      .where(eq(rooms.id, parseInt(roomId)))
 
     if (!existingRoom) {
       return NextResponse.json(
@@ -178,8 +186,8 @@ export async function DELETE(
 
     // Delete room
     await db
-      .delete(hotelRooms)
-      .where(eq(hotelRooms.id, parseInt(roomId)))
+      .delete(rooms)
+      .where(eq(rooms.id, parseInt(roomId)))
 
     return NextResponse.json({
       message: 'Room deleted successfully'

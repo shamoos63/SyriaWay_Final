@@ -13,37 +13,32 @@ export async function GET(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    // Check if user is admin (you might want to add role checking here)
+    // Check if user is admin
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, session.user.email))
+      .limit(1)
+
+    if (!user.length || (user[0].role !== 'ADMIN' && user[0].role !== 'SUPER_ADMIN')) {
+      return NextResponse.json(
+        { error: 'Access denied. Admin privileges required.' },
+        { status: 403 }
+      )
+    }
+
     const { id } = await params
 
     const [request] = await db
-      .select({
-        id: umrahRequests.id,
-        userId: umrahRequests.userId,
-        packageId: umrahRequests.packageId,
-        startDate: umrahRequests.startDate,
-        endDate: umrahRequests.endDate,
-        numberOfPeople: umrahRequests.numberOfPeople,
-        specialRequests: umrahRequests.specialRequests,
-        status: umrahRequests.status,
-        createdAt: umrahRequests.createdAt,
-        updatedAt: umrahRequests.updatedAt,
-        user: {
-          id: users.id,
-          name: users.name,
-          email: users.email,
-          image: users.image,
-        }
-      })
+      .select()
       .from(umrahRequests)
-      .leftJoin(users, eq(umrahRequests.userId, users.id))
       .where(eq(umrahRequests.id, parseInt(id)))
 
     if (!request) {
@@ -71,14 +66,27 @@ export async function PUT(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    // Check if user is admin (you might want to add role checking here)
+    // Check if user is admin
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, session.user.email))
+      .limit(1)
+
+    if (!user.length || (user[0].role !== 'ADMIN' && user[0].role !== 'SUPER_ADMIN')) {
+      return NextResponse.json(
+        { error: 'Access denied. Admin privileges required.' },
+        { status: 403 }
+      )
+    }
+
     const { id } = await params
     const body = await request.json()
 
@@ -95,13 +103,25 @@ export async function PUT(
       )
     }
 
+    // Prepare update data - only allow updating status and specialRequirements (for admin notes)
+    const updateData: any = {
+      updatedAt: new Date().toISOString(),
+    }
+
+    if (body.status) {
+      updateData.status = body.status
+    }
+
+    if (body.adminNotes) {
+      // Store admin notes in specialRequirements field for now
+      // In a future update, we should add a dedicated adminNotes field to the schema
+      updateData.specialRequirements = body.adminNotes
+    }
+
     // Update request
     const [updatedRequest] = await db
       .update(umrahRequests)
-      .set({
-        ...body,
-        updatedAt: new Date().toISOString(),
-      })
+      .set(updateData)
       .where(eq(umrahRequests.id, parseInt(id)))
       .returning()
 
@@ -126,14 +146,27 @@ export async function DELETE(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    // Check if user is admin (you might want to add role checking here)
+    // Check if user is admin
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, session.user.email))
+      .limit(1)
+
+    if (!user.length || (user[0].role !== 'ADMIN' && user[0].role !== 'SUPER_ADMIN')) {
+      return NextResponse.json(
+        { error: 'Access denied. Admin privileges required.' },
+        { status: 403 }
+      )
+    }
+
     const { id } = await params
 
     // Check if request exists

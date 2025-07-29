@@ -39,13 +39,20 @@ export function OfferSlider() {
     fetchSpecialOffers()
   }, [])
 
+  // Reset currentSlide if it exceeds the offers length
+  useEffect(() => {
+    if (offers.length > 0 && currentSlide >= offers.length) {
+      setCurrentSlide(0)
+    }
+  }, [offers.length, currentSlide])
+
   const fetchSpecialOffers = async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/special-offers?limit=5')
       if (response.ok) {
-        const data = await response.json()
-        setOffers(data.offers || [])
+              const data = await response.json()
+      setOffers(data.offers || [])
       } else {
         console.error('Failed to fetch special offers')
         setOffers([])
@@ -82,9 +89,12 @@ export function OfferSlider() {
   }, [nextSlide, offers.length])
 
   const getOfferLink = (offer: SpecialOffer) => {
+    // Extract the original ID from the prefixed ID
+    const originalId = offer.id.includes('-') ? offer.id.split('-')[1] : offer.id
+    
     switch (offer.type) {
       case 'HOTEL':
-        return `/hotels/${offer.id}`
+        return `/hotels/${originalId}`
       case 'CAR':
         return `/cars-rental`
       case 'TOUR':
@@ -119,16 +129,18 @@ export function OfferSlider() {
     )
   }
 
+
+
   return (
     <div className="relative w-full overflow-hidden rounded-2xl shadow-xl h-[340px] md:h-[400px]">
       <div className="flex transition-transform duration-500 ease-in-out h-full" style={{ transform: `translateX(-${currentSlide * 100}%)` }}>
-        {offers.map((offer) => (
-          <div key={offer.id} className="min-w-full relative h-[340px] md:h-[400px]">
+        {offers.map((offer, index) => (
+          <div key={`${offer.id}-${index}`} className="min-w-full relative h-[340px] md:h-[400px]">
             {/* Background image with gradient overlay */}
             <div className="absolute inset-0 rounded-2xl overflow-hidden">
               <Image
                 src={offer.image || "/placeholder.svg"}
-                alt={offer.name}
+                alt={offer.name || `Special offer for ${offer.type?.toLowerCase() || 'service'}`}
                 fill
                 className="object-cover w-full h-full rounded-2xl"
                 priority
@@ -144,8 +156,8 @@ export function OfferSlider() {
                 </Badge>
                 <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider">{offer.type}</span>
               </div>
-              <h3 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white mb-1 truncate">{offer.name}</h3>
-              <p className="text-sm md:text-base text-gray-700 dark:text-gray-200 line-clamp-2 mb-2">{offer.description}</p>
+              <h3 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white mb-1 truncate">{offer.name || `Special ${offer.type?.toLowerCase() || 'offer'}`}</h3>
+              <p className="text-sm md:text-base text-gray-700 dark:text-gray-200 line-clamp-2 mb-2">{offer.description || `Special offer for ${offer.type?.toLowerCase() || 'service'}`}</p>
               <div className="flex items-center gap-4 mt-2">
                 <div>
                   <span className="text-2xl md:text-3xl font-bold text-syria-gold">${offer.price}</span>
@@ -183,9 +195,9 @@ export function OfferSlider() {
             <ChevronRight className="h-5 w-5" />
           </Button>
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 z-20">
-            {offers.map((_, index) => (
+            {offers.map((offer, index) => (
               <button
-                key={index}
+                key={`${offer.id}-${index}`}
                 className={`w-3 h-3 rounded-full border-2 border-white transition-all duration-200 ${currentSlide === index ? "bg-syria-gold scale-125" : "bg-white/60"}`}
                 onClick={() => {
                   if (!isAnimating) {

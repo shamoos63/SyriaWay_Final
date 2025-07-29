@@ -57,7 +57,11 @@ export default function UserSettings() {
     e.preventDefault()
     setError("")
     setLoading(true)
-
+    if (!user) {
+      setError("User not found")
+      setLoading(false)
+      return
+    }
     try {
       const response = await fetch('/api/user/update-profile', {
         method: 'PUT',
@@ -67,9 +71,7 @@ export default function UserSettings() {
         },
         body: JSON.stringify(profileData),
       })
-
       const data = await response.json()
-
       if (response.ok) {
         setProfileUpdated(true)
         updateUser(data.user)
@@ -80,7 +82,6 @@ export default function UserSettings() {
     } catch (error) {
       setError("An error occurred while updating profile")
     }
-
     setLoading(false)
   }
 
@@ -88,19 +89,21 @@ export default function UserSettings() {
     e.preventDefault()
     setError("")
     setLoading(true)
-
+    if (!user) {
+      setError("User not found")
+      setLoading(false)
+      return
+    }
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setError("New passwords do not match")
       setLoading(false)
       return
     }
-
     if (passwordData.newPassword.length < 6) {
       setError("New password must be at least 6 characters long")
       setLoading(false)
       return
     }
-
     try {
       const response = await fetch('/api/user/change-password', {
         method: 'PUT',
@@ -114,9 +117,7 @@ export default function UserSettings() {
           confirmPassword: passwordData.confirmPassword, // Add missing field
         }),
       })
-
       const data = await response.json()
-
       if (response.ok) {
         setPasswordChanged(true)
         setPasswordData({
@@ -131,7 +132,6 @@ export default function UserSettings() {
     } catch (error) {
       setError("An error occurred while changing password")
     }
-
     setLoading(false)
   }
 

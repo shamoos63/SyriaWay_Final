@@ -320,31 +320,31 @@ export default function ControlPanelLayout({
               <Users size={18} />
               <span>Customers</span>
             </Link>
-            
-            {/* Show providers and admins only for super admin */}
+            {/* Show providers to admins and super admins, but admins only see providers, not admins */}
+            {(isAdmin || isSuperAdmin) && (
+              <Link
+                href="/control-panel/users/providers"
+                className={cn(
+                  "flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 rounded-md hover:bg-primary/10 transition-colors",
+                  pathname === "/control-panel/users/providers" ? "bg-primary/20 text-primary font-medium" : "",
+                )}
+              >
+                <Hotel size={18} />
+                <span>Service Providers</span>
+              </Link>
+            )}
+            {/* Show admins only to super admins */}
             {isSuperAdmin && (
-              <>
-                <Link
-                  href="/control-panel/users/providers"
-                  className={cn(
-                    "flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 rounded-md hover:bg-primary/10 transition-colors",
-                    pathname === "/control-panel/users/providers" ? "bg-primary/20 text-primary font-medium" : "",
-                  )}
-                >
-                  <Hotel size={18} />
-                  <span>Service Providers</span>
-                </Link>
-                <Link
-                  href="/control-panel/users/admins"
-                  className={cn(
-                    "flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 rounded-md hover:bg-primary/10 transition-colors",
-                    pathname === "/control-panel/users/admins" ? "bg-primary/20 text-primary font-medium" : "",
-                  )}
-                >
-                  <Settings size={18} />
-                  <span>Administrators</span>
-                </Link>
-              </>
+              <Link
+                href="/control-panel/users/admins"
+                className={cn(
+                  "flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 rounded-md hover:bg-primary/10 transition-colors",
+                  pathname === "/control-panel/users/admins" ? "bg-primary/20 text-primary font-medium" : "",
+                )}
+              >
+                <Settings size={18} />
+                <span>Administrators</span>
+              </Link>
             )}
 
             <p className="text-xs font-semibold text-muted-foreground mb-2 mt-6 uppercase">

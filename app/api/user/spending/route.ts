@@ -5,11 +5,17 @@ import { db } from '@/lib/db'
 import { bookings } from '@/drizzle/schema'
 import { eq, and, gte, lte } from 'drizzle-orm'
 
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -21,7 +27,7 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate')
     const serviceType = searchParams.get('serviceType')
 
-    let whereConditions = [eq(bookings.userId, parseInt(session.user.id))]
+    let whereConditions = [eq(bookings.userId, userId)]
 
     // Filter by date range
     if (startDate) {

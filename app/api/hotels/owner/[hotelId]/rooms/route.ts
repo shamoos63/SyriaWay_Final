@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { db } from '@/lib/db'
-import { hotelRooms, hotels } from '@/drizzle/schema'
+import { rooms, hotels } from '@/drizzle/schema'
 import { eq, and } from 'drizzle-orm'
 
 // GET - Fetch rooms for a hotel owned by the authenticated user
@@ -38,12 +38,12 @@ export async function GET(
       )
     }
 
-    const rooms = await db
+    const roomsData = await db
       .select()
-      .from(hotelRooms)
-      .where(eq(hotelRooms.hotelId, parseInt(hotelId)))
+      .from(rooms)
+      .where(eq(rooms.hotelId, parseInt(hotelId)))
 
-    return NextResponse.json({ rooms })
+    return NextResponse.json({ rooms: roomsData })
   } catch (error) {
     console.error('Error fetching rooms:', error)
     return NextResponse.json(
@@ -74,13 +74,17 @@ export async function POST(
     const { hotelId } = await params
     const body = await request.json()
     const {
+      name,
       roomNumber,
-      type,
+      roomType,
       description,
-      price,
+      pricePerNight,
       capacity,
       amenities,
       images,
+      bedType,
+      bedCount,
+      bathroomCount,
       isAvailable
     } = body
 
@@ -101,7 +105,7 @@ export async function POST(
     }
 
     // Validate required fields
-    if (!roomNumber || !type || !price) {
+    if (!name || !roomNumber || !roomType || !capacity || !pricePerNight) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -110,16 +114,20 @@ export async function POST(
 
     // Create room
     const [newRoom] = await db
-      .insert(hotelRooms)
+      .insert(rooms)
       .values({
         hotelId: parseInt(hotelId),
+        name,
         roomNumber,
-        type,
+        roomType,
         description: description || null,
-        price: parseFloat(price),
-        capacity: capacity || 1,
+        pricePerNight: parseFloat(pricePerNight),
+        capacity: parseInt(capacity),
         amenities: amenities || null,
         images: images || null,
+        bedType: bedType || null,
+        bedCount: bedCount ? parseInt(bedCount) : 1,
+        bathroomCount: bathroomCount ? parseInt(bathroomCount) : 1,
         isAvailable: isAvailable !== false,
       })
       .returning()

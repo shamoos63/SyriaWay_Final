@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Star, Search, User, MapPin, Clock, Calendar, Users, Filter, X, Phone, Mail, DollarSign, CalendarDays } from "lucide-react"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { useToast } from "@/hooks/use-toast"
@@ -83,6 +84,7 @@ export default function Tours() {
   const [showSpecialTourModal, setShowSpecialTourModal] = useState(false)
   const [showBookingModal, setShowBookingModal] = useState(false)
   const [bookingTour, setBookingTour] = useState<Tour | null>(null)
+  const [selectedDate, setSelectedDate] = useState<Date>()
   const [specialTourForm, setSpecialTourForm] = useState<SpecialTourRequest>({
     guideId: "",
     customerName: "",
@@ -96,224 +98,21 @@ export default function Tours() {
     message: ""
   })
 
-  // Translations
-  const translations = {
-    en: {
-      pageTitle: "Guided Tours",
-      pageDescription: "Discover the best of Syria with our expertly guided tours. From historical expeditions to cultural experiences and natural adventures, our tours offer authentic insights into Syria's rich heritage and beauty.",
-      requestSpecialTour: "Request Special Tour",
-      searchPlaceholder: "Search tours...",
-      allCategories: "All Categories",
-      allGuides: "All Guides",
-      allPrices: "All Prices",
-      under100: "Under $100",
-      price100to300: "$100 - $300",
-      over300: "Over $300",
-      clear: "Clear",
-      showingResults: "Showing {count} of {total} tours",
-      noToursFound: "No tours found matching your search criteria.",
-      viewDetails: "View Details",
-      bookNow: "Book Now",
-      tourGuide: "Tour Guide",
-      description: "Description",
-      duration: "Duration",
-      capacity: "Capacity",
-      people: "people",
-      hours: "hours",
-      close: "Close",
-      bookThisTour: "Book This Tour",
-      requestSpecialTourTitle: "Request Special Tour",
-      requestSpecialTourDescription: "Tell us about your dream tour and we'll connect you with the perfect guide.",
-      fullName: "Full Name",
-      email: "Email",
-      phoneNumber: "Phone Number",
-      tourType: "Tour Type",
-      selectTourType: "Select tour type",
-      selectGuide: "Select Guide",
-      chooseGuideOrLetUsPick: "Choose a guide or let us pick for you",
-      loadingGuides: "Loading guides...",
-      letUsChoose: "Let us choose the best guide for you",
-      preferredDates: "Preferred Dates",
-      groupSize: "Group Size",
-      budget: "Budget (USD)",
-      specialRequirements: "Special Requirements",
-      additionalMessage: "Additional Message",
-      cancel: "Cancel",
-      submitRequest: "Submit Request",
-      yourFullName: "Your full name",
-      yourEmail: "your.email@example.com",
-      yourPhone: "+1234567890",
-      datesExample: "e.g., July 15-20, 2024",
-      numberOfPeople: "Number of people",
-      budgetPerPerson: "Your budget per person",
-      specialNeedsPlaceholder: "Any special needs, accessibility requirements, or specific requests...",
-      dreamTourPlaceholder: "Tell us more about your dream tour...",
-      authenticationRequired: "Authentication Required",
-      pleaseSignIn: "Please sign in to submit a special tour request.",
-      requestNotAllowed: "Request Not Allowed",
-      serviceProvidersNotAllowed: "Service providers and administrators cannot submit special tour requests. Please use a customer account.",
-      missingInformation: "Missing Information",
-      fillRequiredFields: "Please fill in all required fields (Name, Email, and Tour Type).",
-      success: "Success",
-      requestSubmitted: "Your special tour request has been submitted successfully!",
-      error: "Error",
-      failedToLoadTours: "Failed to load tours. Please try again.",
-      failedToLoadGuides: "Failed to load guides. Please try again.",
-      failedToSubmitRequest: "Failed to submit special tour request. Please try again.",
-      new: "New",
-      reviews: "reviews",
-      bio: "Bio",
-      specialties: "Specialties",
-      languages: "Languages",
-      baseLocation: "Base Location",
-      yearsExp: "years exp.",
-      perDay: "/day"
-    },
-    ar: {
-      pageTitle: "جولات سياحية",
-      pageDescription: "اكتشف أفضل ما في سوريا مع جولاتنا المصحوبة بمرشدين خبراء. من الرحلات التاريخية إلى التجارب الثقافية والمغامرات الطبيعية، تقدم جولاتنا رؤى أصيلة لتراث سوريا الغني وجمالها.",
-      requestSpecialTour: "طلب جولة خاصة",
-      searchPlaceholder: "البحث في الجولات...",
-      allCategories: "جميع الفئات",
-      allGuides: "جميع المرشدين",
-      allPrices: "جميع الأسعار",
-      under100: "أقل من 100$",
-      price100to300: "100$ - 300$",
-      over300: "أكثر من 300$",
-      clear: "مسح",
-      showingResults: "عرض {count} من {total} جولة",
-      noToursFound: "لم يتم العثور على جولات تطابق معايير البحث.",
-      viewDetails: "عرض التفاصيل",
-      bookNow: "احجز الآن",
-      tourGuide: "مرشد الجولة",
-      description: "الوصف",
-      duration: "المدة",
-      capacity: "السعة",
-      people: "أشخاص",
-      hours: "ساعات",
-      close: "إغلاق",
-      bookThisTour: "احجز هذه الجولة",
-      requestSpecialTourTitle: "طلب جولة خاصة",
-      requestSpecialTourDescription: "أخبرنا عن جولتك المثالية وسنربطك بأفضل مرشد.",
-      fullName: "الاسم الكامل",
-      email: "البريد الإلكتروني",
-      phoneNumber: "رقم الهاتف",
-      tourType: "نوع الجولة",
-      selectTourType: "اختر نوع الجولة",
-      selectGuide: "اختر المرشد",
-      chooseGuideOrLetUsPick: "اختر مرشداً أو دعنا نختار لك",
-      loadingGuides: "جاري تحميل المرشدين...",
-      letUsChoose: "دعنا نختار أفضل مرشد لك",
-      preferredDates: "التواريخ المفضلة",
-      groupSize: "حجم المجموعة",
-      budget: "الميزانية (دولار أمريكي)",
-      specialRequirements: "المتطلبات الخاصة",
-      additionalMessage: "رسالة إضافية",
-      cancel: "إلغاء",
-      submitRequest: "إرسال الطلب",
-      yourFullName: "اسمك الكامل",
-      yourEmail: "بريدك.الإلكتروني@مثال.com",
-      yourPhone: "+1234567890",
-      datesExample: "مثال: 15-20 يوليو 2024",
-      numberOfPeople: "عدد الأشخاص",
-      budgetPerPerson: "ميزانيتك للشخص الواحد",
-      specialNeedsPlaceholder: "أي احتياجات خاصة أو متطلبات إمكانية الوصول أو طلبات محددة...",
-      dreamTourPlaceholder: "أخبرنا المزيد عن جولتك المثالية...",
-      authenticationRequired: "مطلوب تسجيل الدخول",
-      pleaseSignIn: "يرجى تسجيل الدخول لإرسال طلب جولة خاصة.",
-      requestNotAllowed: "الطلب غير مسموح",
-      serviceProvidersNotAllowed: "لا يمكن لمقدمي الخدمات والإداريين إرسال طلبات جولات خاصة. يرجى استخدام حساب عميل.",
-      missingInformation: "معلومات مفقودة",
-      fillRequiredFields: "يرجى ملء جميع الحقول المطلوبة (الاسم والبريد الإلكتروني ونوع الجولة).",
-      success: "نجح",
-      requestSubmitted: "تم إرسال طلب جولتك الخاصة بنجاح!",
-      error: "خطأ",
-      failedToLoadTours: "فشل في تحميل الجولات. يرجى المحاولة مرة أخرى.",
-      failedToLoadGuides: "فشل في تحميل المرشدين. يرجى المحاولة مرة أخرى.",
-      failedToSubmitRequest: "فشل في إرسال طلب الجولة الخاصة. يرجى المحاولة مرة أخرى.",
-      new: "جديد",
-      reviews: "تقييمات",
-      bio: "السيرة الذاتية",
-      specialties: "التخصصات",
-      languages: "اللغات",
-      baseLocation: "الموقع الأساسي",
-      yearsExp: "سنوات خبرة",
-      perDay: "/يوم"
-    },
-    fr: {
-      pageTitle: "Visites Guidées",
-      pageDescription: "Découvrez le meilleur de la Syrie avec nos visites guidées par des experts. Des expéditions historiques aux expériences culturelles et aventures naturelles, nos visites offrent des aperçus authentiques du riche patrimoine et de la beauté de la Syrie.",
-      requestSpecialTour: "Demander une Visite Spéciale",
-      searchPlaceholder: "Rechercher des visites...",
-      allCategories: "Toutes les Catégories",
-      allGuides: "Tous les Guides",
-      allPrices: "Tous les Prix",
-      under100: "Moins de 100$",
-      price100to300: "100$ - 300$",
-      over300: "Plus de 300$",
-      clear: "Effacer",
-      showingResults: "Affichage de {count} sur {total} visites",
-      noToursFound: "Aucune visite trouvée correspondant à vos critères de recherche.",
-      viewDetails: "Voir les Détails",
-      bookNow: "Réserver Maintenant",
-      tourGuide: "Guide de Visite",
-      description: "Description",
-      duration: "Durée",
-      capacity: "Capacité",
-      people: "personnes",
-      hours: "heures",
-      close: "Fermer",
-      bookThisTour: "Réserver cette Visite",
-      requestSpecialTourTitle: "Demander une Visite Spéciale",
-      requestSpecialTourDescription: "Parlez-nous de votre visite de rêve et nous vous connecterons avec le guide parfait.",
-      fullName: "Nom Complet",
-      email: "Email",
-      phoneNumber: "Numéro de Téléphone",
-      tourType: "Type de Visite",
-      selectTourType: "Sélectionner le type de visite",
-      selectGuide: "Sélectionner le Guide",
-      chooseGuideOrLetUsPick: "Choisissez un guide ou laissez-nous choisir pour vous",
-      loadingGuides: "Chargement des guides...",
-      letUsChoose: "Laissez-nous choisir le meilleur guide pour vous",
-      preferredDates: "Dates Préférées",
-      groupSize: "Taille du Groupe",
-      budget: "Budget (USD)",
-      specialRequirements: "Exigences Spéciales",
-      additionalMessage: "Message Supplémentaire",
-      cancel: "Annuler",
-      submitRequest: "Soumettre la Demande",
-      yourFullName: "Votre nom complet",
-      yourEmail: "votre.email@exemple.com",
-      yourPhone: "+1234567890",
-      datesExample: "ex: 15-20 juillet 2024",
-      numberOfPeople: "Nombre de personnes",
-      budgetPerPerson: "Votre budget par personne",
-      specialNeedsPlaceholder: "Tout besoin spécial, exigence d'accessibilité ou demande spécifique...",
-      dreamTourPlaceholder: "Parlez-nous plus de votre visite de rêve...",
-      authenticationRequired: "Authentification Requise",
-      pleaseSignIn: "Veuillez vous connecter pour soumettre une demande de visite spéciale.",
-      requestNotAllowed: "Demande Non Autorisée",
-      serviceProvidersNotAllowed: "Les fournisseurs de services et administrateurs ne peuvent pas soumettre de demandes de visites spéciales. Veuillez utiliser un compte client.",
-      missingInformation: "Informations Manquantes",
-      fillRequiredFields: "Veuillez remplir tous les champs requis (Nom, Email et Type de Visite).",
-      success: "Succès",
-      requestSubmitted: "Votre demande de visite spéciale a été soumise avec succès !",
-      error: "Erreur",
-      failedToLoadTours: "Échec du chargement des visites. Veuillez réessayer.",
-      failedToLoadGuides: "Échec du chargement des guides. Veuillez réessayer.",
-      failedToSubmitRequest: "Échec de la soumission de la demande de visite spéciale. Veuillez réessayer.",
-      new: "Nouveau",
-      reviews: "avis",
-      bio: "Biographie",
-      specialties: "Spécialités",
-      languages: "Langues",
-      baseLocation: "Emplacement de Base",
-      yearsExp: "ans d'exp.",
-      perDay: "/jour"
+  // Pre-populate form with user data when modal opens
+  useEffect(() => {
+    if (showSpecialTourModal && user) {
+      setSpecialTourForm(prev => ({
+        ...prev,
+        customerName: user.name || "",
+        customerEmail: user.email || "",
+        customerPhone: user.phone || "",
+      }))
     }
-  }
+  }, [showSpecialTourModal, user])
 
-  const tr = translations[language as keyof typeof translations]
+  // Remove the local translations object and use global translations
+  const tr = t.tours || {}
+  const tourTypeTr = t.tourTypes || {}
 
   useEffect(() => {
     const fetchTours = async () => {
@@ -322,13 +121,34 @@ export default function Tours() {
         const response = await fetch('/api/tours')
         if (!response.ok) throw new Error('Failed to fetch tours')
         const data = await response.json()
-        setTours(data.tours)
+        
+        // Map the API response to match the expected interface
+        const mappedTours = data.tours.map((tour: any) => ({
+          id: tour.id,
+          name: tour.name,
+          description: tour.description,
+          price: tour.price,
+          duration: tour.duration,
+          capacity: tour.capacity,
+          startDate: tour.startDate,
+          endDate: tour.endDate,
+          category: tour.category,
+          startLocation: tour.startLocation,
+          endLocation: tour.endLocation,
+          averageRating: tour.averageRating,
+          reviewCount: tour.reviewCount,
+          guideName: tour.guideUserName,
+          guideEmail: tour.guideUserEmail,
+          guideId: tour.guideId
+        }))
+        
+        setTours(mappedTours)
       } catch (error) {
         console.error('Error fetching tours:', error)
         toast({
-          title: tr.error,
-          description: tr.failedToLoadTours,
-          variant: "destructive",
+          title: tr.error || "Error",
+          description: tr.failedToLoadTours || "Failed to load tours. Please try again.",
+          variant: "destructive"
         })
       } finally {
         setLoading(false)
@@ -338,18 +158,16 @@ export default function Tours() {
     const fetchGuides = async () => {
       try {
         setGuidesLoading(true)
-        console.log('Fetching guides...')
-        const response = await fetch('/api/guides?available=true&verified=true')
+        const response = await fetch('/api/guides')
         if (!response.ok) throw new Error('Failed to fetch guides')
         const data = await response.json()
-        console.log('Guides fetched:', data.guides)
         setGuides(data.guides)
       } catch (error) {
         console.error('Error fetching guides:', error)
         toast({
-          title: tr.error,
-          description: tr.failedToLoadGuides,
-          variant: "destructive",
+          title: tr.error || "Error",
+          description: tr.failedToLoadGuides || "Failed to load guides. Please try again.",
+          variant: "destructive"
         })
       } finally {
         setGuidesLoading(false)
@@ -358,7 +176,41 @@ export default function Tours() {
 
     fetchTours()
     fetchGuides()
-  }, [])
+  }, [tr.error, tr.failedToLoadTours])
+
+  useEffect(() => {
+    const fetchGuides = async () => {
+      try {
+        setGuidesLoading(true)
+        const response = await fetch('/api/guides')
+        if (!response.ok) throw new Error('Failed to fetch guides')
+        const data = await response.json()
+        setGuides(data.guides)
+      } catch (error) {
+        console.error('Error fetching guides:', error)
+        toast({
+          title: tr.error || "Error",
+          description: tr.failedToLoadGuides || "Failed to load guides. Please try again.",
+          variant: "destructive"
+        })
+      } finally {
+        setGuidesLoading(false)
+      }
+    }
+
+    fetchGuides()
+  }, [tr.error, tr.failedToLoadGuides])
+
+  // Handle date selection
+  const handleDateChange = (date: Date | undefined) => {
+    setSelectedDate(date)
+    if (date) {
+      const formattedDate = date.toISOString().split('T')[0]
+      setSpecialTourForm({...specialTourForm, preferredDates: formattedDate})
+    } else {
+      setSpecialTourForm({...specialTourForm, preferredDates: ""})
+    }
+  }
 
   // Get unique categories and guides for filters
   const categories = ["all", ...Array.from(new Set(tours.map(tour => tour.category)))]
@@ -406,7 +258,7 @@ export default function Tours() {
     if (!user) {
       toast({
         title: tr.authenticationRequired,
-        description: tr.pleaseSignInToRequest,
+        description: tr.pleaseSignIn,
         variant: "destructive",
       })
       return
@@ -415,14 +267,32 @@ export default function Tours() {
     // Check if user is a customer
     if (user.role !== 'CUSTOMER') {
       toast({
-        title: tr.serviceProvidersNotAllowed,
+        title: tr.requestNotAllowed,
         description: tr.serviceProvidersNotAllowed,
         variant: "destructive",
       })
       return
     }
 
-    // Validate required fields with better error messages
+    // Validate required fields
+    if (!specialTourForm.customerName || specialTourForm.customerName.trim() === '') {
+      toast({
+        title: tr.missingInformation,
+        description: "Please enter your full name",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!specialTourForm.customerEmail || specialTourForm.customerEmail.trim() === '') {
+      toast({
+        title: tr.missingInformation,
+        description: "Please enter your email address",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (!specialTourForm.tourType || specialTourForm.tourType.trim() === '') {
       toast({
         title: tr.missingInformation,
@@ -451,44 +321,40 @@ export default function Tours() {
     }
 
     try {
-      // Validate and parse the preferred dates
-      const startDate = new Date(specialTourForm.preferredDates)
-      if (isNaN(startDate.getTime())) {
-        toast({
-          title: tr.error,
-          description: "Invalid date format. Please select a valid date.",
-          variant: "destructive",
-        })
-        return
+      console.log('Submitting special tour request with data:', specialTourForm)
+
+      const requestData = {
+        title: specialTourForm.tourType,
+        description: specialTourForm.message || `Special tour request for ${specialTourForm.tourType} tour`,
+        preferredDates: specialTourForm.preferredDates,
+        numberOfPeople: specialTourForm.groupSize,
+        budget: specialTourForm.budget || 0,
+        currency: "USD",
+        destinations: "Syria",
+        specialRequirements: specialTourForm.specialRequirements || null,
+        assignedGuideId: specialTourForm.guideId && specialTourForm.guideId !== "" ? parseInt(specialTourForm.guideId) : null,
       }
 
-      // Calculate end date (7 days after start date)
-      const endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+      console.log('Request data being sent:', requestData)
 
       const response = await fetch('/api/tours/special-request', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.id}`,
         },
-        body: JSON.stringify({
-          title: specialTourForm.tourType,
-          description: specialTourForm.message || specialTourForm.tourType,
-          duration: 1,
-          maxCapacity: specialTourForm.groupSize,
-          budget: specialTourForm.budget || 0,
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-          location: "Syria",
-          specialRequirements: specialTourForm.specialRequirements || null,
-          guideId: specialTourForm.guideId || null,
-        }),
+        body: JSON.stringify(requestData),
       })
 
+      console.log('Response status:', response.status)
+
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to submit request')
+        const errorData = await response.json()
+        console.error('API Error:', errorData)
+        throw new Error(errorData.error || 'Failed to submit request')
       }
+
+      const result = await response.json()
+      console.log('Success response:', result)
 
       toast({
         title: tr.success,
@@ -508,6 +374,7 @@ export default function Tours() {
         budget: 0,
         message: ""
       })
+      setSelectedDate(undefined)
     } catch (error) {
       console.error('Error submitting special tour request:', error)
       toast({
@@ -891,12 +758,12 @@ export default function Tours() {
                     <SelectValue placeholder={tr.selectTourType} />
                   </SelectTrigger>
                   <SelectContent className="z-[10000]">
-                    <SelectItem value="Historical">Historical</SelectItem>
-                    <SelectItem value="Cultural">Cultural</SelectItem>
-                    <SelectItem value="Adventure">Adventure</SelectItem>
-                    <SelectItem value="Religious">Religious</SelectItem>
-                    <SelectItem value="Nature">Nature</SelectItem>
-                    <SelectItem value="Custom">Custom</SelectItem>
+                    <SelectItem value="Historical">{tourTypeTr.historical || "Historical"}</SelectItem>
+                    <SelectItem value="Cultural">{tourTypeTr.cultural || "Cultural"}</SelectItem>
+                    <SelectItem value="Adventure">{tourTypeTr.adventure || "Adventure"}</SelectItem>
+                    <SelectItem value="Religious">{tourTypeTr.religious || "Religious"}</SelectItem>
+                    <SelectItem value="Nature">{tourTypeTr.nature || "Nature"}</SelectItem>
+                    <SelectItem value="Custom">{tourTypeTr.custom || "Custom"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -946,11 +813,11 @@ export default function Tours() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="preferredDates">{tr.preferredDates}</Label>
-                <Input
-                  id="preferredDates"
-                  value={specialTourForm.preferredDates}
-                  onChange={(e) => setSpecialTourForm({...specialTourForm, preferredDates: e.target.value})}
+                <DatePicker
+                  date={selectedDate}
+                  onDateChange={handleDateChange}
                   placeholder={tr.datesExample}
+                  className="w-full"
                 />
               </div>
               <div>
@@ -1010,7 +877,12 @@ export default function Tours() {
             </Button>
             <Button 
               className="bg-syria-gold hover:bg-syria-dark-gold"
-              onClick={handleSpecialTourRequest}
+              onClick={() => {
+                console.log('Submit button clicked')
+                console.log('Form state:', specialTourForm)
+                console.log('User:', user)
+                handleSpecialTourRequest()
+              }}
               disabled={!specialTourForm.customerName || !specialTourForm.customerEmail || !specialTourForm.tourType || specialTourForm.groupSize < 1}
             >
               {tr.submitRequest}

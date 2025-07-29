@@ -46,6 +46,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
+import ChangePasswordForm from "@/components/change-password-form"
 
 export default function HotelOwnerDashboard() {
   const { user } = useAuth()
@@ -104,6 +105,7 @@ export default function HotelOwnerDashboard() {
     pricePerNight: '',
     amenities: '',
     bedType: '',
+    size: '',
     images: '',
     description: '',
   })
@@ -460,6 +462,7 @@ export default function HotelOwnerDashboard() {
       pricePerNight: '',
       amenities: '',
       bedType: '',
+      size: '',
       images: '',
       description: '',
     })
@@ -478,6 +481,7 @@ export default function HotelOwnerDashboard() {
       pricePerNight: room.pricePerNight?.toString() || '',
       amenities: room.amenities ? room.amenities.join(', ') : '',
       bedType: room.bedType || '',
+      size: room.size?.toString() || '',
       images: room.images ? room.images.join(', ') : '',
       description: room.description || '',
     })
@@ -497,7 +501,7 @@ export default function HotelOwnerDashboard() {
     e.preventDefault()
     setRoomSubmitting(true)
     setRoomError(null)
-    const { hotelId, roomId, name, roomNumber, roomType, capacity, pricePerNight, amenities, bedType, images, description } = roomForm
+    const { hotelId, roomId, name, roomNumber, roomType, capacity, pricePerNight, amenities, bedType, size, images, description } = roomForm
     const payload = {
       name,
       roomNumber,
@@ -506,6 +510,7 @@ export default function HotelOwnerDashboard() {
       pricePerNight: parseFloat(pricePerNight),
       amenities: amenities.split(',').map(a => a.trim()).filter(a => a),
       bedType: bedType || undefined,
+      size: size ? parseFloat(size) : undefined,
       images: images.split(',').map(i => i.trim()).filter(i => i),
       description,
     }
@@ -632,7 +637,7 @@ export default function HotelOwnerDashboard() {
         },
         body: JSON.stringify({
           type: "profile",
-          data: profileForm
+          ...profileForm
         }),
       })
 
@@ -668,12 +673,10 @@ export default function HotelOwnerDashboard() {
         },
         body: JSON.stringify({
           type: "hotel",
-          data: {
-            ...hotelForm,
-            amenities: amenities.length > 0 ? amenities : [],
-            images: images.length > 0 ? images : [],
-            googleMapLink: hotelForm.googleMapLink,
-          }
+          ...hotelForm,
+          amenities: amenities.length > 0 ? amenities : [],
+          images: images.length > 0 ? images : [],
+          googleMapLink: hotelForm.googleMapLink,
         }),
       })
 
@@ -705,7 +708,8 @@ export default function HotelOwnerDashboard() {
         },
         body: JSON.stringify({
           type: "settings",
-          data: updatedSettings
+          hotelId: hotels[0]?.id,
+          ...updatedSettings
         }),
       })
 
@@ -956,27 +960,33 @@ export default function HotelOwnerDashboard() {
                         <h3 className="text-lg font-semibold mb-4">Room Occupancy</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {hotels[0]?.rooms?.map((room: any) => {
-                            const isOccupied = room.bookings && room.bookings.length > 0;
-                            const occupancyRate = isOccupied ? 100 : 0;
+                            const now = new Date();
+                            const activeBookings = room.bookings?.filter(
+                              (booking: any) =>
+                                booking.status === 'CONFIRMED' &&
+                                new Date(booking.startDate) <= now &&
+                                new Date(booking.endDate) >= now
+                            ) || [];
+                            const isActuallyAvailable = activeBookings.length === 0;
                             
                             return (
                               <div key={room.id} className="p-4 border rounded-lg">
                                 <div className="flex justify-between items-center mb-2">
                                   <h4 className="font-medium">Room {room.roomNumber}</h4>
-                                  <Badge variant={isOccupied ? "destructive" : "default"}>
-                                    {isOccupied ? "Occupied" : "Available"}
+                                  <Badge variant={isActuallyAvailable ? "default" : "destructive"}>
+                                    {isActuallyAvailable ? "Available" : "Occupied"}
                                   </Badge>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                                   <div 
-                                    className={`h-2 rounded-full ${isOccupied ? 'bg-red-500' : 'bg-green-500'}`}
-                                    style={{ width: `${occupancyRate}%` }}
+                                    className={`h-2 rounded-full ${isActuallyAvailable ? 'bg-green-500' : 'bg-red-500'}`}
+                                    style={{ width: `${isActuallyAvailable ? 0 : 100}%` }}
                                   ></div>
                                 </div>
                                 <p className="text-sm text-gray-600">
-                                  {isOccupied ? `${occupancyRate}% occupied` : 'Available'}
+                                  {isActuallyAvailable ? 'Available' : '100% occupied'}
                                 </p>
-                                {!room.isActuallyAvailable && room.currentBooking && (
+                                {!isActuallyAvailable && room.currentBooking && (
                                   <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
                                     <div className="flex items-center gap-2 mb-2">
                                       <div className="w-2 h-2 bg-red-500 rounded-full"></div>
@@ -1212,6 +1222,14 @@ export default function HotelOwnerDashboard() {
                         <h3 className="text-lg font-semibold mb-4">Room Performance</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {hotels[0]?.rooms?.map((room: any) => {
+                            const now = new Date();
+                            const activeBookings = room.bookings?.filter(
+                              (booking: any) =>
+                                booking.status === 'CONFIRMED' &&
+                                new Date(booking.startDate) <= now &&
+                                new Date(booking.endDate) >= now
+                            ) || [];
+                            const isActuallyAvailable = activeBookings.length === 0;
                             const roomBookings = room.bookings || [];
                             const totalRevenue = roomBookings.reduce((sum: number, booking: any) => sum + (booking.totalPrice || 0), 0);
                             const bookingCount = roomBookings.length;
@@ -1225,7 +1243,7 @@ export default function HotelOwnerDashboard() {
                                 <div className="space-y-1 text-sm">
                                   <p><strong>Bookings:</strong> {bookingCount}</p>
                                   <p><strong>Avg. Revenue:</strong> ${bookingCount > 0 ? (totalRevenue / bookingCount).toFixed(2) : 0}</p>
-                                  <p><strong>Status:</strong> {room.isActuallyAvailable ? 'Available' : 'Occupied'}</p>
+                                  <p><strong>Status:</strong> {isActuallyAvailable ? 'Available' : 'Occupied'}</p>
                                 </div>
                               </div>
                             );
@@ -1354,6 +1372,19 @@ export default function HotelOwnerDashboard() {
                 </CardContent>
               </Card>
 
+              {/* Change Password */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Change Password
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ChangePasswordForm />
+                </CardContent>
+              </Card>
+
               {/* Hotel Settings */}
               <Card>
                 <CardHeader>
@@ -1388,43 +1419,6 @@ export default function HotelOwnerDashboard() {
                         disabled={updatingSettings}
                       />
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Security Settings */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    Security Settings
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Require Password Change</Label>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">
-                        Force password change on next login
-                      </span>
-                      <Switch
-                        checked={settingsForm.requirePasswordChange}
-                        onCheckedChange={(checked) => handleSettingsUpdate('requirePasswordChange', checked)}
-                        disabled={updatingSettings}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sessionTimeout">Session Timeout (minutes)</Label>
-                    <Input
-                      id="sessionTimeout"
-                      type="number"
-                      min="5"
-                      max="480"
-                      value={settingsForm.sessionTimeout}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, sessionTimeout: parseInt(e.target.value) || 30 })}
-                      placeholder="30"
-                    />
                   </div>
                 </CardContent>
               </Card>
@@ -1828,11 +1822,11 @@ export default function HotelOwnerDashboard() {
 
       {/* Room Management Dialogs */}
       <Dialog open={showRoomDialog} onOpenChange={setShowRoomDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{roomForm.roomId ? 'Edit Room' : 'Add New Room'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleRoomFormSubmit} className="space-y-4">
+          <form onSubmit={handleRoomFormSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="room-name">Room Name *</Label>
@@ -1855,14 +1849,14 @@ export default function HotelOwnerDashboard() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="room-type">Room Type *</Label>
                 <Select value={roomForm.roomType} onValueChange={(value) => handleRoomFormChange('roomType', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select room type" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[9999]">
                     <SelectItem value="SINGLE">Single</SelectItem>
                     <SelectItem value="DOUBLE">Double</SelectItem>
                     <SelectItem value="TRIPLE">Triple</SelectItem>
@@ -1871,6 +1865,25 @@ export default function HotelOwnerDashboard() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="bed-type">Bed Type</Label>
+                <Select value={roomForm.bedType} onValueChange={(value) => handleRoomFormChange('bedType', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select bed type" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[9999]">
+                    <SelectItem value="Single">Single</SelectItem>
+                    <SelectItem value="Double">Double</SelectItem>
+                    <SelectItem value="Queen">Queen</SelectItem>
+                    <SelectItem value="King">King</SelectItem>
+                    <SelectItem value="Twin">Twin</SelectItem>
+                    <SelectItem value="Bunk">Bunk</SelectItem>
+                    <SelectItem value="Sofa">Sofa</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="room-capacity">Capacity *</Label>
                 <Input
@@ -1884,6 +1897,19 @@ export default function HotelOwnerDashboard() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="room-size">Room Size (m²)</Label>
+                <Input
+                  id="room-size"
+                  type="number"
+                  min="1"
+                  value={roomForm.size}
+                  onChange={(e) => handleRoomFormChange('size', e.target.value)}
+                  placeholder="Enter room size in square meters"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label htmlFor="room-price">Price per Night *</Label>
                 <Input
                   id="room-price"
@@ -1895,6 +1921,16 @@ export default function HotelOwnerDashboard() {
                   placeholder="Enter price"
                   required
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="room-amenities">Amenities</Label>
+                <Input
+                  id="room-amenities"
+                  value={roomForm.amenities}
+                  onChange={(e) => handleRoomFormChange('amenities', e.target.value)}
+                  placeholder="Enter amenities separated by commas (e.g., WiFi, TV, Mini Bar)"
+                />
+                <p className="text-xs text-gray-500">Enter amenities separated by commas</p>
               </div>
             </div>
             <div className="space-y-2">

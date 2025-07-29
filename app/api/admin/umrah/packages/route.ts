@@ -2,53 +2,96 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { db } from '@/lib/db'
-import { umrahPackages } from '@/drizzle/schema'
-import { eq, desc } from 'drizzle-orm'
+import { umrahPackages, umrahPackageTranslations } from '@/drizzle/schema'
+import { eq, desc, and } from 'drizzle-orm'
 
 // GET - Fetch all Umrah packages (admin only)
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    // Check if user is admin (you might want to add role checking here)
     const { searchParams } = new URL(request.url)
-    const status = searchParams.get('status')
+    const language = searchParams.get('language') || 'ENGLISH'
     const limit = parseInt(searchParams.get('limit') || '10')
     const page = parseInt(searchParams.get('page') || '1')
 
-    let whereConditions = []
-
-    if (status) {
-      whereConditions.push(eq(umrahPackages.status, status))
-    }
-
     const offset = (page - 1) * limit
 
+    // Fetch packages with translations
     const packagesData = await db
-      .select()
+      .select({
+        id: umrahPackages.id,
+        name: umrahPackages.name,
+        description: umrahPackages.description,
+        providerId: umrahPackages.providerId,
+        duration: umrahPackages.duration,
+        price: umrahPackages.price,
+        currency: umrahPackages.currency,
+        maxPilgrims: umrahPackages.maxPilgrims,
+        currentPilgrims: umrahPackages.currentPilgrims,
+        startDate: umrahPackages.startDate,
+        endDate: umrahPackages.endDate,
+        isActive: umrahPackages.isActive,
+        isVerified: umrahPackages.isVerified,
+        createdAt: umrahPackages.createdAt,
+        updatedAt: umrahPackages.updatedAt,
+        translations: umrahPackageTranslations
+      })
       .from(umrahPackages)
-      .where(whereConditions.length > 0 ? whereConditions[0] : undefined)
+      .leftJoin(umrahPackageTranslations, eq(umrahPackages.id, umrahPackageTranslations.packageId))
       .orderBy(desc(umrahPackages.createdAt))
       .limit(limit)
       .offset(offset)
+
+    // Group packages with their translations
+    const packagesWithTranslations = packagesData.reduce((acc, row) => {
+      const existingPackage = acc.find(pkg => pkg.id === row.id)
+      
+      if (existingPackage) {
+        if (row.translations) {
+          existingPackage.translations.push(row.translations)
+        }
+      } else {
+        const newPackage = {
+          id: row.id,
+          name: row.name,
+          description: row.description,
+          providerId: row.providerId,
+          duration: row.duration,
+          price: row.price,
+          currency: row.currency,
+          maxPilgrims: row.maxPilgrims,
+          currentPilgrims: row.currentPilgrims,
+          startDate: row.startDate,
+          endDate: row.endDate,
+          isActive: row.isActive,
+          isVerified: row.isVerified,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          translations: row.translations ? [row.translations] : []
+        }
+        acc.push(newPackage)
+      }
+      
+      return acc
+    }, [] as any[])
 
     // Get total count for pagination
     const totalCount = await db
       .select({ count: umrahPackages.id })
       .from(umrahPackages)
-      .where(whereConditions.length > 0 ? whereConditions[0] : undefined)
 
     const totalPages = Math.ceil(totalCount.length / limit)
 
     return NextResponse.json({
-      packages: packagesData,
+      packages: packagesWithTranslations,
       pagination: {
         currentPage: page,
         totalPages,
@@ -81,31 +124,31 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    // Check if user is admin (you might want to add role checking here)
     const body = await request.json()
     const {
       name,
       description,
       duration,
       price,
-      inclusions,
-      exclusions,
-      itinerary,
-      terms,
-      isActive
+      currency,
+      maxPilgrims,
+      startDate,
+      endDate,
+      isActive,
+      translations
     } = body
 
     // Validate required fields
-    if (!name || !description || !duration || !price) {
+    if (!name || !duration || !price || !startDate || !endDate) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: name, duration, price, startDate, and endDate are required' },
         { status: 400 }
       )
     }
@@ -115,16 +158,33 @@ export async function POST(request: NextRequest) {
       .insert(umrahPackages)
       .values({
         name,
-        description,
+        description: description || '',
         duration: parseInt(duration),
         price: parseFloat(price),
-        inclusions: inclusions || null,
-        exclusions: exclusions || null,
-        itinerary: itinerary || null,
-        terms: terms || null,
+        currency: currency || 'USD',
+        maxPilgrims: maxPilgrims ? parseInt(maxPilgrims) : null,
+        startDate: new Date(startDate).toISOString(),
+        endDate: new Date(endDate).toISOString(),
         isActive: isActive !== false,
+        providerId: 1, // Default provider ID
       })
       .returning()
+
+    // Insert translations if provided
+    if (translations && Array.isArray(translations)) {
+      for (const translation of translations) {
+        if (translation.language && translation.name) {
+          await db
+            .insert(umrahPackageTranslations)
+            .values({
+              packageId: newPackage.id,
+              language: translation.language,
+              name: translation.name,
+              description: translation.description || '',
+            })
+        }
+      }
+    }
 
     return NextResponse.json({
       package: newPackage,
@@ -132,8 +192,9 @@ export async function POST(request: NextRequest) {
     }, { status: 201 })
   } catch (error) {
     console.error('Error creating admin Umrah package:', error)
+    console.error('Request body:', body)
     return NextResponse.json(
-      { error: 'Failed to create Umrah package' },
+      { error: 'Failed to create Umrah package', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }

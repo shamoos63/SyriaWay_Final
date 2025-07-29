@@ -238,7 +238,7 @@ export default function TourismNewsViewModal({
               )}
 
               {/* Tags */}
-              {news.tags && news.tags.length > 0 && (
+              {news.tags && Array.isArray(news.tags) && news.tags.length > 0 && (
                 <div className="mt-6">
                   <h3 className="text-lg font-semibold mb-3">
                     {language === "ar" ? "العلامات" : language === "fr" ? "Tags" : "Tags"}

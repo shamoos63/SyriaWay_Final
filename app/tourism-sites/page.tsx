@@ -5,14 +5,26 @@ import { Footer } from "@/components/footer"
 import { SyriaMap } from "@/components/syria-map"
 import { SitePopup } from "@/components/site-popup"
 import { useLanguage } from "@/lib/i18n/language-context"
-import type { TouristSite } from "@/lib/types"
+
+// Use the same TouristSite type as SyriaMap and SitePopup expect
+type MapTouristSite = {
+  id: number
+  name: string
+  description: string
+  city: string
+  cityAr: string
+  cityFr: string
+  lat: number
+  lng: number
+  image?: string
+}
 
 export default function TourismSites() {
   const { t, dir, language } = useLanguage()
-  const [selectedSite, setSelectedSite] = useState<TouristSite | null>(null)
+  const [selectedSite, setSelectedSite] = useState<MapTouristSite | null>(null)
 
   // Function to handle pin click
-  const handlePinClick = (site: TouristSite) => {
+  const handlePinClick = (site: MapTouristSite) => {
     setSelectedSite(site)
   }
 

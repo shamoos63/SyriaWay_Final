@@ -168,6 +168,85 @@ export interface Translations {
       personalizedConcierge: string
       luxuryDiningReservations: string
       travelInsurance: string
+      // Bundle checkbox features
+      hotelAccommodation: string
+      carRentalService: string
+      professionalTourGuide: string
+      customItinerary: string
+      localSupport: string
+      flexibleBooking: string
+    }
+  }
+  umrah: {
+    title: string
+    subtitle: string
+    availablePackages: string
+    noPackagesAvailable: string
+    selectSeason: string
+    allSeasons: string
+    ramadan: string
+    hajj: string
+    packageDetails: string
+    requestPackage: string
+    requestUmrah: string
+    packageRequest: string
+    preferredDates: string
+    startDate: string
+    endDate: string
+    numberOfPilgrims: string
+    maxPilgrims: string
+    contactPhoneNumber: string
+    alternativeEmail: string
+    specialRequirements: string
+    additionalMessage: string
+    submitRequest: string
+    submitting: string
+    authenticationRequired: string
+    pleaseSignIn: string
+    noPackageSelected: string
+    missingInformation: string
+    fillRequiredFields: string
+    requestSubmitted: string
+    requestSubmittedDescription: string
+    failedToSubmit: string
+    phonePlaceholder: string
+    emailPlaceholder: string
+    requirementsPlaceholder: string
+    messagePlaceholder: string
+    features: {
+      accommodation: string
+      transportation: string
+      visaAssistance: string
+      guidedTours: string
+      meals: string
+      airportTransfers: string
+      hotelNearHaram: string
+      luxuryAccommodation: string
+      privateTransportation: string
+      vipServices: string
+      spiritualGuidance: string
+      groupPrayers: string
+      ziyarahTours: string
+      medicalSupport: string
+      insurance: string
+      documentation: string
+    }
+    packageDetails: {
+      days: string
+      numberOfPilgrims: string
+      maxPilgrims: string
+      duration: string
+      price: string
+      currency: string
+      startDate: string
+      endDate: string
+      packageType: string
+      standard: string
+      premium: string
+      luxury: string
+      economy: string
+      midRange: string
+      highEnd: string
     }
   }
   search?: {
@@ -420,7 +499,7 @@ export interface Translations {
     fullName: string
     phoneNumber: string
     emailAddress: string
-    specialRequirements: string
+    specialRequests: string
     anySpecialRequirements: string
     total: string
     rental: string
@@ -468,6 +547,85 @@ export interface Translations {
     guide: string
     dates: string
     guests: string
+  }
+  tourTypes?: {
+    historical: string
+    cultural: string
+    adventure: string
+    religious: string
+    nature: string
+    custom: string
+  }
+  tours?: {
+    pageTitle: string
+    pageDescription: string
+    requestSpecialTour: string
+    searchPlaceholder: string
+    allCategories: string
+    allGuides: string
+    allPrices: string
+    under100: string
+    price100to300: string
+    over300: string
+    clear: string
+    showingResults: string
+    noToursFound: string
+    viewDetails: string
+    bookNow: string
+    tourGuide: string
+    description: string
+    duration: string
+    capacity: string
+    people: string
+    hours: string
+    close: string
+    bookThisTour: string
+    requestSpecialTourTitle: string
+    requestSpecialTourDescription: string
+    fullName: string
+    email: string
+    phoneNumber: string
+    tourType: string
+    selectTourType: string
+    selectGuide: string
+    chooseGuideOrLetUsPick: string
+    loadingGuides: string
+    letUsChoose: string
+    preferredDates: string
+    groupSize: string
+    budget: string
+    specialRequirements: string
+    additionalMessage: string
+    cancel: string
+    submitRequest: string
+    yourFullName: string
+    yourEmail: string
+    yourPhone: string
+    datesExample: string
+    numberOfPeople: string
+    budgetPerPerson: string
+    specialNeedsPlaceholder: string
+    dreamTourPlaceholder: string
+    authenticationRequired: string
+    pleaseSignIn: string
+    requestNotAllowed: string
+    serviceProvidersNotAllowed: string
+    missingInformation: string
+    fillRequiredFields: string
+    success: string
+    requestSubmitted: string
+    error: string
+    failedToLoadTours: string
+    failedToLoadGuides: string
+    failedToSubmitRequest: string
+    new: string
+    reviews: string
+    bio: string
+    specialties: string
+    languages: string
+    baseLocation: string
+    yearsExp: string
+    perDay: string
   }
 }
 
@@ -651,6 +809,85 @@ export const translations: Record<Language, Translations> = {
         personalizedConcierge: "Personalized concierge",
         luxuryDiningReservations: "Luxury dining reservations",
         travelInsurance: "Comprehensive travel insurance",
+        // Bundle checkbox features
+        hotelAccommodation: "Hotel accommodation",
+        carRentalService: "Car rental service",
+        professionalTourGuide: "Professional tour guide",
+        customItinerary: "Custom itinerary",
+        localSupport: "Local support",
+        flexibleBooking: "Flexible booking",
+      },
+    },
+    umrah: {
+      title: "Umrah Packages",
+      subtitle: "Discover our comprehensive Umrah packages for a spiritual journey",
+      availablePackages: "Available Packages",
+      noPackagesAvailable: "No packages available at the moment",
+      selectSeason: "Select Season",
+      allSeasons: "All Seasons",
+      ramadan: "Ramadan",
+      hajj: "Hajj",
+      packageDetails: "Package Details",
+      requestPackage: "Request Package",
+      requestUmrah: "Request Umrah",
+      packageRequest: "Package Request",
+      preferredDates: "Preferred Dates",
+      startDate: "Start Date",
+      endDate: "End Date",
+      numberOfPilgrims: "Number of Pilgrims",
+      maxPilgrims: "Max Pilgrims",
+      contactPhoneNumber: "Contact Phone Number",
+      alternativeEmail: "Alternative Email",
+      specialRequirements: "Special Requirements",
+      additionalMessage: "Additional Message",
+      submitRequest: "Submit Request",
+      submitting: "Submitting...",
+      authenticationRequired: "Authentication Required",
+      pleaseSignIn: "Please sign in to request an Umrah package.",
+      noPackageSelected: "No package selected.",
+      missingInformation: "Missing Information",
+      fillRequiredFields: "Please fill in all required fields.",
+      requestSubmitted: "Request Submitted",
+      requestSubmittedDescription: "Your Umrah request has been submitted successfully. We will contact you soon to discuss the details.",
+      failedToSubmit: "Failed to submit Umrah request",
+      phonePlaceholder: "+963 11 123 4567",
+      emailPlaceholder: "your.email@example.com",
+      requirementsPlaceholder: "Any special requirements, dietary restrictions, accessibility needs, etc.",
+      messagePlaceholder: "Any additional information or questions you'd like to share...",
+      features: {
+        accommodation: "Accommodation",
+        transportation: "Transportation",
+        visaAssistance: "Visa Assistance",
+        guidedTours: "Guided Tours",
+        meals: "Meals",
+        airportTransfers: "Airport Transfers",
+        hotelNearHaram: "Hotel Near Haram",
+        luxuryAccommodation: "Luxury Accommodation",
+        privateTransportation: "Private Transportation",
+        vipServices: "VIP Services",
+        spiritualGuidance: "Spiritual Guidance",
+        groupPrayers: "Group Prayers",
+        ziyarahTours: "Ziyarah Tours",
+        medicalSupport: "Medical Support",
+        insurance: "Insurance",
+        documentation: "Documentation",
+      },
+      packageDetails: {
+        days: "Days",
+        numberOfPilgrims: "Number of Pilgrims",
+        maxPilgrims: "Max Pilgrims",
+        duration: "Duration",
+        price: "Price",
+        currency: "Currency",
+        startDate: "Start Date",
+        endDate: "End Date",
+        packageType: "Package Type",
+        standard: "Standard",
+        premium: "Premium",
+        luxury: "Luxury",
+        economy: "Economy",
+        midRange: "Mid-Range",
+        highEnd: "High-End",
       },
     },
     dashboard: {
@@ -893,7 +1130,7 @@ export const translations: Record<Language, Translations> = {
       fullName: "Full Name",
       phoneNumber: "Phone Number",
       emailAddress: "Email Address",
-      specialRequirements: "Special Requirements",
+      specialRequests: "Special Requirements",
       anySpecialRequirements: "Any special requirements or requests...",
       total: "Total",
       rental: "Rental",
@@ -942,6 +1179,85 @@ export const translations: Record<Language, Translations> = {
       dates: "Dates",
       guests: "Guests",
     },
+    tourTypes: {
+      historical: "تاريخي",
+      cultural: "ثقافي",
+      adventure: "مغامرة",
+      religious: "ديني",
+      nature: "طبيعي",
+      custom: "مخصص",
+    },
+         tours: {
+       pageTitle: "Guided Tours",
+       pageDescription: "Discover the best of Syria with our expertly guided tours. From historical expeditions to cultural experiences and natural adventures, our tours offer authentic insights into Syria's rich heritage and beauty.",
+       requestSpecialTour: "Request Special Tour",
+       searchPlaceholder: "Search tours...",
+       allCategories: "All Categories",
+       allGuides: "All Guides",
+       allPrices: "All Prices",
+       under100: "Under $100",
+       price100to300: "$100 - $300",
+       over300: "Over $300",
+       clear: "Clear",
+       showingResults: "Showing {count} of {total} tours",
+       noToursFound: "No tours found matching your search criteria.",
+       viewDetails: "View Details",
+       bookNow: "Book Now",
+       tourGuide: "Tour Guide",
+       description: "Description",
+       duration: "Duration",
+       capacity: "Capacity",
+       people: "people",
+       hours: "hours",
+       close: "Close",
+       bookThisTour: "Book This Tour",
+       requestSpecialTourTitle: "Request Special Tour",
+       requestSpecialTourDescription: "Tell us about your dream tour and we'll connect you with the perfect guide.",
+       fullName: "Full Name",
+       email: "Email",
+       phoneNumber: "Phone Number",
+       tourType: "Tour Type",
+       selectTourType: "Select tour type",
+       selectGuide: "Select Guide",
+       chooseGuideOrLetUsPick: "Choose a guide or let us pick for you",
+       loadingGuides: "Loading guides...",
+       letUsChoose: "Let us choose the best guide for you",
+       preferredDates: "Preferred Dates",
+       groupSize: "Group Size",
+       budget: "Budget (USD)",
+       specialRequirements: "Special Requirements",
+       additionalMessage: "Additional Message",
+       cancel: "Cancel",
+       submitRequest: "Submit Request",
+       yourFullName: "Your full name",
+       yourEmail: "your.email@example.com",
+       yourPhone: "+1234567890",
+       datesExample: "e.g., July 15-20, 2024",
+       numberOfPeople: "Number of people",
+       budgetPerPerson: "Your budget per person",
+       specialNeedsPlaceholder: "Any special needs, accessibility requirements, or specific requests...",
+       dreamTourPlaceholder: "Tell us more about your dream tour...",
+       authenticationRequired: "Authentication Required",
+       pleaseSignIn: "Please sign in to submit a special tour request.",
+       requestNotAllowed: "Request Not Allowed",
+       serviceProvidersNotAllowed: "Service providers and administrators cannot submit special tour requests. Please use a customer account.",
+       missingInformation: "Missing Information",
+       fillRequiredFields: "Please fill in all required fields (Name, Email, and Tour Type).",
+       success: "Success",
+       requestSubmitted: "Your special tour request has been submitted successfully!",
+       error: "Error",
+       failedToLoadTours: "Failed to load tours. Please try again.",
+       failedToLoadGuides: "Failed to load guides. Please try again.",
+       failedToSubmitRequest: "Failed to submit special tour request. Please try again.",
+       new: "New",
+       reviews: "reviews",
+       bio: "Bio",
+       specialties: "Specialties",
+       languages: "Languages",
+       baseLocation: "Base Location",
+       yearsExp: "years exp.",
+       perDay: "/day"
+     },
   },
   ar: {
     common: {
@@ -1121,6 +1437,85 @@ export const translations: Record<Language, Translations> = {
         personalizedConcierge: "خدمة كونسيرج شخصية",
         luxuryDiningReservations: "حجوزات مطاعم فاخرة",
         travelInsurance: "تأمين سفر شامل",
+        // Bundle checkbox features
+        hotelAccommodation: "إقامة فندقية",
+        carRentalService: "خدمة تأجير السيارات",
+        professionalTourGuide: "مرشد سياحي محترف",
+        customItinerary: "جدول سفر مخصص",
+        localSupport: "دعم محلي",
+        flexibleBooking: "حجز مرن",
+      },
+    },
+    umrah: {
+      title: "باقات العمرة",
+      subtitle: "اكتشف باقات العمرة الشاملة لرحلة روحية",
+      availablePackages: "الباقات المتاحة",
+      noPackagesAvailable: "لا توجد باقات متاحة حالياً",
+      selectSeason: "اختر الموسم",
+      allSeasons: "جميع المواسم",
+      ramadan: "رمضان",
+      hajj: "الحج",
+      packageDetails: "تفاصيل الباقة",
+      requestPackage: "طلب الباقة",
+      requestUmrah: "طلب العمرة",
+      packageRequest: "طلب الباقة",
+      preferredDates: "التواريخ المفضلة",
+      startDate: "تاريخ البداية",
+      endDate: "تاريخ النهاية",
+      numberOfPilgrims: "عدد الحجاج",
+      maxPilgrims: "الحد الأقصى للحجاج",
+      contactPhoneNumber: "رقم الهاتف للتواصل",
+      alternativeEmail: "البريد الإلكتروني البديل",
+      specialRequirements: "المتطلبات الخاصة",
+      additionalMessage: "رسالة إضافية",
+      submitRequest: "إرسال الطلب",
+      submitting: "جاري الإرسال...",
+      authenticationRequired: "مطلوب تسجيل الدخول",
+      pleaseSignIn: "يرجى تسجيل الدخول لطلب باقة العمرة.",
+      noPackageSelected: "لم يتم اختيار باقة.",
+      missingInformation: "معلومات مفقودة",
+      fillRequiredFields: "يرجى ملء جميع الحقول المطلوبة.",
+      requestSubmitted: "تم إرسال الطلب",
+      requestSubmittedDescription: "تم إرسال طلب العمرة بنجاح. سنتواصل معك قريباً لمناقشة التفاصيل.",
+      failedToSubmit: "فشل في إرسال طلب العمرة",
+      phonePlaceholder: "+963 11 123 4567",
+      emailPlaceholder: "بريدك.الإلكتروني@مثال.com",
+      requirementsPlaceholder: "أي متطلبات خاصة، قيود غذائية، احتياجات ذوي الهمم، إلخ.",
+      messagePlaceholder: "أي معلومات إضافية أو أسئلة تود مشاركتها...",
+      features: {
+        accommodation: "الإقامة",
+        transportation: "النقل",
+        visaAssistance: "مساعدة التأشيرة",
+        guidedTours: "جولات مع مرشد",
+        meals: "الوجبات",
+        airportTransfers: "نقل من وإلى المطار",
+        hotelNearHaram: "فندق قريب من الحرم",
+        luxuryAccommodation: "إقامة فاخرة",
+        privateTransportation: "نقل خاص",
+        vipServices: "خدمات VIP",
+        spiritualGuidance: "إرشاد روحي",
+        groupPrayers: "صلاة جماعية",
+        ziyarahTours: "جولات الزيارة",
+        medicalSupport: "دعم طبي",
+        insurance: "التأمين",
+        documentation: "التوثيق",
+      },
+      packageDetails: {
+        days: "أيام",
+        numberOfPilgrims: "عدد الحجاج",
+        maxPilgrims: "الحد الأقصى للحجاج",
+        duration: "المدة",
+        price: "السعر",
+        currency: "العملة",
+        startDate: "تاريخ البداية",
+        endDate: "تاريخ النهاية",
+        packageType: "نوع الباقة",
+        standard: "قياسي",
+        premium: "متميز",
+        luxury: "فاخر",
+        economy: "اقتصادي",
+        midRange: "متوسط",
+        highEnd: "عالي الجودة",
       },
     },
     dashboard: {
@@ -1363,7 +1758,7 @@ export const translations: Record<Language, Translations> = {
       fullName: "الاسم الكامل",
       phoneNumber: "رقم الهاتف",
       emailAddress: "عنوان البريد الإلكتروني",
-      specialRequirements: "المتطلبات الخاصة",
+      specialRequests: "المتطلبات الخاصة",
       anySpecialRequirements: "أي متطلبات أو طلبات خاصة...",
       total: "المجموع",
       rental: "التأجير",
@@ -1411,6 +1806,85 @@ export const translations: Record<Language, Translations> = {
       guide: "المرشد",
       dates: "التواريخ",
       guests: "الضيوف",
+    },
+    tourTypes: {
+      historical: "تاريخي",
+      cultural: "ثقافي",
+      adventure: "مغامرة",
+      religious: "ديني",
+      nature: "طبيعي",
+      custom: "مخصص",
+    },
+    tours: {
+      pageTitle: "جولات سياحية",
+      pageDescription: "اكتشف أفضل ما في سوريا مع جولاتنا المصحوبة بمرشدين خبراء. من الرحلات التاريخية إلى التجارب الثقافية والمغامرات الطبيعية، تقدم جولاتنا رؤى أصيلة لتراث سوريا الغني وجمالها.",
+      requestSpecialTour: "طلب جولة خاصة",
+      searchPlaceholder: "البحث في الجولات...",
+      allCategories: "جميع الفئات",
+      allGuides: "جميع المرشدين",
+      allPrices: "جميع الأسعار",
+      under100: "أقل من 100$",
+      price100to300: "100$ - 300$",
+      over300: "أكثر من 300$",
+      clear: "مسح",
+      showingResults: "عرض {count} من {total} جولة",
+      noToursFound: "لم يتم العثور على جولات تطابق معايير البحث.",
+      viewDetails: "عرض التفاصيل",
+      bookNow: "احجز الآن",
+      tourGuide: "مرشد الجولة",
+      description: "الوصف",
+      duration: "المدة",
+      capacity: "السعة",
+      people: "أشخاص",
+      hours: "ساعات",
+      close: "إغلاق",
+      bookThisTour: "احجز هذه الجولة",
+      requestSpecialTourTitle: "طلب جولة خاصة",
+      requestSpecialTourDescription: "أخبرنا عن جولتك المثالية وسنربطك بأفضل مرشد.",
+      fullName: "الاسم الكامل",
+      email: "البريد الإلكتروني",
+      phoneNumber: "رقم الهاتف",
+      tourType: "نوع الجولة",
+      selectTourType: "اختر نوع الجولة",
+      selectGuide: "اختر المرشد",
+      chooseGuideOrLetUsPick: "اختر مرشداً أو دعنا نختار لك",
+      loadingGuides: "جاري تحميل المرشدين...",
+      letUsChoose: "دعنا نختار أفضل مرشد لك",
+      preferredDates: "التواريخ المفضلة",
+      groupSize: "حجم المجموعة",
+      budget: "الميزانية (دولار أمريكي)",
+      specialRequirements: "المتطلبات الخاصة",
+      additionalMessage: "رسالة إضافية",
+      cancel: "إلغاء",
+      submitRequest: "إرسال الطلب",
+      yourFullName: "اسمك الكامل",
+      yourEmail: "بريدك.الإلكتروني@مثال.com",
+      yourPhone: "+1234567890",
+      datesExample: "مثال: 15-20 يوليو 2024",
+      numberOfPeople: "عدد الأشخاص",
+      budgetPerPerson: "ميزانيتك للشخص الواحد",
+      specialNeedsPlaceholder: "أي احتياجات خاصة أو متطلبات إمكانية الوصول أو طلبات محددة...",
+      dreamTourPlaceholder: "أخبرنا المزيد عن جولتك المثالية...",
+      authenticationRequired: "مطلوب تسجيل الدخول",
+      pleaseSignIn: "يرجى تسجيل الدخول لإرسال طلب جولة خاصة.",
+      requestNotAllowed: "الطلب غير مسموح",
+      serviceProvidersNotAllowed: "لا يمكن لمقدمي الخدمات والإداريين إرسال طلبات جولات خاصة. يرجى استخدام حساب عميل.",
+      missingInformation: "معلومات مفقودة",
+      fillRequiredFields: "يرجى ملء جميع الحقول المطلوبة (الاسم والبريد الإلكتروني ونوع الجولة).",
+      success: "نجح",
+      requestSubmitted: "تم إرسال طلب جولتك الخاصة بنجاح!",
+      error: "خطأ",
+      failedToLoadTours: "فشل في تحميل الجولات. يرجى المحاولة مرة أخرى.",
+      failedToLoadGuides: "فشل في تحميل المرشدين. يرجى المحاولة مرة أخرى.",
+      failedToSubmitRequest: "فشل في إرسال طلب الجولة الخاصة. يرجى المحاولة مرة أخرى.",
+      new: "جديد",
+      reviews: "تقييمات",
+      bio: "السيرة الذاتية",
+      specialties: "التخصصات",
+      languages: "اللغات",
+      baseLocation: "الموقع الأساسي",
+      yearsExp: "سنوات خبرة",
+      perDay: "/يوم"
     },
   },
   fr: {
@@ -1592,6 +2066,85 @@ export const translations: Record<Language, Translations> = {
         personalizedConcierge: "Conciergerie personnalisée",
         luxuryDiningReservations: "Réservations de restaurants de luxe",
         travelInsurance: "Assurance voyage complète",
+        // Bundle checkbox features
+        hotelAccommodation: "Hébergement hôtelier",
+        carRentalService: "Service de location de voitures",
+        professionalTourGuide: "Guide touristique professionnel",
+        customItinerary: "Itinéraire personnalisé",
+        localSupport: "Support local",
+        flexibleBooking: "Réservation flexible",
+      },
+    },
+    umrah: {
+      title: "Forfaits Omra",
+      subtitle: "Découvrez nos forfaits Omra complets pour un voyage spirituel",
+      availablePackages: "Forfaits disponibles",
+      noPackagesAvailable: "Aucun forfait disponible pour le moment",
+      selectSeason: "Sélectionner la saison",
+      allSeasons: "Toutes les saisons",
+      ramadan: "Ramadan",
+      hajj: "Hajj",
+      packageDetails: "Détails du forfait",
+      requestPackage: "Demander le forfait",
+      requestUmrah: "Demander l'Omra",
+      packageRequest: "Demande de forfait",
+      preferredDates: "Dates préférées",
+      startDate: "Date de début",
+      endDate: "Date de fin",
+      numberOfPilgrims: "Nombre de pèlerins",
+      maxPilgrims: "Pèlerins max",
+      contactPhoneNumber: "Numéro de téléphone de contact",
+      alternativeEmail: "Email alternatif",
+      specialRequirements: "Exigences spéciales",
+      additionalMessage: "Message supplémentaire",
+      submitRequest: "Soumettre la demande",
+      submitting: "Soumission...",
+      authenticationRequired: "Authentification requise",
+      pleaseSignIn: "Veuillez vous connecter pour demander un forfait Omra.",
+      noPackageSelected: "Aucun forfait sélectionné.",
+      missingInformation: "Informations manquantes",
+      fillRequiredFields: "Veuillez remplir tous les champs obligatoires.",
+      requestSubmitted: "Demande soumise",
+      requestSubmittedDescription: "Votre demande d'Omra a été soumise avec succès. Nous vous contacterons bientôt pour discuter des détails.",
+      failedToSubmit: "Échec de la soumission de la demande d'Omra",
+      phonePlaceholder: "+963 11 123 4567",
+      emailPlaceholder: "votre.email@exemple.com",
+      requirementsPlaceholder: "Toute exigence spéciale, restriction alimentaire, besoin d'accessibilité, etc.",
+      messagePlaceholder: "Toute information supplémentaire ou question que vous aimeriez partager...",
+      features: {
+        accommodation: "Hébergement",
+        transportation: "Transport",
+        visaAssistance: "Assistance visa",
+        guidedTours: "Visites guidées",
+        meals: "Repas",
+        airportTransfers: "Transferts aéroport",
+        hotelNearHaram: "Hôtel près du Haram",
+        luxuryAccommodation: "Hébergement de luxe",
+        privateTransportation: "Transport privé",
+        vipServices: "Services VIP",
+        spiritualGuidance: "Guidance spirituelle",
+        groupPrayers: "Prières de groupe",
+        ziyarahTours: "Tours de Ziyarah",
+        medicalSupport: "Support médical",
+        insurance: "Assurance",
+        documentation: "Documentation",
+      },
+      packageDetails: {
+        days: "Jours",
+        numberOfPilgrims: "Nombre de pèlerins",
+        maxPilgrims: "Pèlerins max",
+        duration: "Durée",
+        price: "Prix",
+        currency: "Devise",
+        startDate: "Date de début",
+        endDate: "Date de fin",
+        packageType: "Type de forfait",
+        standard: "Standard",
+        premium: "Premium",
+        luxury: "Luxe",
+        economy: "Économique",
+        midRange: "Milieu de gamme",
+        highEnd: "Haut de gamme",
       },
     },
     dashboard: {
@@ -1834,7 +2387,7 @@ export const translations: Record<Language, Translations> = {
       fullName: "Nom complet",
       phoneNumber: "Numéro de téléphone",
       emailAddress: "Adresse e-mail",
-      specialRequirements: "Exigences spéciales",
+      specialRequests: "Exigences spéciales",
       anySpecialRequirements: "Toute exigence ou demande spéciale...",
       total: "Total",
       rental: "Location",
@@ -1882,6 +2435,85 @@ export const translations: Record<Language, Translations> = {
       guide: "Guide",
       dates: "Dates",
       guests: "Invités",
+    },
+    tourTypes: {
+      historical: "Historical",
+      cultural: "Cultural",
+      adventure: "Adventure",
+      religious: "Religious",
+      nature: "Nature",
+      custom: "Custom",
+    },
+    tours: {
+      pageTitle: "Tours Spéciaux",
+      pageDescription: "Découvrez nos tours spéciaux pour une expérience unique",
+      requestSpecialTour: "Demandez un tour spécial",
+      searchPlaceholder: "Rechercher un tour spécial...",
+      allCategories: "Toutes les catégories",
+      allGuides: "Tous les guides",
+      allPrices: "Tous les prix",
+      under100: "Moins de $100",
+      price100to300: "$100-300",
+      over300: "Plus de $300",
+      clear: "Effacer",
+      showingResults: "Affichage des résultats",
+      noToursFound: "Aucun tour trouvé",
+      viewDetails: "Voir les détails",
+      bookNow: "Réserver maintenant",
+      tourGuide: "Guide",
+      description: "Description",
+      duration: "Durée",
+      capacity: "Capacité",
+      people: "Personnes",
+      hours: "Heures",
+      close: "Fermer",
+      bookThisTour: "Réserver ce tour",
+      requestSpecialTourTitle: "Demande de tour spécial",
+      requestSpecialTourDescription: "Dites-nous vos préférences et nous trouverons le tour parfait pour vous.",
+      fullName: "Nom complet",
+      email: "Email",
+      phoneNumber: "Numéro de téléphone",
+      tourType: "Type de tour",
+      selectTourType: "Sélectionner le type de tour",
+      selectGuide: "Sélectionner un guide",
+      chooseGuideOrLetUsPick: "Choisir un guide ou laisser nous choisir",
+      loadingGuides: "Chargement des guides...",
+      letUsChoose: "Laissons-nous choisir",
+      preferredDates: "Dates préférées",
+      groupSize: "Taille du groupe",
+      budget: "Budget",
+      specialRequirements: "Exigences spéciales",
+      additionalMessage: "Message supplémentaire",
+      cancel: "Annuler",
+      submitRequest: "Soumettre la demande",
+      yourFullName: "Votre nom complet",
+      yourEmail: "Votre email",
+      yourPhone: "Votre numéro de téléphone",
+      datesExample: "ex: 2023-05-15",
+      numberOfPeople: "Nombre de personnes",
+      budgetPerPerson: "Budget par personne",
+      specialNeedsPlaceholder: "ex: besoins spécifiques, besoins d'accessibilité",
+      dreamTourPlaceholder: "ex: destination de rêve",
+      authenticationRequired: "Authentification requise",
+      pleaseSignIn: "Veuillez vous connecter pour demander un tour spécial.",
+      requestNotAllowed: "Demande non autorisée",
+      serviceProvidersNotAllowed: "Les fournisseurs de services ne peuvent pas répondre à cette demande. Veuillez utiliser un autre service.",
+      missingInformation: "Informations manquantes",
+      fillRequiredFields: "Veuillez remplir tous les champs obligatoires.",
+      success: "Votre demande a été soumise avec succès. Nous vous contacterons bientôt pour discuter des détails.",
+      requestSubmitted: "Demande soumise",
+      error: "Erreur lors de la soumission de la demande",
+      failedToLoadTours: "Échec du chargement des tours",
+      failedToLoadGuides: "Échec du chargement des guides",
+      failedToSubmitRequest: "Échec de la soumission de la demande",
+      new: "Nouveau",
+      reviews: "Avis",
+      bio: "Bio",
+      specialties: "Spécialités",
+      languages: "Langues",
+      baseLocation: "Lieu de base",
+      yearsExp: "Expérience",
+      perDay: "Par jour",
     },
   },
 }

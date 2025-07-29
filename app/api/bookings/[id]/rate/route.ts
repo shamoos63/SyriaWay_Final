@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { db } from '@/lib/db'
-import { bookings, bookingRatings } from '@/drizzle/schema'
+import { bookings, reviews } from '@/drizzle/schema'
 import { eq, and } from 'drizzle-orm'
+
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
 
 // POST - Rate a booking
 export async function POST(
@@ -13,7 +18,8 @@ export async function POST(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -37,7 +43,7 @@ export async function POST(
       .from(bookings)
       .where(and(
         eq(bookings.id, parseInt(id)),
-        eq(bookings.userId, parseInt(session.user.id))
+        eq(bookings.userId, userId)
       ))
 
     if (!booking) {
@@ -58,8 +64,8 @@ export async function POST(
     // Check if user already rated this booking
     const [existingRating] = await db
       .select()
-      .from(bookingRatings)
-      .where(eq(bookingRatings.bookingId, parseInt(id)))
+      .from(reviews)
+      .where(eq(reviews.serviceId, parseInt(id)))
 
     if (existingRating) {
       return NextResponse.json(
@@ -70,12 +76,17 @@ export async function POST(
 
     // Create rating
     const [newRating] = await db
-      .insert(bookingRatings)
+      .insert(reviews)
       .values({
-        bookingId: parseInt(id),
-        userId: parseInt(session.user.id),
+        serviceId: parseInt(id),
+        userId: userId,
         rating: parseInt(rating),
-        review: review || null,
+        comment: review || null,
+        serviceType: 'BOOKING',
+        isVerified: false,
+        helpfulCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       })
       .returning()
 
@@ -112,8 +123,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // Get review for this booking
     const review = await db
       .select()
-      .from(bookingRatings)
-      .where(eq(bookingRatings.bookingId, parseInt(id)))
+      .from(reviews)
+      .where(eq(reviews.serviceId, parseInt(id)))
       .then(rows => rows[0])
 
     return NextResponse.json({

@@ -11,8 +11,6 @@ export async function GET(request: NextRequest) {
     }
     
     const userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
     if (userId === 'demo-user-id') {
       return NextResponse.json({
         notifications: [
@@ -29,11 +27,12 @@ export async function GET(request: NextRequest) {
         total: 1
       })
     }
+    const userIdNum = parseInt(userId)
 
     const notificationsData = await db
       .select()
       .from(notifications)
-      .where(eq(notifications.userId, userId))
+      .where(eq(notifications.userId, userIdNum))
       .orderBy(desc(notifications.createdAt))
 
     return NextResponse.json({
@@ -57,6 +56,10 @@ export async function POST(request: NextRequest) {
     }
     
     const userId = authHeader.replace('Bearer ', '')
+    if (userId === 'demo-user-id') {
+      return NextResponse.json({ success: true, message: 'Notifications marked as read (demo)' })
+    }
+    const userIdNum = parseInt(userId)
     const { notificationIds } = await request.json()
 
     if (!notificationIds || !Array.isArray(notificationIds)) {
@@ -70,11 +73,10 @@ export async function POST(request: NextRequest) {
     await db
       .update(notifications)
       .set({ 
-        isRead: true,
-        readAt: new Date().toISOString()
+        isRead: true
       })
       .where(and(
-        eq(notifications.userId, userId),
+        eq(notifications.userId, userIdNum),
         inArray(notifications.id, notificationIds)
       ))
 

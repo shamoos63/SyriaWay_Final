@@ -18,20 +18,13 @@ interface ContactForm {
   phone: string | null
   subject: string
   message: string
-  category: string | null
   priority: string
   status: string
-  assignedTo: string | null
+  assignedTo: number | null
   response: string | null
   respondedAt: string | null
-  respondedBy: string | null
   createdAt: string
   updatedAt: string
-  user: {
-    id: string
-    name: string | null
-    email: string
-  } | null
 }
 
 export default function ContactFormsPage() {
@@ -61,7 +54,7 @@ export default function ContactFormsPage() {
       const response = await fetch(`/api/admin/contact-forms?${params}`)
       if (response.ok) {
         const data = await response.json()
-        setContactForms(data.contactForms)
+        setContactForms(data.contactForms || [])
       } else {
         toast({
           title: "Error",
@@ -140,7 +133,7 @@ export default function ContactFormsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           response: responseText,
-          status: "Resolved"
+          status: "RESOLVED"
         }),
       })
 
@@ -148,7 +141,7 @@ export default function ContactFormsPage() {
         setContactForms(prev => 
           prev.map(form => 
             form.id === selectedForm.id 
-              ? { ...form, response: responseText, status: "Resolved" }
+              ? { ...form, response: responseText, status: "RESOLVED" }
               : form
           )
         )
@@ -215,20 +208,20 @@ export default function ContactFormsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "New": return "bg-blue-100 text-blue-800"
-      case "In Progress": return "bg-yellow-100 text-yellow-800"
-      case "Resolved": return "bg-green-100 text-green-800"
-      case "Closed": return "bg-gray-100 text-gray-800"
+      case "PENDING": return "bg-blue-100 text-blue-800"
+      case "IN_PROGRESS": return "bg-yellow-100 text-yellow-800"
+      case "RESOLVED": return "bg-green-100 text-green-800"
+      case "CLOSED": return "bg-gray-100 text-gray-800"
       default: return "bg-gray-100 text-gray-800"
     }
   }
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "Low": return "bg-gray-100 text-gray-800"
-      case "Normal": return "bg-blue-100 text-blue-800"
-      case "High": return "bg-orange-100 text-orange-800"
-      case "Urgent": return "bg-red-100 text-red-800"
+      case "LOW": return "bg-gray-100 text-gray-800"
+      case "NORMAL": return "bg-blue-100 text-blue-800"
+      case "HIGH": return "bg-orange-100 text-orange-800"
+      case "URGENT": return "bg-red-100 text-red-800"
       default: return "bg-gray-100 text-gray-800"
     }
   }
@@ -273,10 +266,10 @@ export default function ContactFormsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="New">New</SelectItem>
-            <SelectItem value="In Progress">In Progress</SelectItem>
-            <SelectItem value="Resolved">Resolved</SelectItem>
-            <SelectItem value="Closed">Closed</SelectItem>
+            <SelectItem value="PENDING">Pending</SelectItem>
+            <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+            <SelectItem value="RESOLVED">Resolved</SelectItem>
+            <SelectItem value="CLOSED">Closed</SelectItem>
           </SelectContent>
         </Select>
         <Select value={priorityFilter} onValueChange={setPriorityFilter}>
@@ -285,10 +278,10 @@ export default function ContactFormsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Priority</SelectItem>
-            <SelectItem value="Low">Low</SelectItem>
-            <SelectItem value="Normal">Normal</SelectItem>
-            <SelectItem value="High">High</SelectItem>
-            <SelectItem value="Urgent">Urgent</SelectItem>
+            <SelectItem value="LOW">Low</SelectItem>
+            <SelectItem value="NORMAL">Normal</SelectItem>
+            <SelectItem value="HIGH">High</SelectItem>
+            <SelectItem value="URGENT">Urgent</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -298,7 +291,7 @@ export default function ContactFormsPage() {
         <div className="flex justify-center items-center py-12">
           <Loader2 className="animate-spin h-8 w-8 text-muted-foreground" />
         </div>
-      ) : contactForms.length === 0 ? (
+      ) : (contactForms || []).length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
@@ -307,7 +300,7 @@ export default function ContactFormsPage() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {contactForms.map((form) => (
+          {(contactForms || []).map((form) => (
             <Card key={form.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4 sm:p-6">
                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
@@ -354,7 +347,7 @@ export default function ContactFormsPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleRespond(form)}
-                      disabled={actionLoading || form.status === "Resolved"}
+                      disabled={actionLoading || form.status === "RESOLVED"}
                     >
                       <MessageSquare className="h-4 w-4" />
                     </Button>
@@ -367,10 +360,10 @@ export default function ContactFormsPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="New">New</SelectItem>
-                        <SelectItem value="In Progress">In Progress</SelectItem>
-                        <SelectItem value="Resolved">Resolved</SelectItem>
-                        <SelectItem value="Closed">Closed</SelectItem>
+                        <SelectItem value="PENDING">Pending</SelectItem>
+                        <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                        <SelectItem value="RESOLVED">Resolved</SelectItem>
+                        <SelectItem value="CLOSED">Closed</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button

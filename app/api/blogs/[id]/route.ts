@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { blogs, blogTranslations, users } from '@/drizzle/schema'
+import { blogs, blogTranslations, users, blogReactions } from '@/drizzle/schema'
 import { eq, and, or } from 'drizzle-orm'
+
+// Helper function to convert frontend language codes to database language codes
+function getDatabaseLanguageCode(frontendLanguage: string): string {
+  const languageMap: Record<string, string> = {
+    'en': 'ENGLISH',
+    'ar': 'ARABIC',
+    'fr': 'FRENCH'
+  }
+  return languageMap[frontendLanguage] || 'ENGLISH'
+}
 
 // GET - Fetch single blog by ID or slug
 export async function GET(
@@ -105,16 +115,38 @@ export async function GET(
       .where(eq(blogTranslations.blogId, blogData.id))
 
     // Increment view count
+    const updatedViewCount = (blogData.viewCount || 0) + 1
     await db
       .update(blogs)
       .set({
-        viewCount: (blogData.viewCount || 0) + 1,
+        viewCount: updatedViewCount,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(blogs.id, blogData.id))
 
     // Get the translation for the requested language
-    const translation = translations.find(t => t.language === language)
+    const databaseLanguage = getDatabaseLanguageCode(language)
+    const translation = translations.find(t => t.language === databaseLanguage)
+
+    // Get reactions for this blog
+    const blogReactionsData = await db
+      .select()
+      .from(blogReactions)
+      .where(eq(blogReactions.blogId, blogData.id))
+
+    const likes = blogReactionsData.filter(r => r.reactionType === 'LIKE').length
+    const dislikes = blogReactionsData.filter(r => r.reactionType === 'DISLIKE').length
+
+    // Parse tags if they exist
+    let parsedTags = []
+    if (blogData.tags) {
+      try {
+        parsedTags = JSON.parse(blogData.tags)
+      } catch {
+        // If parsing fails, treat as comma-separated string
+        parsedTags = blogData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+      }
+    }
 
     const blog = {
       ...blogData,
@@ -126,6 +158,10 @@ export async function GET(
       seoDescription: translation?.seoDescription || blogData.seoDescription,
       seoKeywords: translation?.seoKeywords || blogData.seoKeywords,
       translations: translations || [],
+      tags: parsedTags,
+      likes,
+      dislikes,
+      views: updatedViewCount
     }
 
     return NextResponse.json({ blog })
@@ -160,15 +196,39 @@ export async function PUT(
       )
     }
 
-    // Update blog
+    // Extract translation data from body
+    const { title, excerpt, content, translations, ...blogData } = body
+
+    // Update main blog fields (use English content as main fields)
     const [updatedBlog] = await db
       .update(blogs)
       .set({
-        ...body,
+        title: title?.en || blogData.title,
+        excerpt: excerpt?.en || blogData.excerpt,
+        content: content?.en || blogData.content,
+        ...blogData,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(blogs.id, parseInt(id)))
       .returning()
+
+    // Handle translations if provided
+    if (translations && Array.isArray(translations)) {
+      // Delete existing translations
+      await db
+        .delete(blogTranslations)
+        .where(eq(blogTranslations.blogId, parseInt(id)))
+
+      // Insert new translations
+      if (translations.length > 0) {
+        await db
+          .insert(blogTranslations)
+          .values(translations.map(t => ({
+            ...t,
+            blogId: parseInt(id)
+          })))
+      }
+    }
 
     return NextResponse.json({
       blog: updatedBlog,

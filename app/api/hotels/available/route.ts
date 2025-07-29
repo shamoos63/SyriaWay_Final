@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit
 
     // Simple query without complex conditions
-    let hotelsData = []
+    let hotelsData: any[] = []
     try {
       hotelsData = await db
         .select()
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get rooms for each hotel
-    const allRooms = []
+    const allRooms: any[] = []
     const hotelsWithRooms = await Promise.all(
       hotelsData.map(async (hotel) => {
         try {

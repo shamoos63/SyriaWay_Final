@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { TourismNewsModal } from "@/components/control-panel/tourism-news-modal"
 import { DeleteConfirmationDialog } from "@/components/user-dashboard/delete-confirmation-dialog"
+import dayjs from 'dayjs'
 
 interface TourismNews {
   id: string
@@ -39,7 +40,7 @@ interface TourismNews {
   updatedAt: string
 }
 
-interface TourismNewsFormData {
+interface LocalTourismNewsFormData {
   title: string
   excerpt: string
   content: string
@@ -175,7 +176,7 @@ export default function TourismNewsPage() {
     }
   }
 
-  const handleSaveNews = async (formData: TourismNewsFormData) => {
+  const handleSaveNews = async (formData: LocalTourismNewsFormData) => {
     try {
       setSaving(true)
       
@@ -247,13 +248,9 @@ export default function TourismNewsPage() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    if (!dateString) return 'N/A';
+    const d = dayjs(dateString)
+    return d.isValid() ? d.format('YYYY-MM-DD HH:mm') : 'N/A';
   }
 
   const filteredNews = news.filter(newsItem => {
@@ -459,7 +456,20 @@ export default function TourismNewsPage() {
         open={modalOpen}
         onOpenChange={setModalOpen}
         news={editingNews}
-        onSave={handleSaveNews}
+        onSave={(formData) => {
+          // Map multilingual fields to flat string fields (use English only)
+          void handleSaveNews({
+            title: formData.title.en,
+            excerpt: formData.excerpt.en,
+            content: formData.content.en,
+            category: formData.category,
+            tags: formData.tags,
+            featuredImage: formData.featuredImage,
+            images: formData.images,
+            isPublished: formData.isPublished,
+            isFeatured: formData.isFeatured,
+          })
+        }}
         loading={saving}
       />
 

@@ -5,12 +5,18 @@ import { db } from '@/lib/db'
 import { bookings, hotels, users } from '@/drizzle/schema'
 import { eq, and, desc } from 'drizzle-orm'
 
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
+
 // GET - Fetch bookings for hotels owned by the authenticated user
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -26,7 +32,7 @@ export async function GET(request: NextRequest) {
     const userHotels = await db
       .select({ id: hotels.id })
       .from(hotels)
-      .where(eq(hotels.ownerId, parseInt(session.user.id)))
+      .where(eq(hotels.ownerId, userId))
 
     const hotelIds = userHotels.map(hotel => hotel.id)
 
@@ -59,7 +65,7 @@ export async function GET(request: NextRequest) {
         serviceId: bookings.serviceId,
         startDate: bookings.startDate,
         endDate: bookings.endDate,
-        totalAmount: bookings.totalAmount,
+        totalPrice: bookings.totalPrice,
         status: bookings.status,
         paymentStatus: bookings.paymentStatus,
         specialRequests: bookings.specialRequests,

@@ -8,7 +8,7 @@ import { desc } from 'drizzle-orm'
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -21,64 +21,89 @@ export async function GET(request: NextRequest) {
     const typeFilter = searchParams.get('type')?.toUpperCase()
     const offset = (page - 1) * limit
     // Fetch all cars with owner
-    const carRows = await db
+    const carRowsRaw = await db
       .select({
         id: cars.id,
-        type: 'CAR',
         name: cars.brand,
         model: cars.model,
         providerId: cars.ownerId,
         createdAt: cars.createdAt,
         status: cars.isAvailable,
         price: cars.pricePerDay,
+        isVerified: cars.isVerified,
+        isSpecialOffer: cars.isSpecialOffer,
       })
       .from(cars)
+    const carRows = carRowsRaw.map(car => ({ ...car, type: 'CAR' as const, status: car.status ?? false }))
+
     // Fetch all hotels with owner
-    const hotelRows = await db
+    const hotelRowsRaw = await db
       .select({
         id: hotels.id,
-        type: 'HOTEL',
         name: hotels.name,
-        model: null,
         providerId: hotels.ownerId,
         createdAt: hotels.createdAt,
         status: hotels.isActive,
-        price: null,
+        isVerified: hotels.isVerified,
+        isSpecialOffer: hotels.isSpecialOffer,
       })
       .from(hotels)
+    const hotelRows = hotelRowsRaw.map(hotel => ({ ...hotel, type: 'HOTEL' as const, model: null, price: null, status: hotel.status ?? false }))
+
     // Fetch all tours with guide
-    const tourRows = await db
+    const tourRowsRaw = await db
       .select({
         id: tours.id,
-        type: 'TOUR',
         name: tours.name,
-        model: null,
         providerId: tours.guideId,
         createdAt: tours.createdAt,
         status: tours.isActive,
         price: tours.price,
+        isVerified: tours.isVerified,
+        isSpecialOffer: tours.isSpecialOffer,
       })
       .from(tours)
+    const tourRows = tourRowsRaw.map(tour => ({ ...tour, type: 'TOUR' as const, model: null, status: tour.status ?? false }))
+
     // Combine all
-    let allListings = [...carRows, ...hotelRows, ...tourRows]
+    let allListings: Array<{
+      id: number;
+      type: 'CAR' | 'HOTEL' | 'TOUR';
+      name: string;
+      model: string | null;
+      providerId: number;
+      createdAt: string | Date;
+      status: boolean;
+      price: number | null;
+      provider?: { id: number; name: string | null; email: string | null } | null;
+    }> = [...carRows, ...hotelRows, ...tourRows]
     // Filter by type if requested
     if (typeFilter && ['CAR', 'HOTEL', 'TOUR'].includes(typeFilter)) {
       allListings = allListings.filter(l => l.type === typeFilter)
     }
     // Fetch all providers in one go
     const providerIds = Array.from(new Set(allListings.map(l => l.providerId)))
-    const providerRows = providerIds.length > 0 ? await db
-      .select({ id: users.id, name: users.name, email: users.email })
-      .from(users)
-      .where(users.id.in(providerIds)) : []
-    const providerMap = Object.fromEntries(providerRows.map(u => [u.id, u]))
+    let providerRows: Array<{ id: number; name: string | null; email: string | null }> = []
+    if (providerIds.length > 0) {
+      // Use inArray from drizzle-orm
+      const { inArray } = await import('drizzle-orm')
+      providerRows = await db
+        .select({ id: users.id, name: users.name, email: users.email })
+        .from(users)
+        .where(inArray(users.id, providerIds))
+    }
+    const providerMap: Record<number, { id: number; name: string | null; email: string | null }> = Object.fromEntries(providerRows.map(u => [u.id, u]))
     // Attach provider info
     allListings = allListings.map(l => ({
       ...l,
       provider: providerMap[l.providerId] || null
     }))
-    // Sort by createdAt desc (ISO string sort is fine)
-    allListings.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+    // Sort by createdAt desc
+    allListings.sort((a, b) => {
+      const aDate = typeof a.createdAt === 'string' ? new Date(a.createdAt) : a.createdAt
+      const bDate = typeof b.createdAt === 'string' ? new Date(b.createdAt) : b.createdAt
+      return bDate.getTime() - aDate.getTime()
+    })
     // Pagination
     const paginated = allListings.slice(offset, offset + limit)
     const totalCount = allListings.length

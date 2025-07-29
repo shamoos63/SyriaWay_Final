@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -31,51 +31,87 @@ export async function GET(request: NextRequest) {
 
     const offset = (page - 1) * limit
 
+    // First, get the basic requests data
     const requestsData = await db
       .select({
         id: specialTourRequests.id,
         userId: specialTourRequests.userId,
-        guideId: specialTourRequests.guideId,
+        assignedGuideId: specialTourRequests.assignedGuideId,
         title: specialTourRequests.title,
         description: specialTourRequests.description,
-        duration: specialTourRequests.duration,
-        maxCapacity: specialTourRequests.maxCapacity,
+        preferredDates: specialTourRequests.preferredDates,
+        numberOfPeople: specialTourRequests.numberOfPeople,
         budget: specialTourRequests.budget,
-        startDate: specialTourRequests.startDate,
-        endDate: specialTourRequests.endDate,
-        location: specialTourRequests.location,
+        currency: specialTourRequests.currency,
+        destinations: specialTourRequests.destinations,
         specialRequirements: specialTourRequests.specialRequirements,
         status: specialTourRequests.status,
+        response: specialTourRequests.response,
+        respondedAt: specialTourRequests.respondedAt,
         createdAt: specialTourRequests.createdAt,
         updatedAt: specialTourRequests.updatedAt,
-        user: {
-          id: users.id,
-          name: users.name,
-          email: users.email,
-          image: users.image,
-        }
       })
       .from(specialTourRequests)
-      .leftJoin(users, eq(specialTourRequests.userId, users.id))
       .where(whereConditions.length > 0 ? whereConditions[0] : undefined)
       .orderBy(desc(specialTourRequests.createdAt))
       .limit(limit)
       .offset(offset)
 
     // Get total count for pagination
-    const totalCount = await db
-      .select({ count: specialTourRequests.id })
+    const totalCountArr = await db
+      .select()
       .from(specialTourRequests)
       .where(whereConditions.length > 0 ? whereConditions[0] : undefined)
+    const totalCount = totalCountArr.length
+    const totalPages = Math.ceil(totalCount / limit)
 
-    const totalPages = Math.ceil(totalCount.length / limit)
+    // Now fetch related data separately to avoid complex joins
+    const userIds = [...new Set(requestsData.map(r => r.userId))]
+    const guideIds = [...new Set(requestsData.map(r => r.assignedGuideId).filter(id => id !== null))]
+
+    let usersData = []
+    let guidesData = []
+
+    if (userIds.length > 0) {
+      usersData = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          phone: users.phone,
+        })
+        .from(users)
+        .where(userIds.length === 1 ? eq(users.id, userIds[0]) : undefined)
+    }
+
+    if (guideIds.length > 0) {
+      guidesData = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+        })
+        .from(users)
+        .where(guideIds.length === 1 ? eq(users.id, guideIds[0]) : undefined)
+    }
+
+    // Create maps for easy lookup
+    const usersMap = new Map(usersData.map(u => [u.id, u]))
+    const guidesMap = new Map(guidesData.map(g => [g.id, g]))
+
+    // Combine the data
+    const formattedRequests = requestsData.map(request => ({
+      ...request,
+      user: usersMap.get(request.userId) || null,
+      guide: request.assignedGuideId ? guidesMap.get(request.assignedGuideId) || null : null,
+    }))
 
     return NextResponse.json({
-      requests: requestsData,
+      requests: formattedRequests,
       pagination: {
         currentPage: page,
         totalPages,
-        totalCount: totalCount.length,
+        totalCount: totalCount,
         hasNextPage: page < totalPages,
         hasPrevPage: page > 1,
       }
@@ -102,21 +138,13 @@ export async function GET(request: NextRequest) {
 // PUT - Update special tour request status (admin only)
 export async function PUT(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
-    let userId = authHeader.replace('Bearer ', '')
-    
-    // For demo purposes, allow demo-user-id
-    if (userId === 'demo-user-id') {
-      userId = 'demo-user-id'
-    }
-
     // Check if user is admin
-    const user = await db.select().from(users).where(eq(users.id, userId))
-
+    const userArr = await db.select().from(users).where(eq(users.email, session.user.email))
+    const user = userArr[0]
     if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
@@ -131,44 +159,28 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Check if request exists
-    const existingRequest = await db.select().from(specialTourRequests).where(eq(specialTourRequests.id, requestId))
-
+    const existingRequestArr = await db.select().from(specialTourRequests).where(eq(specialTourRequests.id, requestId))
+    const existingRequest = existingRequestArr[0]
     if (!existingRequest) {
       return NextResponse.json(
         { error: 'Special tour request not found' },
         { status: 404 }
       )
     }
-
     // Update request
     const updateData: any = {
       status: status || existingRequest.status,
-      updatedAt: new Date()
+      updatedAt: new Date().toISOString()
     }
-
     // Only update guideId if provided and different from current
-    if (guideId && guideId !== existingRequest.guideId) {
+    if (guideId && 'guideId' in existingRequest && guideId !== (existingRequest as any).guideId) {
       updateData.guideId = guideId
     }
-
-    const updatedRequest = await db.update(specialTourRequests).set(updateData).where(eq(specialTourRequests.id, requestId))
-
+    const [updatedRequest] = await db.update(specialTourRequests).set(updateData).where(eq(specialTourRequests.id, requestId)).returning()
     return NextResponse.json({
       success: true,
       message: 'Special tour request updated successfully',
-      request: {
-        id: updatedRequest.id,
-        customerName: updatedRequest.customerName,
-        customerEmail: updatedRequest.customerEmail,
-        tourType: updatedRequest.tourType,
-        status: updatedRequest.status,
-        guide: updatedRequest.guide ? {
-          id: updatedRequest.guide.id,
-          name: updatedRequest.guide.user.name,
-          email: updatedRequest.guide.user.email
-        } : null
-      }
+      request: updatedRequest
     })
   } catch (error) {
     console.error('Error updating special tour request:', error)

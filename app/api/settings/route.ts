@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get public system settings with timeout handling
-    let systemSettingsData = []
+    let systemSettingsData: any[] = []
     try {
       systemSettingsData = await db
         .select()

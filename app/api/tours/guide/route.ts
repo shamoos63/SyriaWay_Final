@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
     const toursData = await db
       .select()
       .from(tours)
-      .where(eq(tours.guideId, parseInt(session.user.id)))
+      .where(eq(tours.guideId, userId))
 
     return NextResponse.json({ tours: toursData })
   } catch (error) {
@@ -40,7 +41,8 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -49,24 +51,26 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const {
-      title,
+      name,
       description,
       duration,
-      maxCapacity,
+      maxGroupSize,
       price,
-      location,
+      category,
       startLocation,
       endLocation,
       itinerary,
-      includedServices,
-      excludedServices,
+      included,
+      notIncluded,
       requirements,
       images,
-      isActive
+      isActive,
+      startDate,
+      endDate
     } = body
 
     // Validate required fields
-    if (!title || !description || !duration || !price) {
+    if (!name || !description || !duration || !price) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -77,21 +81,23 @@ export async function POST(request: NextRequest) {
     const [newTour] = await db
       .insert(tours)
       .values({
-        title,
+        name,
         description,
         duration: parseInt(duration),
-        maxCapacity: maxCapacity ? parseInt(maxCapacity) : 10,
+        maxGroupSize: maxGroupSize ? parseInt(maxGroupSize) : 10,
         price: parseFloat(price),
-        location: location || null,
+        category: category || null,
         startLocation: startLocation || null,
         endLocation: endLocation || null,
         itinerary: itinerary || null,
-        includedServices: includedServices || null,
-        excludedServices: excludedServices || null,
+        included: included || null,
+        notIncluded: notIncluded || null,
         requirements: requirements || null,
         images: images || null,
         isActive: isActive !== false,
-        guideId: parseInt(session.user.id),
+        guideId: userId,
+        startDate: startDate || null,
+        endDate: endDate || null,
       })
       .returning()
 
@@ -108,70 +114,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT /api/tours/guide/tours/[id] - Update a tour
-export async function PUT(req: NextRequest) {
-  try {
-    const authHeader = req.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    const userId = authHeader.replace('Bearer ', '')
-    
-    // Get guide ID from user ID
-    const guideId = await getGuideIdFromUserId(userId)
-    if (!guideId) {
-      return NextResponse.json({ error: 'Guide not found' }, { status: 404 })
-    }
-    
-    const url = new URL(req.url)
-    const id = url.pathname.split("/").pop()
-    const body = await req.json()
-    
-    // Only allow updating own tours
-    const existing = await prisma.tour.findUnique({ where: { id } })
-    if (!existing || existing.guideId !== guideId) {
-      return NextResponse.json({ error: "Not found or forbidden" }, { status: 404 })
-    }
-    
-    const tour = await prisma.tour.update({
-      where: { id },
-      data: body,
-    })
-    return NextResponse.json({ tour })
-  } catch (error) {
-    console.error('Error updating tour:', error)
-    return NextResponse.json({ error: "Failed to update tour" }, { status: 500 })
-  }
-}
-
-// DELETE /api/tours/guide/tours/[id] - Delete a tour
-export async function DELETE(req: NextRequest) {
-  try {
-    const authHeader = req.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    const userId = authHeader.replace('Bearer ', '')
-    
-    // Get guide ID from user ID
-    const guideId = await getGuideIdFromUserId(userId)
-    if (!guideId) {
-      return NextResponse.json({ error: 'Guide not found' }, { status: 404 })
-    }
-    
-    const url = new URL(req.url)
-    const id = url.pathname.split("/").pop()
-    
-    // Only allow deleting own tours
-    const existing = await prisma.tour.findUnique({ where: { id } })
-    if (!existing || existing.guideId !== guideId) {
-      return NextResponse.json({ error: "Not found or forbidden" }, { status: 404 })
-    }
-    
-    await prisma.tour.delete({ where: { id } })
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error('Error deleting tour:', error)
-    return NextResponse.json({ error: "Failed to delete tour" }, { status: 500 })
-  }
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
 } 

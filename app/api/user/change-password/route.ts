@@ -16,11 +16,17 @@ const changePasswordSchema = z.object({
   path: ["confirmPassword"],
 })
 
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
+
 export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -34,7 +40,7 @@ export async function PUT(request: NextRequest) {
     const [currentUser] = await db
       .select()
       .from(users)
-      .where(eq(users.id, parseInt(session.user.id)))
+      .where(eq(users.id, userId))
 
     if (!currentUser) {
       return NextResponse.json(
@@ -46,7 +52,7 @@ export async function PUT(request: NextRequest) {
     // Verify current password
     const isCurrentPasswordValid = await bcrypt.compare(
       validatedData.currentPassword,
-      currentUser.password
+      typeof currentUser.password === 'string' ? currentUser.password : ''
     )
 
     if (!isCurrentPasswordValid) {
@@ -66,7 +72,7 @@ export async function PUT(request: NextRequest) {
         password: hashedNewPassword,
         updatedAt: new Date().toISOString(),
       })
-      .where(eq(users.id, parseInt(session.user.id)))
+      .where(eq(users.id, userId))
 
     return NextResponse.json({
       message: 'Password changed successfully'

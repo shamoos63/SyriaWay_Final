@@ -5,19 +5,23 @@ import { db } from '@/lib/db'
 import { tours, bookings } from '@/drizzle/schema'
 import { eq, and, sql } from 'drizzle-orm'
 
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
+
 // GET - Fetch tour guide statistics
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
-
-    const userId = parseInt(session.user.id)
 
     // Get user's tours
     const userTours = await db

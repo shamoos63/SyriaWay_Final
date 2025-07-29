@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -20,13 +20,25 @@ export async function GET(request: NextRequest) {
     // Check if user is admin (you might want to add role checking here)
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
+    const search = searchParams.get('search')
+    const priority = searchParams.get('priority')
     const limit = parseInt(searchParams.get('limit') || '10')
     const page = parseInt(searchParams.get('page') || '1')
 
     let whereConditions = []
 
-    if (status) {
+    if (status && status !== 'all') {
       whereConditions.push(eq(contactForms.status, status))
+    }
+
+    if (priority && priority !== 'all') {
+      whereConditions.push(eq(contactForms.priority, priority))
+    }
+
+    // Note: Search functionality would need to be implemented with LIKE queries
+    // For now, we'll just log the search parameter
+    if (search) {
+      console.log('Search parameter received:', search)
     }
 
     const offset = (page - 1) * limit
@@ -39,6 +51,8 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .offset(offset)
 
+    console.log('Fetched contact forms:', formsData.length)
+
     // Get total count for pagination
     const totalCount = await db
       .select({ count: contactForms.id })
@@ -48,7 +62,7 @@ export async function GET(request: NextRequest) {
     const totalPages = Math.ceil(totalCount.length / limit)
 
     return NextResponse.json({
-      forms: formsData,
+      contactForms: formsData,
       pagination: {
         currentPage: page,
         totalPages,
@@ -62,7 +76,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Failed to fetch contact forms',
-        forms: [],
+        contactForms: [],
         pagination: {
           currentPage: 1,
           totalPages: 0,

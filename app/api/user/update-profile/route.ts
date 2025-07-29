@@ -20,11 +20,17 @@ const updateProfileSchema = z.object({
   }).optional(),
 })
 
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
+
 export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -39,14 +45,9 @@ export async function PUT(request: NextRequest) {
       .set({
         name: validatedData.name,
         phone: validatedData.phone,
-        address: validatedData.address,
-        dateOfBirth: validatedData.dateOfBirth,
-        gender: validatedData.gender,
-        nationality: validatedData.nationality,
-        preferences: validatedData.preferences ? JSON.stringify(validatedData.preferences) : undefined,
         updatedAt: new Date().toISOString(),
       })
-      .where(eq(users.id, parseInt(session.user.id)))
+      .where(eq(users.id, userId))
       .returning()
 
     if (!updatedUser) {
@@ -63,11 +64,6 @@ export async function PUT(request: NextRequest) {
         name: updatedUser.name,
         email: updatedUser.email,
         phone: updatedUser.phone,
-        address: updatedUser.address,
-        dateOfBirth: updatedUser.dateOfBirth,
-        gender: updatedUser.gender,
-        nationality: updatedUser.nationality,
-        preferences: updatedUser.preferences ? JSON.parse(updatedUser.preferences) : null,
       }
     })
   } catch (error) {

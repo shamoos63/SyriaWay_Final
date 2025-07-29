@@ -5,15 +5,21 @@ import { db } from '@/lib/db'
 import { cars, bookings } from '@/drizzle/schema'
 import { eq, and } from 'drizzle-orm'
 
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
+
 // POST - Book a car
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
+  try { 
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -84,7 +90,7 @@ export async function POST(
     const [newBooking] = await db
       .insert(bookings)
       .values({
-        userId: parseInt(session.user.id),
+        userId,
         serviceType: 'CAR',
         serviceId: parseInt(id),
         startDate: new Date(startDate).toISOString(),
@@ -92,7 +98,7 @@ export async function POST(
         totalPrice: parseFloat(totalAmount), // Map totalAmount to totalPrice
         status: 'PENDING',
         paymentStatus: 'PENDING',
-        specialRequests: specialRequests || null,
+        specialRequests: specialRequests ? String(specialRequests) : '',
       })
       .returning()
 

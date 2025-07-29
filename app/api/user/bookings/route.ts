@@ -6,11 +6,17 @@ import { bookings } from '@/drizzle/schema'
 import { eq, and, gte, lte } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -25,7 +31,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const page = parseInt(searchParams.get('page') || '1')
 
-    let whereConditions = [eq(bookings.userId, parseInt(session.user.id))]
+    let whereConditions = [eq(bookings.userId, userId)]
 
     if (status) {
       whereConditions.push(eq(bookings.status, status))
@@ -77,14 +83,14 @@ export async function GET(request: NextRequest) {
       .from(bookings)
       .where(and(...whereConditions))
 
-    const totalPages = Math.ceil(totalCount[0].count / limit)
+    const totalPages = Math.ceil(Number(totalCount[0].count) / limit)
 
     return NextResponse.json({
       bookings: userBookings,
       pagination: {
         currentPage: page,
         totalPages,
-        totalCount: totalCount[0].count,
+        totalCount: Number(totalCount[0].count),
         hasNextPage: page < totalPages,
         hasPrevPage: page > 1,
       }

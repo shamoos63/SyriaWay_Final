@@ -190,7 +190,6 @@ export async function GET(request: NextRequest) {
           title: blogs.title,
           excerpt: blogs.excerpt,
           slug: blogs.slug,
-          isPublished: blogs.isPublished,
           status: blogs.status,
           featuredImage: blogs.featuredImage,
         })
@@ -200,7 +199,6 @@ export async function GET(request: NextRequest) {
             like(blogs.title, `%${searchTerm}%`),
             like(blogs.excerpt, `%${searchTerm}%`)
           ),
-          eq(blogs.isPublished, true),
           eq(blogs.status, 'PUBLISHED')
         ))
         .limit(limit)

@@ -19,6 +19,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import dayjs from 'dayjs'
 
 interface Customer {
   id: string;
@@ -268,20 +269,26 @@ export default function CustomersManagement() {
     setIsDeleteCustomerOpen(true)
   }
 
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    const d = dayjs(dateString)
+    return d.isValid() ? d.format('YYYY-MM-DD HH:mm') : 'N/A';
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            {t.controlPanel?.customerManagement || "Customer Management"}
+            {"Customer Management"}
           </h1>
           <p className="text-muted-foreground mt-2">
-            {t.controlPanel?.manageCustomerAccounts || "Manage customer accounts and permissions"}
+            {"Manage customer accounts and permissions"}
           </p>
         </div>
         <Button onClick={() => setIsAddCustomerOpen(true)}>
           <UserPlus className="mr-2 h-4 w-4" />
-          {t.controlPanel?.addCustomer || "Add Customer"}
+          {"Add Customer"}
         </Button>
       </div>
 
@@ -299,26 +306,26 @@ export default function CustomersManagement() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t.controlPanel?.allCustomers || "All Customers"}</CardTitle>
+          <CardTitle>{"All Customers"}</CardTitle>
           <CardDescription>
-            {t.controlPanel?.viewAndManageCustomers || "View and manage all customer accounts"}
+            {"View and manage all customer accounts"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder={t.controlPanel?.searchCustomers || "Search customers..."} className="pl-8" value={search} onChange={e => setSearch(e.target.value)} />
+              <Input placeholder={"Search customers..."} className="pl-8" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder={t.controlPanel?.filterByStatus || "Filter by status"} />
+                <SelectValue placeholder={"Filter by status"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t.controlPanel?.allStatuses || "All Statuses"}</SelectItem>
-                <SelectItem value="ACTIVE">{t.controlPanel?.active || "Active"}</SelectItem>
-                <SelectItem value="INACTIVE">{t.controlPanel?.inactive || "Inactive"}</SelectItem>
-                <SelectItem value="SUSPENDED">{t.controlPanel?.suspended || "Suspended"}</SelectItem>
+                <SelectItem value="all">{"All Statuses"}</SelectItem>
+                <SelectItem value="ACTIVE">{"Active"}</SelectItem>
+                <SelectItem value="INACTIVE">{"Inactive"}</SelectItem>
+                <SelectItem value="SUSPENDED">{"Suspended"}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -332,11 +339,11 @@ export default function CustomersManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t.controlPanel?.customer || "Customer"}</TableHead>
-                    <TableHead>{t.controlPanel?.email || "Email"}</TableHead>
-                    <TableHead>{t.controlPanel?.joinDate || "Join Date"}</TableHead>
-                    <TableHead>{t.controlPanel?.status || "Status"}</TableHead>
-                    <TableHead className="text-right">{t.controlPanel?.actions || "Actions"}</TableHead>
+                    <TableHead>{"Customer"}</TableHead>
+                    <TableHead>{"Email"}</TableHead>
+                    <TableHead>{"Join Date"}</TableHead>
+                    <TableHead>{"Status"}</TableHead>
+                    <TableHead className="text-right">{"Actions"}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -352,7 +359,7 @@ export default function CustomersManagement() {
                         </div>
                       </TableCell>
                       <TableCell>{customer.email}</TableCell>
-                      <TableCell>{new Date(customer.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell>{formatDate(customer.createdAt)}</TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                           customer.status === "ACTIVE"
@@ -369,7 +376,7 @@ export default function CustomersManagement() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            title={t.controlPanel?.edit || "Edit"}
+                            title={"Edit"}
                             onClick={() => openEditDialog(customer)}
                             disabled={actionLoading}
                           >
@@ -378,7 +385,7 @@ export default function CustomersManagement() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            title={t.controlPanel?.email || "Email"}
+                            title={"Email"}
                             onClick={() => openEmailDialog(customer)}
                             disabled={actionLoading}
                           >
@@ -388,7 +395,7 @@ export default function CustomersManagement() {
                             <Button 
                               variant="ghost" 
                               size="icon" 
-                              title={t.controlPanel?.suspend || "Suspend"}
+                              title={"Suspend"}
                               onClick={() => handleStatusChange(customer.id, "SUSPENDED")}
                               disabled={actionLoading}
                             >
@@ -398,7 +405,7 @@ export default function CustomersManagement() {
                             <Button 
                               variant="ghost" 
                               size="icon" 
-                              title={t.controlPanel?.activate || "Activate"}
+                              title={"Activate"}
                               onClick={() => handleStatusChange(customer.id, "ACTIVE")}
                               disabled={actionLoading}
                             >

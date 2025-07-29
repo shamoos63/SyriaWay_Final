@@ -5,12 +5,18 @@ import { db } from '@/lib/db'
 import { umrahRequests, umrahPackages } from '@/drizzle/schema'
 import { eq, and, desc } from 'drizzle-orm'
 
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
+
 // GET - Fetch Umrah requests for the authenticated user
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -22,7 +28,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const page = parseInt(searchParams.get('page') || '1')
 
-    let whereConditions = [eq(umrahRequests.userId, parseInt(session.user.id))]
+    let whereConditions = [eq(umrahRequests.userId, userId)]
 
     if (status) {
       whereConditions.push(eq(umrahRequests.status, status))
@@ -35,10 +41,9 @@ export async function GET(request: NextRequest) {
         id: umrahRequests.id,
         userId: umrahRequests.userId,
         packageId: umrahRequests.packageId,
-        startDate: umrahRequests.startDate,
-        endDate: umrahRequests.endDate,
-        numberOfPeople: umrahRequests.numberOfPeople,
-        specialRequests: umrahRequests.specialRequests,
+        preferredDates: umrahRequests.preferredDates,
+        numberOfPilgrims: umrahRequests.numberOfPilgrims,
+        specialRequirements: umrahRequests.specialRequirements,
         status: umrahRequests.status,
         createdAt: umrahRequests.createdAt,
         updatedAt: umrahRequests.updatedAt,
@@ -99,7 +104,8 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -109,16 +115,22 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       packageId,
-      startDate,
-      endDate,
-      numberOfPeople,
-      specialRequests
+      preferredDates,
+      numberOfPilgrims,
+      groupSize,
+      specialRequirements,
+      message,
+      phoneNumber,
+      alternativeEmail
     } = body
 
+    // Determine the number of pilgrims
+    const finalNumberOfPilgrims = numberOfPilgrims || groupSize
+
     // Validate required fields
-    if (!packageId || !startDate || !endDate || !numberOfPeople) {
+    if (!packageId || !preferredDates || !finalNumberOfPilgrims) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: packageId, preferredDates, and numberOfPilgrims are required' },
         { status: 400 }
       )
     }
@@ -137,16 +149,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Umrah request
+    const totalPrice = (umrahPackage?.price || 0) * parseInt(finalNumberOfPilgrims);
     const [newRequest] = await db
       .insert(umrahRequests)
       .values({
-        userId: parseInt(session.user.id),
-        packageId: parseInt(packageId),
-        startDate: new Date(startDate).toISOString(),
-        endDate: new Date(endDate).toISOString(),
-        numberOfPeople: parseInt(numberOfPeople),
-        specialRequests: specialRequests || null,
-        status: 'PENDING',
+         userId,
+         packageId: parseInt(packageId),
+         preferredDates: preferredDates,
+         numberOfPilgrims: parseInt(finalNumberOfPilgrims),
+         specialRequirements: specialRequirements || null,
+         totalPrice,
+         status: 'PENDING',
+         contactPhone: phoneNumber || null,
+         contactEmail: alternativeEmail || session?.user?.email || null,
       })
       .returning()
 

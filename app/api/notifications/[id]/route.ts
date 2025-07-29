@@ -5,6 +5,11 @@ import { db } from '@/lib/db'
 import { notifications } from '@/drizzle/schema'
 import { eq, and } from 'drizzle-orm'
 
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
+
 // GET - Fetch single notification
 export async function GET(
   request: NextRequest,
@@ -13,7 +18,8 @@ export async function GET(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -27,7 +33,7 @@ export async function GET(
       .from(notifications)
       .where(and(
         eq(notifications.id, parseInt(id)),
-        eq(notifications.userId, parseInt(session.user.id))
+        eq(notifications.userId, userId)
       ))
 
     if (!notification) {
@@ -54,8 +60,8 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -71,7 +77,7 @@ export async function PUT(
       .from(notifications)
       .where(and(
         eq(notifications.id, parseInt(id)),
-        eq(notifications.userId, parseInt(session.user.id))
+        eq(notifications.userId, userId)
       ))
 
     if (!existingNotification) {
@@ -111,8 +117,8 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -127,7 +133,7 @@ export async function DELETE(
       .from(notifications)
       .where(and(
         eq(notifications.id, parseInt(id)),
-        eq(notifications.userId, parseInt(session.user.id))
+        eq(notifications.userId, userId)
       ))
 
     if (!existingNotification) {

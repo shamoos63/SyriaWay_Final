@@ -5,12 +5,18 @@ import { db } from '@/lib/db'
 import { specialTourRequests, users } from '@/drizzle/schema'
 import { eq, and, desc } from 'drizzle-orm'
 
+// Helper to extract user id from session
+function getUserId(session: any): number {
+  return parseInt(session?.user?.id || session?.user?.userId || '0');
+}
+
 // GET - Fetch special tour requests for the authenticated guide
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    const userId = getUserId(session);
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -22,7 +28,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const page = parseInt(searchParams.get('page') || '1')
 
-    let whereConditions = [eq(specialTourRequests.guideId, parseInt(session.user.id))]
+    let whereConditions = [eq(specialTourRequests.assignedGuideId, userId)]
 
     if (status) {
       whereConditions.push(eq(specialTourRequests.status, status))
@@ -34,17 +40,18 @@ export async function GET(request: NextRequest) {
       .select({
         id: specialTourRequests.id,
         userId: specialTourRequests.userId,
-        guideId: specialTourRequests.guideId,
+        assignedGuideId: specialTourRequests.assignedGuideId,
         title: specialTourRequests.title,
         description: specialTourRequests.description,
-        duration: specialTourRequests.duration,
-        maxCapacity: specialTourRequests.maxCapacity,
+        preferredDates: specialTourRequests.preferredDates,
+        numberOfPeople: specialTourRequests.numberOfPeople,
         budget: specialTourRequests.budget,
-        startDate: specialTourRequests.startDate,
-        endDate: specialTourRequests.endDate,
-        location: specialTourRequests.location,
+        currency: specialTourRequests.currency,
+        destinations: specialTourRequests.destinations,
         specialRequirements: specialTourRequests.specialRequirements,
         status: specialTourRequests.status,
+        response: specialTourRequests.response,
+        respondedAt: specialTourRequests.respondedAt,
         createdAt: specialTourRequests.createdAt,
         updatedAt: specialTourRequests.updatedAt,
         user: {

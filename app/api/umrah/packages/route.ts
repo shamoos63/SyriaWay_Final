@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { umrahPackages, users } from '@/drizzle/schema'
+import { umrahPackages, users, umrahPackageTranslations } from '@/drizzle/schema'
 import { eq, and, gte, lte } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const season = searchParams.get('season')
     const active = searchParams.get('active')
+    const language = searchParams.get('language') || 'ENGLISH'
 
     let whereConditions = []
 
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Fetch packages with translations
     const packagesData = await db
       .select({
         id: umrahPackages.id,
@@ -52,14 +54,52 @@ export async function GET(request: NextRequest) {
           id: users.id,
           name: users.name,
           email: users.email,
-        }
+        },
+        translations: umrahPackageTranslations
       })
       .from(umrahPackages)
       .leftJoin(users, eq(umrahPackages.providerId, users.id))
+      .leftJoin(umrahPackageTranslations, eq(umrahPackages.id, umrahPackageTranslations.packageId))
       .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
       .orderBy(umrahPackages.createdAt)
 
-    return NextResponse.json({ packages: packagesData })
+    // Group packages with their translations
+    const packagesWithTranslations = packagesData.reduce((acc, row) => {
+      const existingPackage = acc.find(pkg => pkg.id === row.id)
+      
+      if (existingPackage) {
+        if (row.translations) {
+          existingPackage.translations.push(row.translations)
+        }
+      } else {
+        const newPackage = {
+          id: row.id,
+          name: row.name,
+          description: row.description,
+          providerId: row.providerId,
+          duration: row.duration,
+          price: row.price,
+          currency: row.currency,
+          maxPilgrims: row.maxPilgrims,
+          currentPilgrims: row.currentPilgrims,
+          startDate: row.startDate,
+          endDate: row.endDate,
+          isActive: row.isActive,
+          isVerified: row.isVerified,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          provider: row.provider,
+          translations: row.translations ? [row.translations] : []
+        }
+        acc.push(newPackage)
+      }
+      
+      return acc
+    }, [] as any[])
+
+
+    
+    return NextResponse.json({ packages: packagesWithTranslations })
   } catch (error) {
     console.error('Error fetching Umrah packages:', error)
     return NextResponse.json(

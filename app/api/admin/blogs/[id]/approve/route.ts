@@ -13,7 +13,7 @@ export async function POST(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -41,9 +41,6 @@ export async function POST(
       .update(blogs)
       .set({
         status: 'PUBLISHED',
-        isPublished: true,
-        approvedAt: new Date().toISOString(),
-        approvedBy: session.user.id,
         publishedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       })
