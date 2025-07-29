@@ -49,47 +49,75 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Get user session from NextAuth
-  const token = await getToken({ req: request })
+  try {
+    // Get user session from NextAuth with proper configuration
+    const token = await getToken({ 
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+      secureCookie: process.env.NODE_ENV === 'production'
+    })
 
-  // Check if user is authenticated
-  if (!token) {
-    // Redirect to sign-in page if not authenticated
-    return NextResponse.redirect(new URL("/auth/sign-in", request.url))
-  }
-
-  // Check user role for protected routes
-  const userRole = (token as any).role || 'CUSTOMER'
-
-  // Admin routes - only SUPER_ADMIN and ADMIN can access
-  if (path.startsWith("/control-panel")) {
-    if (userRole !== 'SUPER_ADMIN' && userRole !== 'ADMIN') {
-      return NextResponse.redirect(new URL("/unauthorized", request.url))
+    // Check if user is authenticated
+    if (!token) {
+      // Redirect to sign-in page if not authenticated
+      const signInUrl = new URL("/auth/sign-in", request.url)
+      signInUrl.searchParams.set("callbackUrl", request.url)
+      return NextResponse.redirect(signInUrl)
     }
-  }
 
-  // Hotel owner routes - only HOTEL_OWNER can access
-  if (path.startsWith("/dashboard/hotel")) {
-    if (userRole !== 'HOTEL_OWNER') {
-      return NextResponse.redirect(new URL("/unauthorized", request.url))
+    // Check user role for protected routes
+    const userRole = (token as any)?.role || 'CUSTOMER'
+    const userEmail = (token as any)?.email
+
+    // Debug logging in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Middleware Debug:', {
+        path,
+        userRole,
+        userEmail,
+        hasToken: !!token
+      })
     }
-  }
 
-  // Car owner routes - only CAR_OWNER can access
-  if (path.startsWith("/dashboard/car")) {
-    if (userRole !== 'CAR_OWNER') {
-      return NextResponse.redirect(new URL("/unauthorized", request.url))
+    // Admin routes - only SUPER_ADMIN and ADMIN can access
+    if (path.startsWith("/control-panel")) {
+      if (userRole !== 'SUPER_ADMIN' && userRole !== 'ADMIN') {
+        console.log('Access denied to control panel:', { userRole, userEmail, path })
+        return NextResponse.redirect(new URL("/unauthorized", request.url))
+      }
     }
-  }
 
-  // Tour guide routes - only TOUR_GUIDE can access
-  if (path.startsWith("/dashboard/tour")) {
-    if (userRole !== 'TOUR_GUIDE') {
-      return NextResponse.redirect(new URL("/unauthorized", request.url))
+    // Hotel owner routes - only HOTEL_OWNER can access
+    if (path.startsWith("/dashboard/hotel")) {
+      if (userRole !== 'HOTEL_OWNER') {
+        return NextResponse.redirect(new URL("/unauthorized", request.url))
+      }
     }
-  }
 
-  return NextResponse.next()
+    // Car owner routes - only CAR_OWNER can access
+    if (path.startsWith("/dashboard/car")) {
+      if (userRole !== 'CAR_OWNER') {
+        return NextResponse.redirect(new URL("/unauthorized", request.url))
+      }
+    }
+
+    // Tour guide routes - only TOUR_GUIDE can access
+    if (path.startsWith("/dashboard/tour")) {
+      if (userRole !== 'TOUR_GUIDE') {
+        return NextResponse.redirect(new URL("/unauthorized", request.url))
+      }
+    }
+
+    return NextResponse.next()
+  } catch (error) {
+    console.error('Middleware error:', error)
+    
+    // In case of error, redirect to sign-in page
+    const signInUrl = new URL("/auth/sign-in", request.url)
+    signInUrl.searchParams.set("callbackUrl", request.url)
+    signInUrl.searchParams.set("error", "session_error")
+    return NextResponse.redirect(signInUrl)
+  }
 }
 
 // Configure matcher to exclude static files
