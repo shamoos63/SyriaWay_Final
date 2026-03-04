@@ -62,7 +62,7 @@ export function Footer() {
         )}
         
         <p className="text-sm mb-4">{t.footer.allRightsReserved}</p>
-        <p className="text-sm mb-6">{t.footer.codedBy} <Link href="https://t.me/xavior963" className="text-syria-gold hover:text-syria-dark-gold transition-colors">Eng. Hisham Khateeb</Link></p>
+        
 
         {/* Contact Information */}
         {(settings?.contactEmail || settings?.contactPhone || settings?.contactAddress) && (

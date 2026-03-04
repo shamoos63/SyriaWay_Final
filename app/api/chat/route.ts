@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
 import { db } from '@/lib/db'
 import { hotels, tours, cars, tourismSites } from '@/drizzle/schema'
 import { eq, and, or, like, sql } from 'drizzle-orm'
 
-// Initialize Google AI
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '')
+const HERMES_API_URL = 'https://hermes.ai.unturf.com/v1/chat/completions'
+const HERMES_API_KEY = process.env.UNCLOSEAI_API_KEY || 'dummy-api-key'
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,18 +33,12 @@ export async function POST(request: NextRequest) {
     let success = false
 
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+      const MODEL = 'adamo1139/Hermes-3-Llama-3.1-8B-FP8-Dynamic'
 
       // Create a more comprehensive prompt with service information
-      let prompt = `You are Reem, a helpful travel assistant for Syria Ways, a tourism platform for Syria. 
+      const systemPrompt = `You are Reem, a helpful travel assistant for Syria Ways, a tourism platform for Syria.
 
-User message: "${message}"
-
-${databaseResult.context ? `Relevant information from our database: ${databaseResult.context}` : ''}
-
-${databaseResult.redirectUrl ? `You can direct them to: ${databaseResult.redirectUrl}` : ''}
-
-IMPORTANT: Respond in the same language as the user's message. If the user wrote in Arabic, respond in Arabic. If in English, respond in English.
+CRITICAL RULE: You MUST respond in the exact same language as the user's message. If the user writes in English, respond ONLY in English. If the user writes in Arabic, respond ONLY in Arabic. If the user writes in French, respond ONLY in French. Never mix languages or switch to a different language than the user used.
 
 Please provide a helpful, informative response about tourism in Syria. If the user is asking about specific services, mention that they can find more details on our website.
 
@@ -59,10 +52,41 @@ Available services on Syria Ways:
 
 Keep your response concise, friendly, and informative.`
 
-      console.log("Sending prompt to AI:", prompt)
-      
-      const result = await model.generateContent(prompt)
-      responseText = result.response.text()
+      const languageInstruction = `[User wrote in ${language}. You MUST respond in ${language} only.]`
+      const userContent = [
+        languageInstruction,
+        databaseResult.context ? `Relevant information from our database: ${databaseResult.context}` : '',
+        databaseResult.redirectUrl ? `You can direct them to: ${databaseResult.redirectUrl}` : '',
+        `User message: "${message}"`
+      ].filter(Boolean).join('\n\n')
+
+      const messages = [
+        { role: 'system' as const, content: systemPrompt },
+        { role: 'user' as const, content: userContent }
+      ]
+
+      console.log("Sending prompt to AI:", userContent.substring(0, 200) + "...")
+
+      const response = await fetch(HERMES_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${HERMES_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages,
+          temperature: 0.3,
+          max_tokens: 500,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      responseText = data.choices?.[0]?.message?.content ?? ''
       success = true
       console.log("AI response generated successfully:", responseText.substring(0, 100) + "...")
     } catch (aiError) {
@@ -125,6 +149,26 @@ function detectLanguage(text: string): string {
   return 'English'
 }
 
+// Casual greetings/small talk - no database search or redirect needed
+const CASUAL_PATTERNS = [
+  /^(hi|hello|hey|howdy|yo)\s*!?$/i,
+  /^how\s+are\s+you/i,
+  /^what'?s\s+up/i,
+  /^good\s+(morning|afternoon|evening)/i,
+  /^(thanks|thank\s+you)/i,
+  /^(bye|goodbye)/i,
+  /^مرحبا?$/,
+  /^كيف\s+حالك/i,
+  /^أهلا\s*$/,
+  /^سلام/i,
+]
+
+function isCasualQuery(query: string): boolean {
+  const trimmed = query.trim().toLowerCase()
+  if (trimmed.length < 3) return true
+  return CASUAL_PATTERNS.some(p => p.test(trimmed))
+}
+
 // Search database for relevant information
 async function searchDatabase(query: string, language: string) {
   try {
@@ -132,6 +176,12 @@ async function searchDatabase(query: string, language: string) {
     let context = ''
     let redirectUrl = ''
     let serviceType = ''
+
+    // Skip database search for casual greetings - no context, no redirect
+    if (isCasualQuery(query)) {
+      console.log("Casual query detected - skipping database search")
+      return { context: '', redirectUrl: '', serviceType: '' }
+    }
 
     // Test database connection first
     try {
@@ -277,11 +327,11 @@ async function searchDatabase(query: string, language: string) {
       if (carsData.length > 0) {
         context += `Cars: ${carsData.map(c => `${c.brand} ${c.model} in ${c.currentLocation} (${c.pricePerDay} ${c.currency}/day)`).join(', ')}. `
         redirectUrl = '/cars-rental'
-      } else if (allCars.length > 0) {
-        // If no cars match the search terms but there are cars in the database, show some available cars
+      } else if (serviceType === 'cars' && allCars.length > 0) {
+        // Only show available cars fallback when user explicitly asked about cars
         const availableCars = allCars.filter(car => car.isAvailable).slice(0, 3)
         if (availableCars.length > 0) {
-          context += `Available cars: ${availableCars.map(c => `${c.brand} ${c.model} in ${c.currentLocation} (${c.pricePerDay} ${c.currency}/day)`).join(', ')}. `
+          context += `Available cars: ${availableCars.map(c => `${c.brand} ${c.model} in ${c.currentLocation ?? 'Syria'} (${c.pricePerDay} ${c.currency}/day)`).join(', ')}. `
           redirectUrl = '/cars-rental'
         }
       }

@@ -10,7 +10,7 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false
-      - key: GOOGLE_AI_API_KEY
+      - key: UNCLOSEAI_API_KEY
         sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false

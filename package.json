@@ -9,7 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.1.1",
     "@libsql/client": "^0.15.10",
     "@prisma/adapter-libsql": "^6.12.0",
@@ -54,6 +53,7 @@
     "next": "^15.3.5",
     "next-auth": "^4.24.7",
     "next-themes": "^0.4.4",
+    "openai": "^6.25.0",
     "react": "^18.3.1",
     "react-day-picker": "^9.8.0",
     "react-dom": "^18.3.1",

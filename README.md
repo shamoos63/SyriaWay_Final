@@ -114,7 +114,7 @@ Create a `.env.local` file in the root directory with the following variables:
 - `GOOGLE_CLIENT_SECRET`: Google OAuth client secret
 
 ### Optional
-- `GOOGLE_AI_API_KEY`: For chat functionality
+- `UNCLOSEAI_API_KEY`: For chat functionality (uses free uncloseai Hermes API; defaults to dummy-api-key if not set)
 - `DATABASE_URL`: Database connection string (defaults to SQLite)
 
 ## Getting Google OAuth Credentials
