@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { type JSX } from "react";
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
